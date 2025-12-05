@@ -23,15 +23,22 @@ magnificiation/
 │   │   └── static/                    # Static web assets
 │   │       ├── css/
 │   │       ├── js/
+│   │       │   ├── components/       # Reusable UI components
+│   │       │   ├── pages/            # Page-specific scripts
+│   │       │   ├── utils/            # Utility functions
+│   │       │   ├── lib/              # Third-party and custom libraries
+│   │       │   ├── config/           # Configuration files
+│   │       │   └── services/         # API interaction services
 │   │       └── images/
 │   ├── libs/                          # Custom shared libraries
 │   │   └── llm/                       # Local LLM integration library
-│   ├── scripts/                       # Utility scripts
-│   └── config/                        # Configuration files
+│   └── scripts/                       # Utility scripts
 │
 ├── logs/                              # Application logs storage
 │
 ├── data/                              # Data storage
+│
+├── config/                            # User and environment configurations
 │
 ├── docs/                              # Documentation
 │
@@ -57,7 +64,16 @@ magnificiation/
     - **tests/**: Backend unit tests
   - **frontend/**: Frontend assets and templates
     - **templates/**: Jinja2 HTML templates
-    - **static/**: Static web assets (CSS, JavaScript, images)
+    - **static/**: Static web assets
+      - **css/**: Stylesheets
+      - **js/**: JavaScript files organized into subdirectories for maintainability
+        - **components/**: Reusable UI components (e.g., modals, buttons, form elements)
+        - **pages/**: Page-specific scripts (e.g., home.js, search.js, profile.js)
+        - **utils/**: Utility functions (e.g., helpers, formatters, validators)
+        - **lib/**: Third-party libraries and custom JavaScript libraries
+        - **config/**: Configuration files and constants
+        - **services/**: API interaction services and data fetching logic
+      - **images/**: Image assets
   - **libs/**: Custom shared libraries (logger wrapper and LLM integration)
   - **scripts/**: Utility scripts for development and maintenance
   - **config/**: Centralized configuration management
@@ -90,9 +106,10 @@ magnificiation/
 ## Environment Setup
 
 - Python 3.9+
-- Virtual environment: `venv/` (add to .gitignore)
+- Package manager: uv
+- Virtual environment: Managed by uv
 - Environment variables: `.env` file
-- Database: SQLite (dev) / PostgreSQL (production)
+- Database: SQLite (dev)
 
 ---
 
@@ -104,3 +121,4 @@ magnificiation/
 4. **Custom Libs**: Centralized in `utils/libs/` for consistent usage across backend and frontend
 5. **Configuration**: Externalized configuration for different environments
 6. **Scripts**: Utility scripts for common development tasks
+7. **JavaScript Organization**: JavaScript files are organized into subdirectories within `static/js/` to manage complexity as the application expands, separating reusable components, page-specific scripts, utilities, libraries, configurations, and API services
