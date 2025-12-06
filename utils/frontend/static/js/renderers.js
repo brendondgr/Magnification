@@ -61,9 +61,9 @@ function renderAll() {
 }
 
 function renderNewJobCard(job) {
-    // Card Container with fixed height - Increased contrast
+    // Card Container - Improved grayscale contrast
     const card = document.createElement('div');
-    card.className = "bg-white rounded-xl border border-slate-300 shadow-md hover:shadow-xl hover:border-slate-400 transition-all flex flex-col h-[450px] group relative overflow-hidden";
+    card.className = "bg-white dark:bg-neon-gray-light rounded-xl border border-slate-300 dark:border-neon-border-light shadow-md hover:shadow-xl hover:border-slate-400 dark:hover:border-neon-blue dark:hover:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all flex flex-col h-[450px] group relative overflow-hidden duration-300";
 
     // Prevent card click when clicking interactive elements
     card.onclick = (e) => {
@@ -72,42 +72,42 @@ function renderNewJobCard(job) {
     };
 
     card.innerHTML = `
-        <!-- Header Section with distinct background -->
-        <div class="px-5 py-4 bg-slate-50 border-b border-slate-200">
+        <!-- Header Section -->
+        <div class="px-5 py-4 bg-slate-50 dark:bg-neon-gray/80 border-b border-slate-200 dark:border-neon-border">
             <div class="flex justify-between items-start mb-2">
-                <h3 class="text-lg font-bold text-slate-900 leading-tight pr-2 group-hover:text-primary-700 transition-colors line-clamp-2">${job.title}</h3>
-                <span class="flex-none text-[10px] font-bold tracking-wide text-slate-500 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">${job.created_at}</span>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white leading-tight pr-2 group-hover:text-primary-700 dark:group-hover:text-neon-blue transition-colors line-clamp-2">${job.title}</h3>
+                <span class="flex-none text-[10px] font-bold tracking-wide text-slate-500 dark:text-gray-400 bg-white dark:bg-neon-border/30 px-2 py-1 rounded border border-slate-200 dark:border-neon-border-light shadow-sm">${job.created_at}</span>
             </div>
             
-            <div class="font-bold text-slate-700 text-sm mb-1">${job.company}</div>
+            <div class="font-bold text-slate-700 dark:text-gray-300 text-sm mb-1">${job.company}</div>
             
             <!-- Quick Info Tags -->
             <div class="flex flex-wrap gap-2 pt-1 text-xs">
-                <span class="flex items-center px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-medium">
-                    <i class="fa-solid fa-location-dot mr-1.5 text-slate-400"></i>${job.location}
+                <span class="flex items-center px-1.5 py-0.5 rounded-md bg-white dark:bg-neon-border/30 border border-slate-200 dark:border-neon-border-light text-slate-600 dark:text-gray-300 font-medium">
+                    <i class="fa-solid fa-location-dot mr-1.5 text-slate-400 dark:text-gray-500"></i>${job.location}
                 </span>
-                <span class="flex items-center px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-medium">
-                     <i class="fa-solid fa-sack-dollar mr-1.5 text-slate-400"></i>${job.compensation || "Not listed"}
+                <span class="flex items-center px-1.5 py-0.5 rounded-md bg-white dark:bg-neon-border/30 border border-slate-200 dark:border-neon-border-light text-slate-600 dark:text-gray-300 font-medium">
+                     <i class="fa-solid fa-sack-dollar mr-1.5 text-slate-400 dark:text-gray-500"></i>${job.compensation || "Not listed"}
                 </span>
             </div>
         </div>
         
         <!-- Scrolling Description Area -->
-        <div class="flex-1 p-5 overflow-y-auto bg-white text-sm text-slate-600 leading-relaxed whitespace-pre-line custom-scrollbar relative">
+        <div class="flex-1 p-5 overflow-y-auto bg-white dark:bg-neon-gray-light text-sm text-slate-600 dark:text-gray-300 leading-relaxed whitespace-pre-line custom-scrollbar relative">
             ${job.description}
         </div>
 
         <!-- Action Buttons Footer -->
-        <div class="p-4 bg-slate-50 border-t border-slate-200 grid grid-cols-3 gap-3">
-            <button onclick="ignoreJob(${job.id})" class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-red-700 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all" title="Ignore">
+        <div class="p-4 bg-slate-50 dark:bg-neon-gray/80 border-t border-slate-200 dark:border-neon-border grid grid-cols-3 gap-3">
+            <button onclick="ignoreJob(${job.id})" class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-slate-500 dark:text-gray-400 hover:text-red-700 dark:hover:text-red-400 hover:bg-white dark:hover:bg-neon-gray hover:shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-neon-border-light transition-all" title="Ignore">
                 <i class="fa-regular fa-eye-slash"></i> <span class="hidden sm:inline">Ignore</span>
             </button>
             
-            <a href="${job.link || '#'}" target="_blank" class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-slate-600 hover:text-primary-700 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all" title="External Link">
+            <a href="${job.link || '#'}" target="_blank" class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-gray-300 hover:text-primary-700 dark:hover:text-neon-blue hover:bg-white dark:hover:bg-neon-gray hover:shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-neon-border-light transition-all" title="External Link">
                 <i class="fa-solid fa-external-link-alt"></i> <span class="hidden sm:inline">Link</span>
             </a>
 
-            <button onclick="applyJob(${job.id})" class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 shadow-md hover:shadow-lg border border-transparent transition-all">
+            <button onclick="applyJob(${job.id})" class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-primary-600 dark:bg-neon-blue text-white dark:text-black hover:bg-primary-700 dark:hover:bg-cyan-400 shadow-md hover:shadow-lg dark:hover:shadow-[0_0_10px_rgba(0,243,255,0.4)] border border-transparent transition-all">
                 Applied <i class="fa-solid fa-check"></i>
             </button>
         </div>
@@ -117,7 +117,7 @@ function renderNewJobCard(job) {
 
 function renderKanbanCard(job, container) {
     const card = document.createElement('div');
-    card.className = "draggable-card bg-white p-4 rounded-lg border border-slate-300 shadow-md hover:shadow-lg hover:border-slate-400 mb-3 transition-all active:cursor-grabbing group";
+    card.className = "draggable-card bg-white dark:bg-neon-gray-light p-4 rounded-lg border border-slate-300 dark:border-neon-border-light shadow-md hover:shadow-lg dark:hover:shadow-[0_0_10px_rgba(191,0,255,0.2)] hover:border-slate-400 dark:hover:border-neon-purple mb-3 transition-all active:cursor-grabbing group duration-200";
     card.setAttribute("draggable", "true");
     card.setAttribute("data-id", job.id);
 
@@ -140,12 +140,12 @@ function renderKanbanCard(job, container) {
 
     card.innerHTML = `
         <div class="flex justify-between items-start mb-2">
-            <h4 class="font-bold text-slate-900 text-sm leading-tight group-hover:text-primary-700 transition-colors">${job.title}</h4>
+            <h4 class="font-bold text-slate-900 dark:text-white text-sm leading-tight group-hover:text-primary-700 dark:group-hover:text-neon-purple transition-colors">${job.title}</h4>
         </div>
-        <p class="text-xs text-slate-600 font-bold mb-3">${job.company}</p>
-        <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-            <span class="text-[10px] font-bold tracking-wide text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-200">${status}</span>
-            <i class="fa-solid fa-grip-lines text-slate-300 group-hover:text-slate-500 cursor-grab"></i>
+        <p class="text-xs text-slate-600 dark:text-gray-300 font-bold mb-3">${job.company}</p>
+        <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-neon-border">
+            <span class="text-[10px] font-bold tracking-wide text-slate-500 dark:text-gray-300 bg-slate-50 dark:bg-neon-gray/50 px-2 py-1 rounded border border-slate-200 dark:border-neon-border">${status}</span>
+            <i class="fa-solid fa-grip-lines text-slate-300 dark:text-gray-500 group-hover:text-slate-500 dark:group-hover:text-gray-400 cursor-grab"></i>
         </div>
     `;
     container.appendChild(card);
@@ -159,12 +159,12 @@ function renderTimeline(statuses, jobId) {
         const isActive = statusItem.checked === 1;
         const isRejected = isActive && (statusItem.status.includes('Rejected') || statusItem.status.includes('Ghosted'));
 
-        let dotColor = isActive ? "bg-primary-500 border-primary-500 shadow-sm" : "bg-white border-slate-300";
-        let textColor = isActive ? "text-slate-900 font-semibold" : "text-slate-400";
+        let dotColor = isActive ? "bg-primary-500 dark:bg-neon-blue border-primary-500 dark:border-neon-blue shadow-sm dark:shadow-[0_0_8px_rgba(0,243,255,0.6)]" : "bg-white dark:bg-neon-gray border-slate-300 dark:border-neon-border-light";
+        let textColor = isActive ? "text-slate-900 dark:text-white font-semibold" : "text-slate-400 dark:text-gray-500";
 
         if (isRejected) {
-            dotColor = "bg-red-500 border-red-500";
-            textColor = "text-red-600 font-bold";
+            dotColor = "bg-red-500 dark:bg-neon-pink border-red-500 dark:border-neon-pink dark:shadow-[0_0_8px_rgba(255,0,85,0.6)]";
+            textColor = "text-red-600 dark:text-neon-pink font-bold";
         }
 
         const item = document.createElement('div');
@@ -172,12 +172,12 @@ function renderTimeline(statuses, jobId) {
 
         item.innerHTML = `
             <div class="relative z-10 flex-none w-6 h-6 rounded-full border-2 ${dotColor} flex items-center justify-center transition-colors mt-0.5">
-                ${isActive ? '<i class="fa-solid fa-check text-white text-[10px]"></i>' : ''}
+                ${isActive ? '<i class="fa-solid fa-check text-white dark:text-black text-[10px]"></i>' : ''}
             </div>
             <div class="flex-1 -mt-1">
                 <div class="flex justify-between items-start mb-1 cursor-pointer" onclick="toggleStatus(${jobId}, ${index})">
-                    <span class="${textColor} text-sm transition-colors group-hover:text-primary-600">${statusItem.status}</span>
-                    <span class="text-xs text-slate-400 font-mono">${statusItem.date_reached || '-'}</span>
+                    <span class="${textColor} text-sm transition-colors group-hover:text-primary-600 dark:group-hover:text-neon-blue">${statusItem.status}</span>
+                    <span class="text-xs text-slate-400 dark:text-gray-500 font-mono">${statusItem.date_reached || '-'}</span>
                 </div>
             </div>
         `;

@@ -21,6 +21,7 @@
     <!-- Custom Config for Light Theme -->
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -39,6 +40,17 @@
                             100: '#f1f5f9',
                             200: '#e2e8f0', // Slate gray borders
                             800: '#1e293b', // Dark text
+                        },
+                        neon: {
+                            blue: '#00f3ff',     // Cyan
+                            purple: '#bf00ff',   // Electric Purple
+                            green: '#00ff9d',    // Neon Green
+                            pink: '#ff0055',     // Hot Pink
+                            black: '#0f0f0f',    // Main Dark Bg (lightened)
+                            gray: '#1a1a1a',     // Card Dark Bg
+                            'gray-light': '#252525', // Light Card Bg
+                            border: '#2a2a2a',   // Dark Border (lightened)
+                            'border-light': '#3a3a3a' // Lighter Border
                         }
                     }
                 }
@@ -61,7 +73,7 @@
         <div id="sidebar-container"></div>
 
         <!-- Main View Container -->
-        <main class="flex-1 overflow-y-auto bg-slate-100 p-4 sm:p-8 pb-20 md:pb-8" id="mainContainer">
+        <main class="flex-1 overflow-y-auto bg-slate-100 dark:bg-neon-gray p-4 sm:p-8 pb-20 md:pb-8 transition-colors duration-300" id="mainContainer">
             
             <!-- Include New Jobs View -->
             <div id="new-jobs-container"></div>

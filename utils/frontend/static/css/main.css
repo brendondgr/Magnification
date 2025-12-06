@@ -2,6 +2,14 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: #e2e8f0;
     /* Slate-200 for higher contrast */
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+}
+
+.dark body {
+    background-color: #0f0f0f;
+    /* Neon Black - lightened for better contrast */
 }
 
 /* Custom Scrollbar */
