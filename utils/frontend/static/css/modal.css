@@ -49,6 +49,15 @@
     transform: scale(1);
 }
 
+/* Modal Views */
+#modalConfigView:not(.hidden),
+#modalProgressView:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
 /* Modal Header */
 .modal-header {
     padding: 1.25rem;
@@ -66,6 +75,8 @@
 .modal-body {
     padding: 1.5rem;
     overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 /* Modal Footer */

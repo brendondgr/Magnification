@@ -175,7 +175,7 @@ const FindJobsModal = {
 
     createSectionElement(params, index, configKey, containerId) {
         const sectionDiv = document.createElement('div');
-        sectionDiv.className = "p-3 bg-slate-50 dark:bg-neon-gray/30 border border-slate-200 dark:border-neon-border/50 rounded-lg relative group";
+        sectionDiv.className = "p-3 bg-white dark:bg-[#252525] border border-[#cbd5e1] dark:border-[#3a3a3a] rounded-lg relative group";
 
         // Delete Section Button (Absolute top right)
         const deleteBtn = document.createElement('button');
@@ -199,7 +199,7 @@ const FindJobsModal = {
         // Render Existing Tags
         params.forEach(tagText => {
             const tag = document.createElement('div');
-            tag.className = 'tag-pill !bg-white dark:!bg-neon-gray !border-slate-200 dark:!border-neon-border';
+            tag.className = 'tag-pill';
             tag.innerHTML = `${tagText} <span class="tag-remove">&times;</span>`;
             tag.querySelector('.tag-remove').onclick = () => {
                 this.removeTagFromSection(configKey, index, tagText, containerId);
