@@ -1,0 +1,216 @@
+<!-- LLM Server Control Dropdown -->
+<div id="llm-dropdown" class="hidden fixed right-2 md:right-4 top-16 md:top-16 z-50 flex bg-white/95 dark:bg-neon-gray/95 backdrop-blur-md border border-slate-200 dark:border-neon-border rounded-lg shadow-2xl transition-all duration-300 max-h-[calc(100vh-5rem)]">
+    
+    <!-- Side Panel -->
+    <div id="llm-side-panel" class="w-0 overflow-hidden transition-all duration-300 border-r border-slate-200/0 dark:border-neon-border/0">
+        <div class="w-80 p-4 h-full overflow-y-auto custom-scrollbar">
+            <h3 class="text-lg font-semibold text-slate-800 dark:text-white mb-4">Manage Models</h3>
+            
+            <!-- Directories -->
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">Directories</h4>
+                <div class="space-y-2">
+                    <div>
+                        <label class="text-xs text-slate-500 dark:text-gray-400">Language Models</label>
+                        <input type="text" id="dir-language" class="w-full bg-slate-50 dark:bg-neon-black text-xs text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded px-2 py-1 focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 dark:text-gray-400">Voice Models</label>
+                        <input type="text" id="dir-voice" class="w-full bg-slate-50 dark:bg-neon-black text-xs text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded px-2 py-1 focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    </div>
+                    <button onclick="saveDirectories()" class="w-full px-2 py-1 bg-primary-100 hover:bg-primary-600 hover:text-white text-primary-700 dark:bg-neon-blue/10 dark:text-neon-blue dark:hover:bg-neon-blue dark:hover:text-black text-xs rounded transition-colors">Save Directories</button>
+                </div>
+            </div>
+
+            <!-- Language Models -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-sm font-medium text-slate-600 dark:text-gray-300">Language Models</h4>
+                    <button onclick="refreshModels()" class="text-xs text-primary-600 hover:text-primary-800 dark:text-neon-blue dark:hover:text-white" title="Refresh Models"><i data-lucide="refresh-cw" class="w-3 h-3"></i></button>
+                </div>
+                <div id="list-language-models" class="space-y-2 mb-2">
+                    <!-- Populated by JS -->
+                </div>
+                
+                <!-- Add New Model Form -->
+                <div class="bg-slate-50 dark:bg-neon-black/50 p-2 rounded border border-slate-200 dark:border-neon-border/50">
+                    <div class="text-xs font-medium text-slate-500 dark:text-gray-400 mb-2">Add New</div>
+                    <input type="text" id="new-model-file" placeholder="Filename (e.g. model.gguf)" class="w-full bg-white dark:bg-neon-black text-xs text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded px-2 py-1 mb-1 focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    <input type="text" id="new-model-name" placeholder="Nickname" class="w-full bg-white dark:bg-neon-black text-xs text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded px-2 py-1 mb-1 focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    <input type="number" id="new-model-params" placeholder="Params (B)" step="0.1" class="w-full bg-white dark:bg-neon-black text-xs text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded px-2 py-1 mb-1 focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    <button onclick="addNewModel('language')" class="w-full px-2 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-neon-border/50 dark:hover:bg-neon-border text-xs text-slate-700 dark:text-white rounded transition-colors">Add</button>
+                </div>
+            </div>
+
+             <!-- Voice Models -->
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">Voice Models</h4>
+                <div id="list-voice-models" class="space-y-2 mb-2">
+                    <!-- Populated by JS -->
+                </div>
+                 <!-- Add New Voice Model Form -->
+                 <div class="bg-slate-50 dark:bg-neon-black/50 p-2 rounded border border-slate-200 dark:border-neon-border/50">
+                    <div class="text-xs font-medium text-slate-500 dark:text-gray-400 mb-2">Add New</div>
+                    <input type="text" id="new-voice-file" placeholder="Filename" class="w-full bg-white dark:bg-neon-black text-xs text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded px-2 py-1 mb-1 focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    <input type="text" id="new-voice-name" placeholder="Nickname" class="w-full bg-white dark:bg-neon-black text-xs text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded px-2 py-1 mb-1 focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    <button onclick="addNewModel('voice')" class="w-full px-2 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-neon-border/50 dark:hover:bg-neon-border text-xs text-slate-700 dark:text-white rounded transition-colors">Add</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Main Panel -->
+    <div class="w-[calc(100vw-1rem)] md:w-96 max-w-[95vw] md:max-w-md flex-shrink-0 overflow-y-auto custom-scrollbar">
+        <div class="p-3 md:p-4">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                    <button onclick="toggleSidePanel()" class="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded transition-colors">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                    </button>
+                    <div id="llm-header-status" class="w-3 h-3 rounded-full bg-slate-400 transition-colors duration-300"></div>
+                    <i data-lucide="cpu" class="w-5 h-5 text-primary-600 dark:text-neon-blue"></i>
+                    LLM Server
+                </h3>
+                <button onclick="toggleLLMDropdown()" class="p-2 md:p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+        <!-- Normal Settings -->
+        <div class="space-y-4 mb-4">
+            <!-- Model Selection -->
+            <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-2">Model</label>
+                <select id="llm-model" class="w-full bg-slate-50 dark:bg-neon-black text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded-lg px-3 py-3 md:py-2 text-sm focus:ring-2 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                    <option value="">Loading models...</option>
+                </select>
+            </div>
+
+            <!-- Streaming -->
+            <div class="flex items-center justify-between p-2 bg-slate-50 dark:bg-neon-black/30 rounded-lg border border-slate-200 dark:border-neon-border/50">
+                <label class="text-sm font-medium text-slate-600 dark:text-gray-300 cursor-pointer select-none" for="llm-streaming">Streaming</label>
+                <div class="relative inline-block w-10 h-5 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="streaming" id="llm-streaming" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out checked:translate-x-full checked:border-primary-600 dark:checked:border-neon-blue" checked/>
+                    <label for="llm-streaming" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-200 dark:bg-neon-border cursor-pointer"></label>
+                </div>
+            </div>
+
+            <!-- Context Size -->
+            <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">
+                    Context Size: <span id="context-size-value" class="text-primary-600 dark:text-neon-blue">32768</span>
+                </label>
+                <input type="range" id="llm-context" min="10" max="17" step="1" value="15" class="w-full accent-primary-500 dark:accent-neon-blue" oninput="updateSliderValue('context-size')">
+                <div class="flex justify-between text-[10px] text-slate-400 dark:text-gray-500 px-1">
+                    <span>1K</span>
+                    <span>128K</span>
+                </div>
+            </div>
+
+            <!-- Max Tokens -->
+            <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">
+                    Max Tokens: <span id="max-tokens-value" class="text-primary-600 dark:text-neon-blue">8192</span>
+                </label>
+                <input type="range" id="llm-max-tokens" min="7" max="14" step="1" value="13" class="w-full accent-primary-500 dark:accent-neon-blue" oninput="updateSliderValue('max-tokens')">
+                <div class="flex justify-between text-[10px] text-slate-400 dark:text-gray-500 px-1">
+                    <span>128</span>
+                    <span>16K</span>
+                </div>
+            </div>
+
+            <!-- Temperature -->
+            <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">
+                    Temperature: <span id="temperature-value" class="text-primary-600 dark:text-neon-blue">0.1</span>
+                </label>
+                <input type="range" id="llm-temperature" min="0" max="2" step="0.1" value="0.1" class="w-full accent-primary-500 dark:accent-neon-blue" oninput="updateSliderValue('temperature')">
+            </div>
+
+            <!-- Repeat Penalty -->
+            <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">
+                    Repeat Penalty: <span id="repeat-penalty-value" class="text-primary-600 dark:text-neon-blue">1.2</span>
+                </label>
+                <input type="range" id="llm-repeat-penalty" min="1" max="2" step="0.1" value="1.2" class="w-full accent-primary-500 dark:accent-neon-blue" oninput="updateSliderValue('repeat-penalty')">
+            </div>
+        </div>
+
+        <!-- Advanced Settings Toggle -->
+        <button onclick="toggleAdvancedSettings()" class="w-full flex items-center justify-between px-3 py-3 md:py-2 mb-3 bg-slate-50 hover:bg-slate-100 dark:bg-neon-black/50 dark:hover:bg-neon-black border border-slate-200 dark:border-neon-border rounded-lg transition-colors">
+            <span class="text-sm font-medium text-slate-600 dark:text-gray-300">Advanced Settings</span>
+            <i data-lucide="chevron-down" id="advanced-chevron" class="w-4 h-4 text-slate-400 transition-transform"></i>
+        </button>
+
+        <!-- Advanced Settings (Collapsible) -->
+        <div id="llm-advanced-settings" class="hidden space-y-3 mb-4 p-3 bg-slate-50/50 dark:bg-neon-black/30 rounded-lg border border-slate-200 dark:border-neon-border/50">
+            <!-- Host & Port -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">Host</label>
+                    <input type="text" id="llm-host" value="127.0.0.1" class="w-full bg-slate-50 dark:bg-neon-black text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">Port</label>
+                    <input type="number" id="llm-port" value="8080" class="w-full bg-slate-50 dark:bg-neon-black text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Compute Mode -->
+            <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-2">Compute Mode</label>
+                <div class="flex gap-2">
+                    <label class="flex-1 flex items-center justify-center px-3 py-2 bg-slate-50 dark:bg-neon-black border border-slate-200 dark:border-neon-border rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-neon-blue transition-colors group">
+                        <input type="radio" name="compute-mode" value="auto" checked class="mr-2">
+                        <span class="text-sm text-slate-700 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-neon-blue">Auto</span>
+                    </label>
+                    <label class="flex-1 flex items-center justify-center px-3 py-2 bg-slate-50 dark:bg-neon-black border border-slate-200 dark:border-neon-border rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-neon-blue transition-colors group">
+                        <input type="radio" name="compute-mode" value="cpu" class="mr-2">
+                        <span class="text-sm text-slate-700 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-neon-blue">CPU</span>
+                    </label>
+                    <label class="flex-1 flex items-center justify-center px-3 py-2 bg-slate-50 dark:bg-neon-black border border-slate-200 dark:border-neon-border rounded-lg cursor-pointer hover:border-primary-500 dark:hover:border-neon-blue transition-colors group">
+                        <input type="radio" name="compute-mode" value="gpu" class="mr-2">
+                        <span class="text-sm text-slate-700 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-neon-blue">GPU</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- GPU Layers -->
+            <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">
+                    GPU Layers: <span id="gpu-layers-value" class="text-primary-600 dark:text-neon-blue">999</span>
+                </label>
+                <input type="range" id="llm-gpu-layers" min="0" max="999" value="999" class="w-full accent-primary-500 dark:accent-neon-blue" oninput="updateSliderValue('gpu-layers')">
+            </div>
+
+            <!-- Threads (CPU only) -->
+            <div id="threads-container">
+                <label class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">Threads (CPU)</label>
+                <input type="number" id="llm-threads" value="0" placeholder="Auto" class="w-full bg-slate-50 dark:bg-neon-black text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-neon-border rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-primary-500 dark:focus:ring-neon-blue focus:outline-none">
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="llm-error-message" class="hidden mb-3 text-xs text-red-500 dark:text-neon-pink text-center"></div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-2 mb-3">
+            <button id="llm-start-btn" onclick="startLLMServer()" class="flex-1 px-4 py-3 md:py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i>
+                Start Server
+            </button>
+            <button id="llm-stop-btn" onclick="stopLLMServer()" disabled class="flex-1 px-4 py-3 md:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <i data-lucide="square" class="w-4 h-4"></i>
+                Stop Server
+            </button>
+        </div>
+
+        <button onclick="saveLLMConfig()" class="w-full px-4 py-3 md:py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            Save Configuration
+        </button>
+    </div>
+    </div>
+</div>

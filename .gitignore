@@ -1,5 +1,7 @@
 jobs_config.json
 magnificiation.db
+llm_config.json
+llama-dlls/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

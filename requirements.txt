@@ -3,3 +3,5 @@ python-jobspy
 ipykernel
 sqlalchemy
 pandas
+loguru
+tqdm

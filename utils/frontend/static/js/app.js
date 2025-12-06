@@ -13,7 +13,13 @@ async function initApp() {
     await fetchJobs();
 
     // Initial render
+    // Initial render
     renderAll();
+
+    // Initialize Lucide Icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 // --- THEME LOGIC ---

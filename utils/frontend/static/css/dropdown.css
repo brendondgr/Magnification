@@ -1,0 +1,338 @@
+/* Dropdown CSS - Styles for LLM Server Control Dropdown */
+
+/* Custom Scrollbar for Dropdown */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+/* Light Mode Scrollbar */
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(203, 213, 225, 0.5);
+    /* slate-300 */
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.8);
+    /* slate-400 */
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.9);
+    /* slate-500 */
+}
+
+/* Dark Mode Scrollbar via media query or parent class */
+:is(.dark .custom-scrollbar)::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5);
+    /* slate-800 */
+}
+
+:is(.dark .custom-scrollbar)::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.8);
+    /* slate-600 */
+}
+
+:is(.dark .custom-scrollbar)::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.9);
+    /* slate-500 */
+}
+
+/* Dropdown Animation */
+#llm-dropdown {
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+#llm-dropdown.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+#llm-dropdown:not(.hidden) {
+    opacity: 1;
+    transform: translateY(0);
+    animation: slideDown 0.2s ease-out;
+}
+
+/* Toggle Switch Styling */
+.toggle-checkbox {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-checkbox:checked {
+    border-color: #0ea5e9;
+    /* primary-500 */
+    background-color: #0ea5e9;
+}
+
+:is(.dark .toggle-checkbox:checked) {
+    border-color: #00f3ff;
+    /* neon-blue */
+    background-color: #00f3ff;
+}
+
+.toggle-label {
+    transition: background-color 0.2s ease;
+}
+
+.toggle-checkbox:checked+.toggle-label {
+    background-color: #0ea5e9;
+}
+
+:is(.dark .toggle-checkbox:checked+.toggle-label) {
+    background-color: #00f3ff;
+}
+
+/* Slider Customization */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #0ea5e9 0%, #0284c7 100%);
+    outline: none;
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+:is(.dark input[type="range"]) {
+    background: linear-gradient(to right, #00f3ff 0%, #00f3ff 100%);
+}
+
+input[type="range"]:hover {
+    opacity: 1;
+}
+
+/* Webkit Slider Thumb */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Firefox Slider Thumb */
+input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Radio Button Styling */
+input[type="radio"] {
+    accent-color: #0ea5e9;
+    cursor: pointer;
+}
+
+:is(.dark input[type="radio"]) {
+    accent-color: #00f3ff;
+}
+
+/* Advanced Settings Chevron Animation */
+#advanced-chevron {
+    transition: transform 0.3s ease;
+}
+
+#advanced-chevron.rotated {
+    transform: rotate(180deg);
+}
+
+/* Advanced Settings Panel */
+#llm-advanced-settings {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    opacity: 0;
+}
+
+#llm-advanced-settings:not(.hidden) {
+    max-height: 1000px;
+    opacity: 1;
+}
+
+/* Status Indicator Animation */
+#llm-header-status {
+    transition: background-color 0.3s ease;
+}
+
+#llm-header-status.status-idle {
+    background-color: #94a3b8;
+    /* slate-400 */
+}
+
+#llm-header-status.status-starting {
+    background-color: #f59e0b;
+    /* amber-500 */
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+#llm-header-status.status-running {
+    background-color: #10b981;
+    /* emerald-500 */
+}
+
+:is(.dark #llm-header-status.status-running) {
+    background-color: #00ff9d;
+    /* neon-green */
+    box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+}
+
+#llm-header-status.status-stopping {
+    background-color: #f59e0b;
+    /* amber-500 */
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+#llm-header-status.status-error {
+    background-color: #ef4444;
+    /* red-500 */
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+:is(.dark #llm-header-status.status-error) {
+    background-color: #ff0055;
+    /* neon-pink */
+    box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+}
+
+/* Pulse Animation */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Button Hover Effects */
+button {
+    position: relative;
+    overflow: hidden;
+}
+
+button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+button:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* Error Message Animation */
+#llm-error-message {
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+    max-height: 0;
+    overflow: hidden;
+}
+
+#llm-error-message:not(.hidden) {
+    max-height: 100px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    #llm-dropdown {
+        max-height: calc(100vh - 4rem);
+    }
+
+    button {
+        min-height: 44px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        width: 22px;
+        height: 22px;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+/* Backdrop Blur Support */
+@supports (backdrop-filter: blur(10px)) {
+    #llm-dropdown {
+        backdrop-filter: blur(10px);
+    }
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(10px)) {
+    #llm-dropdown {
+        background-color: rgba(255, 255, 255, 0.98);
+    }
+
+    :is(.dark #llm-dropdown) {
+        background-color: rgba(26, 26, 26, 0.98);
+    }
+}
+
+/* Focus Visible for Accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 2px;
+}
+
+:is(.dark button:focus-visible),
+:is(.dark input:focus-visible),
+:is(.dark select:focus-visible) {
+    outline-color: #00f3ff;
+}
+
+/* Smooth Transitions for Form Elements */
+select,
+input[type="text"],
+input[type="number"] {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select:hover,
+input[type="text"]:hover,
+input[type="number"]:hover {
+    border-color: #0ea5e9;
+}
+
+:is(.dark select:hover),
+:is(.dark input[type="text"]:hover),
+:is(.dark input[type="number"]:hover) {
+    border-color: #00f3ff;
+}

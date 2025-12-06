@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="static/css/main.css">
     <link rel="stylesheet" href="static/css/components.css">
     <link rel="stylesheet" href="static/css/modal.css">
+    <link rel="stylesheet" href="static/css/dropdown.css">
 
     <!-- Custom Config for Light Theme -->
     <script>
@@ -66,6 +67,9 @@
 
     <!-- Include Mobile Navigation -->
     <div id="mobile-nav-container"></div>
+    
+    <!-- Include LLM Dropdown -->
+    <div id="llm-dropdown-container"></div>
 
     <!-- Main Content Layout -->
     <div class="flex flex-1 overflow-hidden relative">
@@ -95,7 +99,13 @@
     <script src="static/js/renderers.js"></script>
     <script src="static/js/components/find_jobs_modal.js"></script>
     <script src="static/js/handlers.js"></script>
+
+    <script src="static/js/components/llm-config.js"></script>
+    <script src="static/js/components/llm-dropdown.js"></script>
     <script src="static/js/app.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Load HTML Partials -->
     <script>
@@ -115,6 +125,7 @@
             await Promise.all([
                 loadPartial('header-container', 'parts/header.html'),
                 loadPartial('mobile-nav-container', 'parts/mobile-nav.html'),
+                loadPartial('llm-dropdown-container', 'parts/llm-dropdown.html'),
                 loadPartial('sidebar-container', 'parts/sidebar.html'),
                 loadPartial('new-jobs-container', 'primary/new-jobs.html'),
                 loadPartial('tracker-container', 'primary/tracker.html'),
@@ -124,6 +135,11 @@
             // Initialize App Logic after views are loaded
             if (typeof initApp === 'function') {
                 initApp();
+            }
+
+            // Initialize LLM Dropdown
+            if (typeof initLLMDropdown === 'function') {
+                initLLMDropdown();
             }
         });
     </script>
