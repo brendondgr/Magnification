@@ -17,6 +17,10 @@ application.register_blueprint(llm_bp)
 # Initialize database tables
 init_database()
 
+# Initialize Logger
+from utils.LocalLLM.utils.logger import LoggerWrapper
+LoggerWrapper()
+
 @application.route('/')
 def index():
     return send_file('utils/frontend/templates/index.html')

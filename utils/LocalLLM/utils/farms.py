@@ -212,7 +212,7 @@ class LlamaManager(ABC):
 
                 results = self.infer_all(prompt)
                 for result in results:
-                    print(result)
+                    self.logger.info(result)
 
             except (KeyboardInterrupt, EOFError):
                 break

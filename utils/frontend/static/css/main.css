@@ -46,3 +46,14 @@ body {
         transform: translateY(0);
     }
 }
+
+/* Sidebar Toggle Animation */
+#filters-sidebar {
+    transition: margin-left 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+#filters-sidebar.sidebar-hidden {
+    margin-left: -16rem;
+    opacity: 0;
+    pointer-events: none;
+}

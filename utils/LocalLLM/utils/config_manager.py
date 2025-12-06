@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from loguru import logger
+
 
 class ConfigManager:
     """Manage model configurations (add, remove, update)."""
@@ -70,7 +72,7 @@ class ConfigManager:
         # Check if file_name already exists
         for model in self.config.get("language_models", []):
             if model.get("file_name") == file_name:
-                print(f"Model with filename '{file_name}' already exists in config.")
+                logger.warning(f"Model with filename '{file_name}' already exists in config.")
                 return False
 
         # Check if nickname is already in use
@@ -104,7 +106,7 @@ class ConfigManager:
         self.config["language_models"].append(new_model)
         self._save_config()
 
-        print(f"✓ Added model: {nickname} ({file_name}, {parameters_billions}B)")
+        logger.success(f"Added model: {nickname} ({file_name}, {parameters_billions}B)")
         return True
 
     def remove_language_model(self, identifier: str) -> bool:
@@ -130,10 +132,10 @@ class ConfigManager:
 
         if removed_count > 0:
             self._save_config()
-            print(f"✓ Removed model: {identifier}")
+            logger.success(f"Removed model: {identifier}")
             return True
         else:
-            print(f"✗ Model not found: {identifier}")
+            logger.error(f"Model not found: {identifier}")
             return False
 
     def list_language_models(self) -> list[dict]:
@@ -173,10 +175,10 @@ class ConfigManager:
                 old_nickname = model.get("nickname")
                 model["nickname"] = new_nickname
                 self._save_config()
-                print(f"✓ Updated nickname: '{old_nickname}' → '{new_nickname}'")
+                logger.success(f"Updated nickname: '{old_nickname}' → '{new_nickname}'")
                 return True
 
-        print(f"✗ Model not found: {old_identifier}")
+        logger.error(f"Model not found: {old_identifier}")
         return False
 
     def update_model_parameters(self, identifier: str, parameters_billions: float) -> bool:
@@ -194,12 +196,12 @@ class ConfigManager:
                 old_params = model.get("parameters_billions")
                 model["parameters_billions"] = parameters_billions
                 self._save_config()
-                print(
-                    f"✓ Updated parameters for {identifier}: {old_params}B → {parameters_billions}B"
+                logger.success(
+                    f"Updated parameters for {identifier}: {old_params}B → {parameters_billions}B"
                 )
                 return True
 
-        print(f"✗ Model not found: {identifier}")
+        logger.error(f"Model not found: {identifier}")
         return False
 
     def get_model_directory(self, model_type: str = "language") -> str:
@@ -224,13 +226,13 @@ class ConfigManager:
         new_path = os.path.abspath(os.path.expanduser(new_path))
 
         if not os.path.exists(new_path):
-            print(f"⚠ Warning: Directory does not exist: {new_path}")
+            logger.warning(f"Directory does not exist: {new_path}")
             response = input("Create directory? [y/N]: ")
             if response.lower() == "y":
                 os.makedirs(new_path, exist_ok=True)
-                print(f"✓ Created directory: {new_path}")
+                logger.success(f"Created directory: {new_path}")
             else:
-                print("✗ Directory update cancelled")
+                logger.warning("Directory update cancelled")
                 return
 
         if "model_directories" not in self.config:
@@ -240,9 +242,9 @@ class ConfigManager:
         self.config["model_directories"][model_type] = new_path
         self._save_config()
 
-        print(f"✓ Updated {model_type} model directory:")
-        print(f"  Old: {old_path}")
-        print(f"  New: {new_path}")
+        logger.success(f"Updated {model_type} model directory:")
+        logger.info(f"  Old: {old_path}")
+        logger.info(f"  New: {new_path}")
 
     def auto_discover_models(
         self, model_type: str = "language", interactive: bool = True
@@ -259,14 +261,14 @@ class ConfigManager:
         model_dir = Path(self.config["model_directories"].get(model_type, ""))
 
         if not model_dir.exists():
-            print(f"✗ Model directory does not exist: {model_dir}")
+            logger.error(f"Model directory does not exist: {model_dir}")
             return 0
 
         # Find .gguf files
         gguf_files = list(model_dir.glob("*.gguf"))
 
         if not gguf_files:
-            print(f"No .gguf files found in {model_dir}")
+            logger.warning(f"No .gguf files found in {model_dir}")
             return 0
 
         # Get existing filenames
@@ -279,14 +281,14 @@ class ConfigManager:
         new_files = [f for f in gguf_files if f.name not in existing_files]
 
         if not new_files:
-            print(f"All models in {model_dir} are already configured.")
+            logger.info(f"All models in {model_dir} are already configured.")
             return 0
 
-        print(f"\nFound {len(new_files)} new model(s):")
+        logger.info(f"Found {len(new_files)} new model(s):")
         added_count = 0
 
         for model_file in new_files:
-            print(f"\n  File: {model_file.name}")
+            logger.info(f"File: {model_file.name}")
 
             if interactive:
                 # Prompt for nickname
@@ -314,12 +316,12 @@ class ConfigManager:
                     try:
                         params = float(params_input)
                     except ValueError:
-                        print("  Invalid number, skipping model")
+                        logger.warning("Invalid number, skipping model")
                         continue
                 elif default_params is not None:
                     params = default_params
                 else:
-                    print("  No parameters specified, skipping model")
+                    logger.warning("No parameters specified, skipping model")
                     continue
 
             else:
@@ -329,7 +331,7 @@ class ConfigManager:
 
                 params_match = re.match(r"(\d+(?:\.\d+)?)B", model_file.name, re.IGNORECASE)
                 if not params_match:
-                    print(f"  ✗ Could not extract parameters from filename, skipping")
+                    logger.error(f"Could not extract parameters from filename, skipping")
                     continue
                 params = float(params_match.group(1))
 
@@ -343,7 +345,7 @@ class ConfigManager:
                 )
                 added_count += 1
             except ValueError as exc:
-                print(f"  ✗ Error: {exc}")
+                logger.error(f"Error: {exc}")
 
         return added_count
 

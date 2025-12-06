@@ -3,6 +3,7 @@
 from flask import Blueprint, jsonify, request
 import os
 from pathlib import Path
+from loguru import logger
 
 # Import LocalLLM utilities
 from utils.LocalLLM.utils.config_loader import ConfigLoader, get_all_language_models
@@ -336,17 +337,14 @@ def start_server():
         
         # Start server in background thread
         import threading
-        from utils.LocalLLM.utils.logger import NoOpLogger
-        
         def run_server():
             global server_status, llm_instance
             try:
-                logger = NoOpLogger()
                 llm_instance = LocalLMM(logger=logger, args=args)
                 llm_instance.run()
                 server_status = 'running'
             except Exception as e:
-                print(f"Server error: {e}")
+                logger.error(f"Server error: {e}")
                 server_status = 'error'
         
         server_thread = threading.Thread(target=run_server, daemon=True)

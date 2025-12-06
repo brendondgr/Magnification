@@ -2,6 +2,11 @@
 <nav class="bg-white dark:bg-neon-black border-b border-slate-300 dark:border-neon-border h-16 flex-none z-20 shadow-sm transition-colors duration-300">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex justify-between items-center">
         <div class="flex items-center gap-3">
+            <!-- Sidebar Toggle (Desktop Only) -->
+            <button onclick="toggleSidebar()" class="hidden md:block bg-slate-100 hover:bg-slate-200 dark:bg-neon-gray dark:border dark:border-neon-border text-slate-600 dark:text-neon-blue px-3 py-2 rounded-lg transition-all shadow-sm border border-slate-200" title="Toggle Sidebar">
+                <i id="sidebar-toggle-icon" class="fa-solid fa-bars"></i>
+            </button>
+            
             <div class="bg-primary-500 text-white p-2 rounded-lg shadow-sm">
                 <i class="fa-solid fa-magnifying-glass text-lg"></i>
             </div>
@@ -32,6 +37,7 @@
                 <i data-lucide="cpu" class="w-5 h-5"></i>
                 <span class="hidden sm:inline text-sm font-medium">Server Settings</span>
             </button>
+            
             <!-- Theme Toggle -->
             <button onclick="toggleTheme()" class="bg-slate-100 hover:bg-slate-200 dark:bg-neon-gray dark:border dark:border-neon-border text-slate-600 dark:text-neon-blue px-3 py-2 rounded-lg transition-all shadow-sm border border-slate-200" title="Toggle Theme">
                 <i id="theme-toggle-icon" class="fa-solid fa-moon text-slate-400"></i>

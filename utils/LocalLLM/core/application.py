@@ -15,8 +15,8 @@ import requests
 from utils.LocalLLM.cli.argument_parser import CLIArgumentParser
 from utils.LocalLLM.server.manager import ServerManager
 from utils.LocalLLM.utils.config_loader import get_model_parameters
-from utils.LocalLLM.utils.logger import NoOpLogger
 from utils.LocalLLM.utils.server_health import wait_for_server
+from loguru import logger as global_logger
 
 
 class LocalLMM:
@@ -32,7 +32,7 @@ class LocalLMM:
         inference_only_mode: Optional[bool] = None,
         inference_port: Optional[int] = None,
     ) -> None:
-        self.logger = logger if logger is not None else NoOpLogger()
+        self.logger = logger if logger is not None else global_logger
         self.logger.info("LocalLMM starting")
 
         if args is not None and (cli_args is not None or use_cli):
@@ -429,12 +429,12 @@ class LocalLMM:
                                 requested_slot = int(parts[2])
                         ok = self.clear_session(session_id, slot_id=requested_slot)
                         if ok:
-                            print(f"Session '{session_id}' cleared. Slot cleared: {requested_slot if requested_slot is not None else '(none)'}")
+                            self.logger.info(f"Session '{session_id}' cleared. Slot cleared: {requested_slot if requested_slot is not None else '(none)'}")
                         else:
-                            print(f"Failed to clear session '{session_id}'")
+                            self.logger.error(f"Failed to clear session '{session_id}'")
                         continue
                     elif parts[0].lower() in ("help", "commands"):
-                        print("Available REPL commands: /reset [slot N], /clear [slot N], /help, exit, quit")
+                        self.logger.info("Available REPL commands: /reset [slot N], /clear [slot N], /help, exit, quit")
                         continue
 
                 response = self.trigger_inference(
@@ -443,7 +443,7 @@ class LocalLMM:
                     remember=remember,
                     slot_id=slot_id,
                 )
-                print(f"Response: {response}")
+                self.logger.info(f"Response: {response}")
 
             except (KeyboardInterrupt, EOFError):
                 break

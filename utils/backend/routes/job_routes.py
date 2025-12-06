@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from ..database import operations as db_ops
+from loguru import logger
 
 job_bp = Blueprint('job_bp', __name__)
 
@@ -19,7 +20,7 @@ def get_jobs():
             
         return jsonify(full_jobs)
     except Exception as e:
-        print(f"Error fetching jobs: {e}")
+        logger.error(f"Error fetching jobs: {e}")
         return jsonify({'error': str(e)}), 500
 
 @job_bp.route('/api/jobs/<int:job_id>', methods=['GET'])

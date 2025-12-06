@@ -194,3 +194,9 @@ function toggleStatus(jobId, statusIndex) {
     renderTimeline(job.statuses, jobId);
     renderAll();
 }
+
+// --- SIDEBAR TOGGLE ---
+function toggleSidebar() {
+    const sidebar = document.getElementById('filters-sidebar');
+    sidebar.classList.toggle('sidebar-hidden');
+}

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 import json
 import os
+from loguru import logger
 
 config_bp = Blueprint('config_bp', __name__)
 
@@ -21,7 +22,7 @@ def load_jobs_config():
         with open(CONFIG_PATH, 'r') as f:
             return json.load(f)
     except Exception as e:
-        print(f"Error loading config: {e}")
+        logger.error(f"Error loading config: {e}")
         return {}
 
 def save_jobs_config(data):
@@ -36,7 +37,7 @@ def save_jobs_config(data):
             json.dump(data, f, indent=4)
         return True
     except Exception as e:
-        print(f"Error saving config: {e}")
+        logger.error(f"Error saving config: {e}")
         return False
 
 @config_bp.route('/api/config/load', methods=['GET'])
