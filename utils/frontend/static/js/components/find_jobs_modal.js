@@ -38,6 +38,13 @@ const FindJobsModal = {
             this._modalElement = container.firstElementChild;
             document.body.appendChild(this._modalElement);
 
+            // Create Help Backdrop (since we didn't add it to HTML directly)
+            const backdrop = document.createElement('div');
+            backdrop.id = 'helpBackdrop';
+            backdrop.className = 'help-backdrop';
+            backdrop.onclick = () => this.toggleHelpPanel(false);
+            this._modalElement.appendChild(backdrop); // Append inside modal-overlay so it covers modal-content
+
             this.renderSitesOptions();
             this.attachEventListeners();
         } catch (e) {
@@ -96,6 +103,47 @@ const FindJobsModal = {
             this.close();
             window.location.reload(); // Refresh to see new jobs
         };
+
+        /* --- Help System Listeners --- */
+
+        // Open Help Panel
+        const helpBtn = document.getElementById('helpBtn');
+        if (helpBtn) helpBtn.onclick = () => this.toggleHelpPanel(true);
+
+        // Close Help Panel
+        const closeHelpBtn = document.getElementById('closeHelpBtn');
+        if (closeHelpBtn) closeHelpBtn.onclick = () => this.toggleHelpPanel(false);
+
+        // Info Buttons
+        const infoBtns = this._modalElement.querySelectorAll('.info-btn');
+        infoBtns.forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation(); // Prevent bubbling
+                const sectionId = btn.dataset.helpSection;
+                this.openHelpSection(sectionId);
+            };
+        });
+
+        // Accordion Headers
+        const accHeaders = this._modalElement.querySelectorAll('.accordion-header');
+        accHeaders.forEach(header => {
+            header.onclick = () => {
+                const item = header.parentElement;
+                const content = item.querySelector('.accordion-content');
+
+                // Toggle current
+                const isHidden = content.classList.contains('hidden');
+
+                if (isHidden) {
+                    // Start opening
+                    content.classList.remove('hidden');
+                    item.classList.add('active');
+                } else {
+                    content.classList.add('hidden');
+                    item.classList.remove('active');
+                }
+            };
+        });
     },
 
     /* --- Simple Tag Input (Flat List) --- */
@@ -475,6 +523,47 @@ const FindJobsModal = {
     formatStage(stage) {
         if (!stage) return "Processing...";
         return stage.charAt(0).toUpperCase() + stage.slice(1);
+    },
+
+    /* --- Help Panel Methods --- */
+
+    toggleHelpPanel(show) {
+        const panel = document.getElementById('helpPanel');
+        const backdrop = document.getElementById('helpBackdrop');
+        if (!panel || !backdrop) return;
+
+        if (show) {
+            panel.classList.remove('translate-x-full');
+            backdrop.classList.add('active');
+        } else {
+            panel.classList.add('translate-x-full');
+            backdrop.classList.remove('active');
+        }
+    },
+
+    openHelpSection(sectionId) {
+        if (!sectionId) return;
+        this.toggleHelpPanel(true);
+
+        // Collapse all first (optional, maybe we want to keep others open? Let's collapse for focus)
+        const allItems = document.querySelectorAll('.accordion-item');
+        allItems.forEach(item => {
+            item.classList.remove('active');
+            item.querySelector('.accordion-content').classList.add('hidden');
+        });
+
+        // Open target
+        const targetDesc = document.getElementById(sectionId);
+        if (targetDesc) {
+            targetDesc.classList.add('active');
+            const content = targetDesc.querySelector('.accordion-content');
+            content.classList.remove('hidden');
+
+            // Scroll to it
+            setTimeout(() => {
+                targetDesc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300); // Wait for panel slide
+        }
     }
 };
 

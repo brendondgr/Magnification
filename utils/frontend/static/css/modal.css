@@ -200,3 +200,54 @@ input[type=range] {
     min-width: 120px;
     color: inherit;
 }
+
+/* Help Panel Styling */
+.help-panel {
+    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
+}
+
+.dark .help-panel {
+    box-shadow: -5px 0 25px rgba(0, 243, 255, 0.05);
+    /* subtle neon glow */
+}
+
+/* Help Backdrop */
+.help-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(1px);
+    z-index: 40;
+    /* Below panel (50) but above modal content */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.help-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Accordion Animation details */
+.accordion-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.accordion-header i {
+    transition: transform 0.2s ease;
+}
+
+.accordion-item.active .accordion-header i {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Info Button Pulse on Hover */
+.info-btn:hover i {
+    transform: scale(1.1);
+}

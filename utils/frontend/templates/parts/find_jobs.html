@@ -5,16 +5,27 @@
             <!-- Header -->
             <div class="modal-header">
                 <h2 class="text-xl font-bold text-slate-800 dark:text-white">Find Jobs Configuration</h2>
-                <button class="modal-close text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
-                    <i class="fa-solid fa-times text-xl"></i>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button id="helpBtn" class="text-sm font-medium text-primary-600 dark:text-neon-blue hover:text-primary-700 dark:hover:text-cyan-400 flex items-center gap-2 transition-colors">
+                        <i class="fa-regular fa-circle-question"></i> <span class="hidden sm:inline">How to Use</span>
+                    </button>
+                    <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                    <button class="modal-close text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                        <i class="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Body -->
             <div class="modal-body custom-scrollbar">
                 <!-- Search Terms -->
                 <div class="form-group">
-                    <label class="form-label">Search Terms <span class="text-xs text-slate-500 font-normal">(What to search for)</span></label>
+                    <label class="form-label flex items-center gap-2">
+                        <span>Search Terms <span class="text-xs text-slate-500 font-normal">(What to search for)</span></span>
+                        <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-search-terms">
+                            <i class="fa-solid fa-circle-info text-xs"></i>
+                        </button>
+                    </label>
                     <div class="tag-input-container" id="searchTermsInput">
                         <input type="text" class="tag-input-field" placeholder="Add search term and press Enter...">
                     </div>
@@ -22,14 +33,24 @@
 
                 <!-- Location -->
                 <div class="form-group">
-                    <label class="form-label">Location <span class="text-xs text-slate-500 font-normal">(Optional)</span></label>
+                    <label class="form-label flex items-center gap-2">
+                        <span>Location <span class="text-xs text-slate-500 font-normal">(Optional)</span></span>
+                        <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-location">
+                            <i class="fa-solid fa-circle-info text-xs"></i>
+                        </button>
+                    </label>
                     <input type="text" id="locationInput" class="w-full px-3 py-2 border border-slate-300 dark:border-neon-border rounded-lg bg-white dark:bg-neon-gray text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-slate-400 dark:placeholder-slate-500" placeholder="City, State (e.g. San Francisco, CA)">
                     <p class="text-[10px] text-slate-400 mt-1 ml-1">Use 2-letter state code (e.g. CA, NY)</p>
                 </div>
 
                 <!-- Hours Old -->
                 <div class="form-group">
-                    <label class="form-label">Job Posting Age</label>
+                    <label class="form-label flex items-center gap-2">
+                        Job Posting Age
+                        <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-age">
+                            <i class="fa-solid fa-circle-info text-xs"></i>
+                        </button>
+                    </label>
                     <div class="flex items-center gap-4 mb-2">
                         <input type="range" id="hoursOldSlider" min="0" max="5" step="1" class="flex-1">
                         <span id="hoursOldDisplay" class="text-sm font-bold text-primary-600 dark:text-neon-blue w-32 text-right">24 hours</span>
@@ -38,7 +59,12 @@
 
                 <!-- Sites -->
                 <div class="form-group">
-                    <label class="form-label">Sites to Scrape</label>
+                    <label class="form-label flex items-center gap-2">
+                        Sites to Scrape
+                        <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-sites">
+                            <i class="fa-solid fa-circle-info text-xs"></i>
+                        </button>
+                    </label>
                     <div class="checkbox-grid" id="sitesContainer">
                         <!-- Populated dynamically -->
                     </div>
@@ -51,7 +77,12 @@
                 <!-- Job Title Keywords -->
                 <div class="form-group">
                     <div class="flex justify-between items-end mb-2">
-                        <label class="form-label mb-0">Title Keywords <span class="text-xs text-slate-500 font-normal block sm:inline">(Match ANY keyword in EACH section)</span></label>
+                        <label class="form-label mb-0 flex items-center gap-2">
+                            <span>Title Keywords <span class="text-xs text-slate-500 font-normal block sm:inline">(Match ANY keyword in EACH section)</span></span>
+                            <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-title-keywords">
+                                <i class="fa-solid fa-circle-info text-xs"></i>
+                            </button>
+                        </label>
                         <button type="button" id="addTitleSectionBtn" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-neon-gray hover:bg-slate-200 dark:hover:bg-neon-border text-primary-600 dark:text-neon-blue font-bold transition-colors">
                             + Add AND Section
                         </button>
@@ -65,7 +96,12 @@
                 <!-- Description Keywords -->
                 <div class="form-group">
                     <div class="flex justify-between items-end mb-2">
-                        <label class="form-label mb-0">Description Keywords <span class="text-xs text-slate-500 font-normal block sm:inline">(Match ANY keyword in EACH section)</span></label>
+                        <label class="form-label mb-0 flex items-center gap-2">
+                            <span>Description Keywords <span class="text-xs text-slate-500 font-normal block sm:inline">(Match ANY keyword in EACH section)</span></span>
+                            <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-desc-keywords">
+                                <i class="fa-solid fa-circle-info text-xs"></i>
+                            </button>
+                        </label>
                         <button type="button" id="addDescSectionBtn" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-neon-gray hover:bg-slate-200 dark:hover:bg-neon-border text-primary-600 dark:text-neon-blue font-bold transition-colors">
                             + Add AND Section
                         </button>
@@ -80,12 +116,22 @@
                 <div class="form-group">
                     <div class="flex items-center justify-between">
                         <div>
-                            <label class="form-label">Max Results Per Search</label>
+                            <label class="form-label flex items-center gap-2">
+                                Max Results Per Search
+                                <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-results">
+                                    <i class="fa-solid fa-circle-info text-xs"></i>
+                                </button>
+                            </label>
                             <input type="number" id="resultsWantedInput" class="w-24 px-3 py-2 border border-slate-300 dark:border-neon-border rounded-lg bg-white dark:bg-neon-gray text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" value="20" min="5" max="50">
                         </div>
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="refineDescriptionsCheckbox" class="w-4 h-4 text-primary-600 dark:text-neon-blue bg-slate-100 dark:bg-neon-gray border-slate-300 dark:border-neon-border rounded focus:ring-primary-500 dark:focus:ring-neon-blue focus:ring-2">
-                            <label for="refineDescriptionsCheckbox" class="form-label mb-0">Refine Descriptions with LLM</label>
+                            <label for="refineDescriptionsCheckbox" class="form-label mb-0 flex items-center gap-2">
+                                Refine Descriptions with LLM
+                                <button type="button" class="info-btn text-slate-400 hover:text-primary-500 dark:hover:text-neon-blue transition-colors" data-help-section="help-refine">
+                                    <i class="fa-solid fa-circle-info text-xs"></i>
+                                </button>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -145,5 +191,115 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Help Panel -->
+    <div id="helpPanel" class="help-panel fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white dark:bg-[#1a1a1a] shadow-2xl transform translate-x-full transition-transform duration-300 z-50 flex flex-col border-l border-slate-200 dark:border-[#2a2a2a]">
+        <!-- Panel Header -->
+        <div class="p-5 border-b border-slate-200 dark:border-[#2a2a2a] flex justify-between items-center bg-slate-50 dark:bg-[#202020]">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <i class="fa-regular fa-circle-question text-primary-600 dark:text-neon-blue"></i>
+                Help & Guide
+            </h3>
+            <button id="closeHelpBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                <i class="fa-solid fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Panel Body (Accordion) -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+            
+            <div class="accordion-item" id="help-search-terms">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Search Terms</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400">
+                    <p>Enter the main job titles or roles you are looking for (e.g., "Software Engineer", "Data Scientist"). These are the primary terms used to query job boards.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item" id="help-location">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Location</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400">
+                    <p>Specify a city and state (e.g., "Seattle, WA") to narrow down results. If left blank, some sites may default to your IP location or "Remote". Use the 2-letter state code for best results.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item" id="help-age">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Job Posting Age</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400">
+                    <p>Filter jobs by when they were posted. "24 hours" is best for finding the freshest listings. <br><br><strong>Note:</strong> Older listings may be expired or already flooded with applicants.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item" id="help-sites">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Sites to Scrape</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400">
+                    <p>Select which job boards to search. LinkedIn and Indeed usually have the highest volume. Glassdoor and ZipRecruiter are good supplements.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item" id="help-title-keywords">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Title Keywords (Logic)</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400 space-y-2">
+                    <p>This filter uses <strong>AND/OR</strong> logic to strictly filter results by job title.</p>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><strong>Groups (AND):</strong> The job title must match <em>at least one</em> keyword from <strong>EVERY</strong> group you create.</li>
+                        <li><strong>Keywords (OR):</strong> Within a single group, the job title can match <strong>ANY</strong> of the keywords.</li>
+                    </ul>
+                    <p class="text-xs italic mt-2 bg-slate-100 dark:bg-slate-800 p-2 rounded">
+                        <strong>Example:</strong><br>
+                        Group 1: "Senior", "Lead"<br>
+                        Group 2: "Python", "Backend"<br>
+                        Matches: "Senior Python Dev", "Lead Backend Eng"<br>
+                        Fails: "Junior Python Dev", "Senior Java Dev"
+                    </p>
+                </div>
+            </div>
+
+            <div class="accordion-item" id="help-desc-keywords">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Description Keywords (Logic)</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400">
+                    <p>Same logic as Title Keywords, but checks the full job description text. Use this to ensure specific skills (e.g., "React", "AWS") are mentioned in the body of the listing.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item" id="help-results">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Max Results</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400">
+                    <p>The maximum number of jobs to fetch per search term per site. Higher numbers take longer to scrape.</p>
+                </div>
+            </div>
+
+            <div class="accordion-item" id="help-refine">
+                <button class="accordion-header w-full text-left flex justify-between items-center py-2 font-medium text-slate-700 dark:text-gray-200 hover:text-primary-600 dark:hover:text-neon-blue transition-colors">
+                    <span>Refine Descriptions</span>
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+                </button>
+                <div class="accordion-content hidden pt-2 pb-4 text-sm text-slate-600 dark:text-gray-400">
+                    <p>Uses an LLM to clean up and structure the job description into a standardized format. <br><br><strong class="text-amber-500">Note:</strong> This requires the page scraper to be active and may significantly increase processing time.</p>
+                </div>
+            </div>
+
+        </div>
     </div>
 </div>
