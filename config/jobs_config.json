@@ -29,11 +29,7 @@
         []
     ],
     "sites": [
-        "indeed",
-        "linkedin",
-        "glassdoor",
-        "zip_recruiter",
-        "google"
+        "linkedin"
     ],
     "hours_old": 48,
     "results_wanted": 5,

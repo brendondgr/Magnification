@@ -134,6 +134,7 @@ def transform_to_db_format(job: Dict[str, Any]) -> Dict[str, Any]:
         'link': job.get('link', ''),
         'description': job.get('description', ''),
         'compensation': job.get('compensation', ''),
+        'site': job.get('site', ''),  # Preserve site for LinkedIn description fetching
         'ignore': 0,  # Default to tracking
     }
 

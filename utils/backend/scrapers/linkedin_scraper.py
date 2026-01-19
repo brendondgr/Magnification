@@ -132,6 +132,7 @@ def fetch_linkedin_description(job_id: str) -> Optional[str]:
         return None
     
     url = LINKEDIN_GUEST_API_URL.format(job_id=job_id)
+    logger.info(f"[DEBUG] Fetching LinkedIn job {job_id} from: {url}")
     
     try:
         response = requests.get(
@@ -153,13 +154,18 @@ def fetch_linkedin_description(job_id: str) -> Optional[str]:
             return None
         
         # Parse the HTML response
+        logger.info(f"[DEBUG] Got response for job {job_id}, status: {response.status_code}, length: {len(response.text)} chars")
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Look for the job description in the show-more-less-html__markup class
         description_div = soup.find(class_='show-more-less-html__markup')
         
         if description_div:
-            return clean_html_text(str(description_div))
+            desc_text = clean_html_text(str(description_div))
+            # Debug: print first 30 chars with newlines escaped
+            preview = desc_text[:30].replace('\n', '\\n').replace('\r', '\\r') if desc_text else "(empty)"
+            logger.info(f"[DEBUG] Job {job_id} description preview: '{preview}...'")
+            return desc_text
         
         # Fallback: try other common description containers
         fallback_selectors = [
@@ -173,7 +179,7 @@ def fetch_linkedin_description(job_id: str) -> Optional[str]:
             if desc_element:
                 return clean_html_text(str(desc_element))
         
-        logger.debug(f"No description found in response for job {job_id}")
+        logger.info(f"[DEBUG] No description element found for job {job_id}. Response snippet: {response.text[:200]}...")
         return None
         
     except requests.Timeout:
@@ -189,7 +195,8 @@ def fetch_linkedin_description(job_id: str) -> Optional[str]:
 
 def fetch_descriptions_for_jobs(
     jobs: List[Dict[str, Any]],
-    progress_callback: Optional[callable] = None
+    progress_callback: Optional[callable] = None,
+    only_these_jobs: Optional[List[Dict[str, Any]]] = None
 ) -> List[Dict[str, Any]]:
     """
     Fetch descriptions for all LinkedIn jobs in a list.
@@ -200,21 +207,46 @@ def fetch_descriptions_for_jobs(
     Args:
         jobs: List of job dictionaries
         progress_callback: Optional function(current, total) for progress updates
+        only_these_jobs: Optional subset of jobs to fetch descriptions for
     
     Returns:
         The same list with descriptions added to LinkedIn jobs
     """
-    # Identify LinkedIn jobs without descriptions
+    # Identify which jobs we should actually process
+    target_jobs = only_these_jobs if only_these_jobs is not None else jobs
+    
+    # Identify LinkedIn jobs without descriptions within the target list
     linkedin_jobs_to_fetch = []
-    for i, job in enumerate(jobs):
-        site = str(job.get('site', '')).lower()
+    for target_job in target_jobs:
+        site = str(target_job.get('site', '')).lower()
         if site == 'linkedin':
-            description = job.get('description', '')
+            description = target_job.get('description', '')
             if not description or description.strip() == '':
-                job_url = job.get('link', '') or job.get('job_url', '')
-                job_id = extract_linkedin_job_id(job_url)
-                if job_id:
-                    linkedin_jobs_to_fetch.append((i, job_id))
+                # Find the index in the original 'jobs' list to update it
+                # We use identity comparison if possible, otherwise rely on content
+                # Since jobs are dicts, we can find it by index or matching fields
+                # However, scraping_service.py passes individual objects that are also in 'jobs'
+                # So we can just find which index in 'jobs' matches the target_job object
+                try:
+                    job_index = -1
+                    for idx, j in enumerate(jobs):
+                        if j is target_job: # Identity check
+                            job_index = idx
+                            break
+                    
+                    if job_index == -1:
+                        continue # Should not happen if only_these_jobs is a subset
+                        
+                    job_url = target_job.get('link', '') or target_job.get('job_url', '')
+                    logger.info(f"[DEBUG] LinkedIn job URL: {job_url}")
+                    job_id = extract_linkedin_job_id(job_url)
+                    if job_id:
+                        logger.info(f"[DEBUG] Extracted job ID: {job_id}")
+                        linkedin_jobs_to_fetch.append((job_index, job_id))
+                    else:
+                        logger.warning(f"[DEBUG] Could not extract job ID from URL: {job_url}")
+                except Exception as e:
+                    logger.error(f"Error identifying job index: {e}")
     
     if not linkedin_jobs_to_fetch:
         logger.info("No LinkedIn jobs need description fetching")

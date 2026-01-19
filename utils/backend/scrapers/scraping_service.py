@@ -15,7 +15,8 @@ import logging
 from .task_generator import generate_scraping_tasks, load_jobs_config
 from .concurrent_scraper import JobSpyScraper
 from .data_processor import process_scraped_jobs, get_job_statistics
-from .job_filter import filter_jobs, filter_and_mark_jobs, load_filter_config
+from .job_filter import filter_jobs, filter_and_mark_jobs, load_filter_config, apply_title_filter
+from .linkedin_scraper import fetch_descriptions_for_jobs
 from .scraper_config import (
     DEFAULT_RESULTS_WANTED,
     DEFAULT_HOURS_OLD,
@@ -88,7 +89,19 @@ def execute_full_scraping_workflow(
             # Fallback to job_titles if search_terms is empty (backward compatibility)
             if not search_terms:
                 search_terms = config.get('job_titles', [])
-        
+                
+            # If we are loading terms from config, we should also load other settings 
+            # unless they were explicitly overridden in the function call.
+            # We check if they are at their default values to decide if we should override from config.
+            if sites is None:
+                sites = config.get('sites')
+            
+            if results_wanted == DEFAULT_RESULTS_WANTED and 'results_wanted' in config:
+                results_wanted = config.get('results_wanted')
+                
+            if hours_old == DEFAULT_HOURS_OLD and 'hours_old' in config:
+                hours_old = config.get('hours_old')
+
         if location is None:
             location = config.get('location', '')
             location = location if location else None
@@ -167,34 +180,57 @@ def execute_full_scraping_workflow(
         
         # Step 3.5: Fetch LinkedIn descriptions
         # LinkedIn jobs from JobSpy don't have descriptions, so we fetch them
-        # via LinkedIn's guest API to enable description-based filtering
-        linkedin_jobs = [j for j in processed_jobs if str(j.get('site', '')).lower() == 'linkedin']
-        if linkedin_jobs:
-            update_progress('fetching_descriptions', 83, {
-                'message': f'Fetching descriptions for {len(linkedin_jobs)} LinkedIn jobs...'
-            })
-            logger.info(f"Step 3.5: Fetching descriptions for {len(linkedin_jobs)} LinkedIn jobs...")
+        # via LinkedIn's guest API to enable description-based filtering.
+        # Optimization: Filter by title first to avoid fetching for irrelevant jobs.
+        raw_linkedin_jobs = [j for j in processed_jobs if str(j.get('site', '')).lower() == 'linkedin']
+        
+        if raw_linkedin_jobs:
+            # Load filter config to apply title filter
+            filter_config = load_filter_config()
+            allowed_titles = filter_config.get('job_titles', [])
             
-            from .linkedin_scraper import fetch_descriptions_for_jobs
+            # Filter LinkedIn jobs that pass title criteria
+            linkedin_jobs_to_scrape = [
+                j for j in raw_linkedin_jobs 
+                if apply_title_filter(j, allowed_titles)
+            ]
             
-            def linkedin_progress(current, total):
-                # Map LinkedIn progress to 83-88% of overall workflow
-                percent = 83 + (current / total) * 5
-                update_progress('fetching_descriptions', percent, {
-                    'message': f'Fetching LinkedIn descriptions ({current}/{total})...'
+            if linkedin_jobs_to_scrape:
+                update_progress('fetching_descriptions', 83, {
+                    'message': f'Fetching descriptions for {len(linkedin_jobs_to_scrape)} LinkedIn jobs...'
                 })
-            
-            processed_jobs = fetch_descriptions_for_jobs(processed_jobs, linkedin_progress)
-            
-            # Count how many got descriptions
-            with_desc = sum(1 for j in processed_jobs 
-                          if str(j.get('site', '')).lower() == 'linkedin' 
-                          and j.get('description'))
-            results['steps']['linkedin_descriptions'] = {
-                'total': len(linkedin_jobs),
-                'fetched': with_desc
-            }
-            logger.info(f"  Fetched {with_desc}/{len(linkedin_jobs)} LinkedIn descriptions")
+                logger.info(f"Step 3.5: Fetching descriptions for {len(linkedin_jobs_to_scrape)} LinkedIn jobs (after title filtering)...")
+                
+                def linkedin_progress(current, total):
+                    # Map LinkedIn progress to 83-88% of overall workflow
+                    percent = 83 + (current / total) * 5
+                    update_progress('fetching_descriptions', percent, {
+                        'message': f'Fetching LinkedIn descriptions ({current}/{total})...'
+                    })
+                
+                # We pass the full processed_jobs list but only describe-fetch for the ones we want
+                # fetch_descriptions_for_jobs already handles identifying which ones to fetch
+                # Let's modify the scrape-logic here to only update the specific ones.
+                
+                processed_jobs = fetch_descriptions_for_jobs(processed_jobs, linkedin_progress, only_these_jobs=linkedin_jobs_to_scrape)
+                
+                # Count how many got descriptions
+                with_desc = sum(1 for j in processed_jobs 
+                              if str(j.get('site', '')).lower() == 'linkedin' 
+                              and j.get('description'))
+                results['steps']['linkedin_descriptions'] = {
+                    'total_linkedin': len(raw_linkedin_jobs),
+                    'passed_title_filter': len(linkedin_jobs_to_scrape),
+                    'fetched': with_desc
+                }
+                logger.info(f"  Fetched {with_desc}/{len(linkedin_jobs_to_scrape)} LinkedIn descriptions")
+            else:
+                logger.info("  No LinkedIn jobs passed title filtering. Skipping description fetching.")
+                results['steps']['linkedin_descriptions'] = {
+                    'total_linkedin': len(raw_linkedin_jobs),
+                    'passed_title_filter': 0,
+                    'fetched': 0
+                }
         
         # Step 4: Store in database
         job_ids = []

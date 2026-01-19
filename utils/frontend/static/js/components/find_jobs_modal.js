@@ -533,7 +533,19 @@ const FindJobsModal = {
 
     formatStage(stage) {
         if (!stage) return "Processing...";
-        return stage.charAt(0).toUpperCase() + stage.slice(1);
+
+        // Map backend stage names to user-friendly labels
+        const stageLabels = {
+            'init': 'Initializing...',
+            'scraping': 'Scraping Jobs...',
+            'processing': 'Processing Data...',
+            'fetching_descriptions': 'Gathering LinkedIn Descriptions...',
+            'saving': 'Saving to Database...',
+            'filtering': 'Applying Filters...',
+            'completed': 'Completed'
+        };
+
+        return stageLabels[stage] || (stage.charAt(0).toUpperCase() + stage.slice(1));
     },
 
     /* --- Help Panel Methods --- */
