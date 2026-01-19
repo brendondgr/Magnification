@@ -15,6 +15,7 @@
     transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    padding: 1rem;
 }
 
 .modal-overlay.active {
@@ -43,6 +44,14 @@
     opacity: 1;
 }
 
+/* Ensure view containers inside modal-content behave as flex columns, but respect hidden state */
+.modal-content>div[id*="View"]:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
 /* Modal Header */
 .modal-header {
     padding: 1.5rem 2rem;
@@ -65,6 +74,22 @@
     flex: 1;
     min-height: 0;
     background-color: var(--color-bg-elevated);
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
 }
 
 /* Modal Footer */
@@ -243,6 +268,24 @@ input[type=range]:active::-webkit-slider-thumb {
 
 .help-panel h3 {
     font-family: 'Space Grotesk', sans-serif;
+}
+
+.help-panel .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.help-panel .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.help-panel .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.help-panel .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
 }
 
 /* Accordion */
