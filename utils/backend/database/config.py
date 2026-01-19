@@ -1,5 +1,5 @@
 """
-Database Configuration and Constants for Magnification Job Search Application.
+Database Configuration and Constants for Job Finder Job Search Application.
 
 This module contains all database-related configuration including:
 - Database path settings

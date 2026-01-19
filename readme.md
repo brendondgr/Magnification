@@ -1,4 +1,4 @@
-# Magnification
+# Job Finder
 
 ## Setup
 

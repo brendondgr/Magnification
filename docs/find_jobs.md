@@ -556,7 +556,7 @@ For production, consider Redis or database-backed task queue, but in-memory is s
 
 ## Summary
 
-This implementation plan provides a complete roadmap for adding "Find Jobs" functionality to the Magnification application. The feature integrates seamlessly with existing scraping infrastructure (JobSpyWrapper, JobSpyScraper, DataProcessor, JobFilter) and database operations, while adding a user-friendly configuration interface and real-time progress tracking.
+This implementation plan provides a complete roadmap for adding "Find Jobs" functionality to the Job Finder application. The feature integrates seamlessly with existing scraping infrastructure (JobSpyWrapper, JobSpyScraper, DataProcessor, JobFilter) and database operations, while adding a user-friendly configuration interface and real-time progress tracking.
 
 **Key Integration Points:**
 - **jobspy_wrapper.py**: Provides JobScrapeTask for individual scraping operations

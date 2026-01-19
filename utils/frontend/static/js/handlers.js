@@ -132,21 +132,21 @@ function switchTab(tabName) {
         trackerView.classList.add('hidden');
 
         // Styles
-        btnJobs.className = "px-4 py-1.5 rounded-md text-sm font-medium bg-white text-primary-700 shadow-sm transition-all";
-        btnTracker.className = "px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 transition-all";
+        if (btnJobs) btnJobs.className = "px-5 py-2 rounded-lg text-sm font-medium bg-white text-slate-900 shadow-sm transition-all duration-200 border border-slate-200/60";
+        if (btnTracker) btnTracker.className = "px-5 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 transition-all duration-200";
 
-        mobJobs.classList.replace('text-slate-400', 'text-primary-600');
-        mobTracker.classList.replace('text-primary-600', 'text-slate-400');
+        if (mobJobs) mobJobs.classList.replace('text-slate-400', 'text-primary');
+        if (mobTracker) mobTracker.classList.replace('text-primary', 'text-slate-400');
     } else {
         jobsView.classList.add('hidden');
         trackerView.classList.remove('hidden');
 
         // Styles
-        btnTracker.className = "px-4 py-1.5 rounded-md text-sm font-medium bg-white text-primary-700 shadow-sm transition-all";
-        btnJobs.className = "px-4 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 transition-all";
+        if (btnTracker) btnTracker.className = "px-5 py-2 rounded-lg text-sm font-medium bg-white text-slate-900 shadow-sm transition-all duration-200 border border-slate-200/60";
+        if (btnJobs) btnJobs.className = "px-5 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 transition-all duration-200";
 
-        mobTracker.classList.replace('text-slate-400', 'text-primary-600');
-        mobJobs.classList.replace('text-primary-600', 'text-slate-400');
+        if (mobTracker) mobTracker.classList.replace('text-slate-400', 'text-primary');
+        if (mobJobs) mobJobs.classList.replace('text-primary', 'text-slate-400');
     }
 }
 

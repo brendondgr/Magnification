@@ -224,12 +224,12 @@ const FindJobsModal = {
 
     createSectionElement(params, index, configKey, containerId) {
         const sectionDiv = document.createElement('div');
-        sectionDiv.className = "p-3 bg-white border border-[#cbd5e1] rounded-lg relative group";
+        sectionDiv.className = "p-4 bg-slate-50/50 border border-slate-200 rounded-2xl relative group transition-all hover:bg-white hover:border-slate-300 shadow-sm";
 
         // Delete Section Button (Absolute top right)
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = "absolute top-2 right-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100";
-        deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+        deleteBtn.className = "absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-1";
+        deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can text-sm"></i>';
         deleteBtn.onclick = () => {
             this.removeSection(configKey, index, containerId);
         };
@@ -237,8 +237,8 @@ const FindJobsModal = {
 
         // Label
         const label = document.createElement('div');
-        label.className = "text-[10px] font-bold text-slate-400 uppercase mb-2";
-        label.innerText = `Group ${index + 1} (OR)`;
+        label.className = "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 font-heading";
+        label.innerText = `GROUP ${index + 1} (OR LOGIC)`;
         sectionDiv.appendChild(label);
 
         // Tags Container
@@ -495,6 +495,13 @@ const FindJobsModal = {
 
         document.getElementById('progressPercent').innerText = `${Math.round(percent)}%`;
         document.getElementById('progressStage').innerText = this.formatStage(stage);
+
+        const circle = document.getElementById('progressCircle');
+        if (circle) {
+            const circumference = 364.4;
+            const offset = circumference - (percent / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+        }
 
         if (details.message) {
             document.getElementById('progressMessage').innerText = details.message;

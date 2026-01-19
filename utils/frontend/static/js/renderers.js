@@ -383,26 +383,33 @@ function renderTimeline(statuses, jobId) {
     statuses.forEach((statusItem, index) => {
         const isActive = statusItem.checked === 1;
         const isRejected = isActive && (statusItem.status.includes('Rejected') || statusItem.status.includes('Ghosted'));
+        const isOffer = isActive && (statusItem.status.includes('Offer') || statusItem.status.includes('Accepted'));
 
-        let dotColor = isActive ? "bg-primary-500 dark:bg-neon-blue border-primary-500 dark:border-neon-blue shadow-sm dark:shadow-[0_0_8px_rgba(0,243,255,0.6)]" : "bg-white dark:bg-neon-gray border-slate-300 dark:border-neon-border-light";
-        let textColor = isActive ? "text-slate-900 dark:text-white font-semibold" : "text-slate-400 dark:text-gray-500";
+        let dotColor = isActive ? "bg-primary border-primary shadow-lg shadow-primary/30" : "bg-white border-slate-200 shadow-sm";
+        let textColor = isActive ? "text-slate-900 font-bold" : "text-slate-400";
+        let ringColor = isActive ? "ring-4 ring-primary/10" : "ring-0";
 
         if (isRejected) {
-            dotColor = "bg-red-500 dark:bg-neon-pink border-red-500 dark:border-neon-pink dark:shadow-[0_0_8px_rgba(255,0,85,0.6)]";
-            textColor = "text-red-600 dark:text-neon-pink font-bold";
+            dotColor = "bg-red-500 border-red-500 shadow-lg shadow-red-500/30";
+            textColor = "text-red-600 font-bold";
+            ringColor = "ring-4 ring-red-500/10";
+        } else if (isOffer) {
+            dotColor = "bg-tertiary border-tertiary shadow-lg shadow-tertiary/30";
+            textColor = "text-tertiary font-bold";
+            ringColor = "ring-4 ring-tertiary/10";
         }
 
         const item = document.createElement('div');
-        item.className = "relative flex gap-4 pb-8 last:pb-0 group";
+        item.className = "relative flex gap-6 pb-10 last:pb-0 group";
 
         item.innerHTML = `
-            <div class="relative z-10 flex-none w-6 h-6 rounded-full border-2 ${dotColor} flex items-center justify-center transition-colors mt-0.5">
-                ${isActive ? '<i class="fa-solid fa-check text-white dark:text-black text-[10px]"></i>' : ''}
+            <div class="relative z-10 flex-none w-7 h-7 rounded-lg border-2 ${dotColor} ${ringColor} flex items-center justify-center transition-all mt-0.5">
+                ${isActive ? '<i class="fa-solid fa-check text-white text-xs"></i>' : ''}
             </div>
             <div class="flex-1 -mt-1">
-                <div class="flex justify-between items-start mb-1 cursor-pointer" onclick="toggleStatus(${jobId}, ${index})">
-                    <span class="${textColor} text-sm transition-colors group-hover:text-primary-600 dark:group-hover:text-neon-blue">${statusItem.status}</span>
-                    <span class="text-xs text-slate-400 dark:text-gray-500 font-mono">${statusItem.date_reached || '-'}</span>
+                <div class="flex justify-between items-center mb-1 cursor-pointer p-3 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100" onclick="toggleStatus(${jobId}, ${index})">
+                    <span class="${textColor} text-sm font-heading transition-colors">${statusItem.status}</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-md font-mono font-bold">${statusItem.date_reached || 'PENDING'}</span>
                 </div>
             </div>
         `;

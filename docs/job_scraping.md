@@ -1,7 +1,7 @@
-# Job Scraping Implementation Plan - Magnification
+# Job Scraping Implementation Plan - Job Finder
 
 ## Overview
-This document outlines the implementation plan for integrating the `jobspy` Python library into the Magnification job search application. The scraping system will collect job listings from multiple job boards concurrently, process and deduplicate results, store them in the database, and apply user-defined filters to mark irrelevant jobs as ignored.
+This document outlines the implementation plan for integrating the `jobspy` Python library into the Job Finder job search application. The scraping system will collect job listings from multiple job boards concurrently, process and deduplicate results, store them in the database, and apply user-defined filters to mark irrelevant jobs as ignored.
 
 ---
 
@@ -683,7 +683,7 @@ After the scraping workflow completes, the frontend Jobs Board must be notified 
 
 ## Summary
 
-This job scraping implementation plan provides a modular, scalable architecture for integrating the jobspy library into the Magnification application. By separating concerns across multiple focused files within `utils/backend/scrapers/`, the system maintains clean code organization and testability.
+This job scraping implementation plan provides a modular, scalable architecture for integrating the jobspy library into the Job Finder application. By separating concerns across multiple focused files within `utils/backend/scrapers/`, the system maintains clean code organization and testability.
 
 **Key Architecture Decisions**:
 - **Concurrent execution** via ThreadPool for efficient multi-board scraping
