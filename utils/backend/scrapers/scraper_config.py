@@ -63,3 +63,10 @@ EXTRACT_FIELDS = [
     'interval',
     'site',
 ]
+
+# LinkedIn Description Scraping Config
+# Used by linkedin_scraper.py to fetch job descriptions via guest API
+LINKEDIN_GUEST_API_URL: str = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+LINKEDIN_FETCH_DELAY: float = 0.5  # Delay between requests in seconds (rate limiting)
+LINKEDIN_REQUEST_TIMEOUT: int = 10  # Request timeout in seconds
+

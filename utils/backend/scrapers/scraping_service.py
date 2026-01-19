@@ -165,6 +165,37 @@ def execute_full_scraping_workflow(
         
         logger.info(f"  Processed {len(processed_jobs)} unique jobs")
         
+        # Step 3.5: Fetch LinkedIn descriptions
+        # LinkedIn jobs from JobSpy don't have descriptions, so we fetch them
+        # via LinkedIn's guest API to enable description-based filtering
+        linkedin_jobs = [j for j in processed_jobs if str(j.get('site', '')).lower() == 'linkedin']
+        if linkedin_jobs:
+            update_progress('fetching_descriptions', 83, {
+                'message': f'Fetching descriptions for {len(linkedin_jobs)} LinkedIn jobs...'
+            })
+            logger.info(f"Step 3.5: Fetching descriptions for {len(linkedin_jobs)} LinkedIn jobs...")
+            
+            from .linkedin_scraper import fetch_descriptions_for_jobs
+            
+            def linkedin_progress(current, total):
+                # Map LinkedIn progress to 83-88% of overall workflow
+                percent = 83 + (current / total) * 5
+                update_progress('fetching_descriptions', percent, {
+                    'message': f'Fetching LinkedIn descriptions ({current}/{total})...'
+                })
+            
+            processed_jobs = fetch_descriptions_for_jobs(processed_jobs, linkedin_progress)
+            
+            # Count how many got descriptions
+            with_desc = sum(1 for j in processed_jobs 
+                          if str(j.get('site', '')).lower() == 'linkedin' 
+                          and j.get('description'))
+            results['steps']['linkedin_descriptions'] = {
+                'total': len(linkedin_jobs),
+                'fetched': with_desc
+            }
+            logger.info(f"  Fetched {with_desc}/{len(linkedin_jobs)} LinkedIn descriptions")
+        
         # Step 4: Store in database
         job_ids = []
         if save_to_database:
