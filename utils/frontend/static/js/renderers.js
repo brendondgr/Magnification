@@ -98,6 +98,26 @@ function formatDescription(desc) {
     return formatted;
 }
 
+// Get color classes for source site tags
+function getSiteColorClasses(site) {
+    if (!site) return 'bg-slate-100 text-slate-500 border-slate-200';
+
+    const s = site.toLowerCase();
+    if (s.includes('linkedin')) {
+        return 'bg-[#dbeafe] text-[#1e3a8a] border-[#3b82f6]'; // Blue
+    } else if (s.includes('indeed')) {
+        return 'bg-[#f3e8ff] text-[#581c87] border-[#a855f7]'; // Purple
+    } else if (s.includes('glassdoor')) {
+        return 'bg-[#d1fae5] text-[#064e3b] border-[#10b981]'; // Green
+    } else if (s.includes('zip_recruiter') || s.includes('ziprecruiter')) {
+        return 'bg-[#ccfbf1] text-[#134e4a] border-[#14b8a6]'; // Teal
+    } else if (s.includes('google')) {
+        return 'bg-[#fef3c7] text-[#78350f] border-[#f59e0b]'; // Yellow Orange
+    }
+
+    return 'bg-slate-100 text-slate-500 border-slate-200';
+}
+
 let newJobContainer;
 
 // Kanban Columns (will be initialized after DOM loads)
@@ -305,7 +325,10 @@ function renderNewJobCard(job, isIgnored = false) {
             
             <!-- Company and Date Row -->
             <div class="flex justify-between items-center mb-3">
-                <div class="font-bold text-slate-700 text-sm font-body">${job.company}</div>
+                <div class="flex items-center gap-2">
+                    <div class="font-bold text-slate-700 text-sm font-body">${job.company}</div>
+                    ${job.site ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getSiteColorClasses(job.site)}">${job.site}</span>` : ''}
+                </div>
                 <span class="text-[10px] font-bold tracking-wide text-slate-500 bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm font-mono">${formattedDate}</span>
             </div>
             
@@ -367,7 +390,10 @@ function renderKanbanCard(job, container) {
         <div class="flex justify-between items-start mb-2">
             <h4 class="font-bold text-slate-900 text-sm leading-tight group-hover:text-primary transition-colors font-heading">${job.title}</h4>
         </div>
-        <p class="text-xs text-slate-600 font-bold mb-3 font-body">${job.company}</p>
+        <div class="flex items-center gap-2 mb-3">
+            <p class="text-xs text-slate-600 font-bold font-body">${job.company}</p>
+            ${job.site ? `<span class="px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-tight border ${getSiteColorClasses(job.site)}">${job.site}</span>` : ''}
+        </div>
         <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
             <span class="text-[10px] font-bold tracking-wide text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-200 font-mono">${status}</span>
             <i class="fa-solid fa-grip-lines text-slate-300 group-hover:text-slate-500 cursor-grab"></i>

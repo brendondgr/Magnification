@@ -300,8 +300,13 @@ input[type=range]:active::-webkit-slider-thumb {
 /* Stats in Progress View */
 #modalProgressView .stat-card {
     background: white;
-    padding: 1.5rem;
+    padding: 1.5rem 0.5rem;
     border-radius: 20px;
     border: 1px solid #eef2f6;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }

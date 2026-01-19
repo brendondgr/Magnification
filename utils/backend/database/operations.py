@@ -42,6 +42,7 @@ def add_job(job_data: Dict[str, Any], create_statuses: bool = True) -> int:
             link=job_data.get('link'),
             description=job_data.get('description'),
             compensation=job_data.get('compensation'),
+            site=job_data.get('site'),
             ignore=job_data.get('ignore', 0)
         )
         db.add(job)
@@ -438,6 +439,7 @@ def _job_to_dict(job: Job) -> Dict[str, Any]:
         'link': job.link,
         'description': job.description,
         'compensation': job.compensation,
+        'site': job.site,
         'ignore': job.ignore,
         'created_at': job.created_at.isoformat() if job.created_at else None,
         'updated_at': job.updated_at.isoformat() if job.updated_at else None,

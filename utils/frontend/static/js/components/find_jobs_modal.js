@@ -348,6 +348,7 @@ const FindJobsModal = {
             document.getElementById('progressStage').innerText = "Initializing...";
             document.getElementById('jobsFoundCount').innerText = "0";
             document.getElementById('jobsSavedCount').innerText = "0";
+            document.getElementById('jobsNotHiddenCount').innerText = "0";
             document.getElementById('progressActions').classList.add('hidden');
         }
     },
@@ -511,17 +512,23 @@ const FindJobsModal = {
             document.getElementById('jobsFoundCount').innerText = details.jobs_found;
         }
 
+        if (details.jobs_kept !== undefined) {
+            document.getElementById('jobsNotHiddenCount').innerText = details.jobs_kept;
+        }
+
         if (data.status === 'completed') {
             const results = data.results;
             const processed = results.steps?.processing?.processed_count || 0;
             const saved = results.steps?.storage?.stored_count || 0;
+            const kept = results.steps?.filtering?.kept || 0;
 
             document.getElementById('jobsFoundCount').innerText = processed;
             document.getElementById('jobsSavedCount').innerText = saved;
+            document.getElementById('jobsNotHiddenCount').innerText = kept;
 
             document.getElementById('progressActions').classList.remove('hidden');
             document.getElementById('progressStage').innerText = "Scraping Completed";
-            document.getElementById('progressMessage').innerText = `Found ${processed} unique jobs. Added ${saved} new jobs.`;
+            document.getElementById('progressMessage').innerText = `Found ${processed} unique jobs. ${kept} passed filters. ${saved} new jobs added.`;
         } else if (data.status === 'failed') {
             document.getElementById('progressStage').innerText = "Scraping Failed";
             document.getElementById('progressStage').classList.add('text-red-500');

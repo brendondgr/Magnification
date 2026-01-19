@@ -25,6 +25,7 @@ class Job(Base):
         link: URL to the job posting
         description: Full job description
         compensation: Salary/compensation information
+        site: The job board site where the job was found
         ignore: Flag to exclude from application tracking (0=track, 1=ignore)
         created_at: When the job was added to the database
         updated_at: Last update timestamp
@@ -38,6 +39,7 @@ class Job(Base):
     link = Column(String(2048), nullable=True)
     description = Column(Text, nullable=True)
     compensation = Column(String(255), nullable=True)
+    site = Column(String(50), nullable=True)
     ignore = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

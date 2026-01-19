@@ -295,6 +295,7 @@ def execute_full_scraping_workflow(
         update_progress('completed', 100, {
             'message': 'Completed',
             'jobs_found': len(processed_jobs),
+            'jobs_kept': filter_results.get('kept', 0) if isinstance(filter_results, dict) else len(filter_results.get('kept', [])),
             'jobs_added': len(job_ids) if save_to_database else 0
         })
         
