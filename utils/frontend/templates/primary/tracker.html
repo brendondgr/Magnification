@@ -1,8 +1,8 @@
 <!-- VIEW 2: TRACKER (Kanban Board) -->
 <div id="view-tracker" class="hidden fade-in h-full flex-col">
     <div class="flex justify-between items-center mb-6 px-1">
-        <h2 class="text-2xl font-bold text-slate-800 dark:text-white transition-colors duration-300">Application Pipeline</h2>
-        <div class="text-sm text-slate-500 dark:text-gray-400 hidden sm:block font-medium">
+        <h2 class="text-2xl font-bold text-slate-900 font-heading">Application Pipeline</h2>
+        <div class="text-sm text-slate-500 hidden sm:block font-medium">
             <i class="fa-regular fa-hand-pointer mr-1"></i> Drag and drop to update status
         </div>
     </div>
@@ -14,12 +14,12 @@
             <!-- Col 1: Applied -->
             <div class="flex-1 flex flex-col min-w-[260px]">
                 <div class="flex items-center justify-between mb-3 px-1">
-                    <h3 class="font-bold text-slate-700 dark:text-gray-200 flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-blue-500 border border-blue-600 dark:bg-neon-blue dark:border-cyan-400 dark:shadow-[0_0_8px_rgba(0,243,255,0.6)]"></span> Applied
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2 font-heading">
+                        <span class="w-3 h-3 rounded-full bg-blue-500 border border-blue-600 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span> Applied
                     </h3>
-                    <span class="text-xs font-bold text-slate-600 dark:text-white bg-white dark:bg-neon-gray-light border border-slate-300 dark:border-neon-border-light px-2 py-0.5 rounded-md shadow-sm" id="count-applied">0</span>
+                    <span class="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-sm" id="count-applied">0</span>
                 </div>
-                <div class="flex-1 bg-slate-200 dark:bg-neon-gray/50 rounded-xl p-3 border border-slate-300 dark:border-neon-border-light overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
+                <div class="flex-1 bg-slate-100/50 rounded-2xl p-3 border border-slate-200/60 overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
                      id="col-applied" 
                      ondrop="drop(event, 'Applied')" 
                      ondragover="allowDrop(event)">
@@ -30,12 +30,12 @@
             <!-- Col 2: Interviewing -->
             <div class="flex-1 flex flex-col min-w-[260px]">
                 <div class="flex items-center justify-between mb-3 px-1">
-                    <h3 class="font-bold text-slate-700 dark:text-gray-200 flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-amber-500 border border-amber-600 dark:bg-neon-purple dark:border-purple-400 dark:shadow-[0_0_8px_rgba(191,0,255,0.6)]"></span> Interviewing
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2 font-heading">
+                        <span class="w-3 h-3 rounded-full bg-amber-500 border border-amber-600 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></span> Interviewing
                     </h3>
-                    <span class="text-xs font-bold text-slate-600 dark:text-white bg-white dark:bg-neon-gray-light border border-slate-300 dark:border-neon-border-light px-2 py-0.5 rounded-md shadow-sm" id="count-interview">0</span>
+                    <span class="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-sm" id="count-interview">0</span>
                 </div>
-                <div class="flex-1 bg-slate-200 dark:bg-neon-gray/50 rounded-xl p-3 border border-slate-300 dark:border-neon-border-light overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
+                <div class="flex-1 bg-slate-100/50 rounded-2xl p-3 border border-slate-200/60 overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
                      id="col-interview" 
                      ondrop="drop(event, 'Interview 1')" 
                      ondragover="allowDrop(event)">
@@ -46,12 +46,12 @@
             <!-- Col 3: Offers -->
             <div class="flex-1 flex flex-col min-w-[260px]">
                 <div class="flex items-center justify-between mb-3 px-1">
-                    <h3 class="font-bold text-slate-700 dark:text-gray-200 flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600 dark:bg-neon-green dark:border-emerald-400 dark:shadow-[0_0_8px_rgba(0,255,157,0.6)]"></span> Offers
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2 font-heading">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span> Offers
                     </h3>
-                    <span class="text-xs font-bold text-slate-600 dark:text-white bg-white dark:bg-neon-gray-light border border-slate-300 dark:border-neon-border-light px-2 py-0.5 rounded-md shadow-sm" id="count-offer">0</span>
+                    <span class="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-sm" id="count-offer">0</span>
                 </div>
-                <div class="flex-1 bg-slate-200 dark:bg-neon-gray/50 rounded-xl p-3 border border-slate-300 dark:border-neon-border-light overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
+                <div class="flex-1 bg-slate-100/50 rounded-2xl p-3 border border-slate-200/60 overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
                      id="col-offer" 
                      ondrop="drop(event, 'Offer')" 
                      ondragover="allowDrop(event)">
@@ -62,12 +62,12 @@
             <!-- Col 4: Archived -->
             <div class="flex-1 flex flex-col min-w-[260px]">
                 <div class="flex items-center justify-between mb-3 px-1">
-                    <h3 class="font-bold text-slate-700 dark:text-gray-200 flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-slate-500 border border-slate-600 dark:bg-gray-600 dark:border-gray-500"></span> Archived
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2 font-heading">
+                        <span class="w-3 h-3 rounded-full bg-slate-500 border border-slate-600"></span> Archived
                     </h3>
-                    <span class="text-xs font-bold text-slate-600 dark:text-white bg-white dark:bg-neon-gray-light border border-slate-300 dark:border-neon-border-light px-2 py-0.5 rounded-md shadow-sm" id="count-archived">0</span>
+                    <span class="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-sm" id="count-archived">0</span>
                 </div>
-                <div class="flex-1 bg-slate-200 dark:bg-neon-gray/50 rounded-xl p-3 border border-slate-300 dark:border-neon-border-light overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
+                <div class="flex-1 bg-slate-100/50 rounded-2xl p-3 border border-slate-200/60 overflow-y-auto kanban-col shadow-inner transition-colors duration-300" 
                      id="col-archived" 
                      ondrop="drop(event, 'Rejected')" 
                      ondragover="allowDrop(event)">

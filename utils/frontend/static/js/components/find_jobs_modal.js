@@ -60,7 +60,7 @@ const FindJobsModal = {
         if (container) {
             container.innerHTML = sites.map(site => `
                 <label class="checkbox-item cursor-pointer">
-                    <input type="checkbox" name="site" value="${site}" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                    <input type="checkbox" name="site" value="${site}" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300">
                     <span class="capitalize">${site.replace('_', ' ')}</span>
                 </label>
             `).join('');
@@ -224,7 +224,7 @@ const FindJobsModal = {
 
     createSectionElement(params, index, configKey, containerId) {
         const sectionDiv = document.createElement('div');
-        sectionDiv.className = "p-3 bg-white dark:bg-[#252525] border border-[#cbd5e1] dark:border-[#3a3a3a] rounded-lg relative group";
+        sectionDiv.className = "p-3 bg-white border border-[#cbd5e1] rounded-lg relative group";
 
         // Delete Section Button (Absolute top right)
         const deleteBtn = document.createElement('button');
@@ -259,7 +259,7 @@ const FindJobsModal = {
         // Input
         const input = document.createElement('input');
         input.type = "text";
-        input.className = "bg-transparent text-sm min-w-[100px] outline-none text-slate-700 dark:text-gray-300 placeholder:text-slate-400";
+        input.className = "bg-transparent text-sm min-w-[100px] outline-none text-slate-700 placeholder:text-slate-400";
         input.placeholder = "Add keyword...";
         input.onkeydown = (e) => {
             if (e.key === 'Enter') {

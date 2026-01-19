@@ -1,0 +1,126 @@
+:root {
+    /* Brand Colors */
+    --color-primary: #FF6B6B;
+    /* Electric Coral */
+    --color-secondary: #4C3BCF;
+    /* Deep Indigo */
+    --color-tertiary: #00D9C0;
+    /* Vivid Teal */
+
+    /* Neutral Base */
+    --color-bg-base: #FEFBF6;
+    /* Warm Off-White */
+    --color-bg-surface: #FFF8F0;
+    /* Soft Cream */
+    --color-bg-elevated: #FFFFFF;
+    /* Pure White */
+
+    /* Text Colors (Inferred from contrast needs) */
+    --color-text-main: #1f2937;
+    --color-text-muted: #64748b;
+
+    /* Categorization Tones */
+    --color-cat-yellow-orange-bg: #fef3c7;
+    --color-cat-yellow-orange-border: #f59e0b;
+    --color-cat-yellow-orange-text: #78350f;
+
+    --color-cat-yellow-bg: #fef9c3;
+    --color-cat-yellow-border: #eab308;
+    --color-cat-yellow-text: #713f12;
+
+    --color-cat-orange-bg: #ffedd5;
+    --color-cat-orange-border: #f97316;
+    --color-cat-orange-text: #7c2d12;
+
+    --color-cat-red-bg: #fee2e2;
+    --color-cat-red-border: #ef4444;
+    --color-cat-red-text: #7f1d1d;
+
+    --color-cat-blue-bg: #dbeafe;
+    --color-cat-blue-border: #3b82f6;
+    --color-cat-blue-text: #1e3a8a;
+
+    --color-cat-purple-bg: #f3e8ff;
+    --color-cat-purple-border: #a855f7;
+    --color-cat-purple-text: #581c87;
+
+    --color-cat-teal-bg: #ccfbf1;
+    --color-cat-teal-border: #14b8a6;
+    --color-cat-teal-text: #134e4a;
+
+    --color-cat-light-purple-bg: #ede9fe;
+    --color-cat-light-purple-border: #8b5cf6;
+    --color-cat-light-purple-text: #4c1d95;
+
+    --color-cat-light-blue-bg: #e0f2fe;
+    --color-cat-light-blue-border: #0ea5e9;
+    --color-cat-light-blue-text: #0c4a6e;
+
+    --color-cat-green-bg: #d1fae5;
+    --color-cat-green-border: #10b981;
+    --color-cat-green-text: #064e3b;
+
+    --color-cat-black-bg: #1f2937;
+    --color-cat-black-border: #111827;
+    --color-cat-black-text: #ffffff;
+
+    --color-cat-muted-gray-bg: #e2e8f0;
+    --color-cat-muted-gray-border: #64748b;
+    --color-cat-muted-gray-text: #0f172a;
+
+    --color-cat-brown-bg: #fde68a;
+    --color-cat-brown-border: #b45309;
+    --color-cat-brown-text: #78350f;
+
+    --color-cat-light-pink-bg: #fce7f3;
+    --color-cat-light-pink-border: #f472b6;
+    --color-cat-light-pink-text: #831843;
+
+    --color-cat-kiwi-bg: #ecfccb;
+    --color-cat-kiwi-border: #84cc16;
+    --color-cat-kiwi-text: #365314;
+
+    --color-cat-rose-bg: #ffe4e6;
+    --color-cat-rose-border: #f43f5e;
+    --color-cat-rose-text: #881337;
+}
+
+/* Glassmorphism Utilities */
+.glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-header {
+    background: rgba(255, 248, 240, 0.85);
+    /* Using Soft Cream with opacity */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Fonts */
+.font-heading {
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-body {
+    font-family: 'DM Sans', sans-serif;
+}
+
+.font-mono-custom {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Animations */
+.hover-lift {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    /* shadow-lg */
+}

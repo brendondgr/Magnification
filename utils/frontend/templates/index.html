@@ -11,48 +11,49 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
+    <link rel="stylesheet" href="static/css/variables.css">
     <link rel="stylesheet" href="static/css/main.css">
     <link rel="stylesheet" href="static/css/components.css">
     <link rel="stylesheet" href="static/css/modal.css">
-    <link rel="stylesheet" href="static/css/dropdown.css">
 
-    <!-- Custom Config for Light Theme -->
+    <!-- Tailwind Config using CSS Variables -->
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['DM Sans', 'sans-serif'],
+                        heading: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
                     },
-                    colors: {
+                     colors: {
                         primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0ea5e9', // Sky blue
-                            600: '#0284c7',
-                            700: '#0369a1',
+                            DEFAULT: 'var(--color-primary)',
+                            50: '#fff0f0',
+                            100: '#ffdede',
+                            500: '#ff6b6b',
+                            600: '#e66060',
+                            700: '#cc5656',
                         },
                         secondary: {
-                            50: '#f8fafc',
-                            100: '#f1f5f9',
-                            200: '#e2e8f0', // Slate gray borders
-                            800: '#1e293b', // Dark text
+                            DEFAULT: 'var(--color-secondary)',
+                            50: '#ecebff',
+                            100: '#dad6ff',
+                            800: '#4c3bcf',
                         },
-                        neon: {
-                            blue: '#00f3ff',     // Cyan
-                            purple: '#bf00ff',   // Electric Purple
-                            green: '#00ff9d',    // Neon Green
-                            pink: '#ff0055',     // Hot Pink
-                            black: '#0f0f0f',    // Main Dark Bg (lightened)
-                            gray: '#1a1a1a',     // Card Dark Bg
-                            'gray-light': '#252525', // Light Card Bg
-                            border: '#2a2a2a',   // Dark Border (lightened)
-                            'border-light': '#3a3a3a' // Lighter Border
+                        tertiary: {
+                            DEFAULT: 'var(--color-tertiary)',
+                        },
+                        bg: {
+                            base: 'var(--color-bg-base)',
+                            surface: 'var(--color-bg-surface)',
+                            elevated: 'var(--color-bg-elevated)',
                         }
                     }
                 }
@@ -60,7 +61,7 @@
         }
     </script>
 </head>
-<body class="text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
+<body class="text-slate-800 antialiased h-screen flex flex-col overflow-hidden bg-slate-50">
 
     <!-- Include Header -->
     <div id="header-container"></div>
@@ -75,7 +76,7 @@
         <div id="sidebar-container"></div>
 
         <!-- Main View Container -->
-        <main class="flex-1 overflow-y-auto bg-slate-100 dark:bg-neon-gray p-4 sm:p-8 pb-20 md:pb-8 transition-colors duration-300" id="mainContainer">
+        <main class="flex-1 overflow-y-auto bg-slate-100 p-4 sm:p-8 pb-20 md:pb-8" id="mainContainer">
             
             <!-- Include New Jobs View -->
             <div id="new-jobs-container"></div>
@@ -97,8 +98,6 @@
     <script src="static/js/components/find_jobs_modal.js"></script>
     <script src="static/js/handlers.js"></script>
 
-    <script src="static/js/components/llm-config.js"></script>
-    <script src="static/js/components/llm-dropdown.js"></script>
     <script src="static/js/app.js"></script>
     
     <!-- Lucide Icons -->
@@ -119,13 +118,12 @@
 
         // Load all partials on page load
         document.addEventListener('DOMContentLoaded', async function() {
-            // 1. Load Header first (contains llm-dropdown-container)
+            // 1. Load Header first
             await loadPartial('header-container', 'parts/header.html');
 
             // 2. Load the rest in parallel
             await Promise.all([
                 loadPartial('mobile-nav-container', 'parts/mobile-nav.html'),
-                loadPartial('llm-dropdown-container', 'parts/llm-dropdown.html'),
                 loadPartial('sidebar-container', 'parts/sidebar.html'),
                 loadPartial('new-jobs-container', 'primary/new-jobs.html'),
                 loadPartial('tracker-container', 'primary/tracker.html'),
@@ -135,11 +133,6 @@
             // Initialize App Logic after views are loaded
             if (typeof initApp === 'function') {
                 initApp();
-            }
-
-            // Initialize LLM Dropdown
-            if (typeof initLLMDropdown === 'function') {
-                initLLMDropdown();
             }
         });
     </script>
