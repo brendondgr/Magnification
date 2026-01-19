@@ -500,6 +500,10 @@ const FindJobsModal = {
             document.getElementById('progressMessage').innerText = details.message;
         }
 
+        if (details.jobs_found !== undefined) {
+            document.getElementById('jobsFoundCount').innerText = details.jobs_found;
+        }
+
         if (data.status === 'completed') {
             const results = data.results;
             const processed = results.steps?.processing?.processed_count || 0;

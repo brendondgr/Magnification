@@ -8,7 +8,7 @@ This module provides the wrapper interface for jobspy library operations:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 import logging
 
 from jobspy import scrape_jobs
@@ -44,6 +44,7 @@ class JobScrapeTask:
     jobs_data: List[Dict[str, Any]] = field(default_factory=list, init=False)
     site_counts: Dict[str, int] = field(default_factory=dict, init=False)
     errors: Dict[str, str] = field(default_factory=dict, init=False)
+    progress_callback: Optional[Callable[[int], None]] = field(default=None, init=False)
     
     def run(self) -> 'JobScrapeTask':
         """
@@ -92,6 +93,13 @@ class JobScrapeTask:
                 self.site_counts[site] = 0
                 self.errors[site] = str(e)
                 logger.error(f"  [{site}] Error: {e}")
+            
+            # Report progress for this site (success or fail)
+            if self.progress_callback:
+                # We report the count found for this specific site iteration
+                # The callback should handle incrementing global progress
+                count = self.site_counts.get(site, 0)
+                self.progress_callback(count)
         
         logger.info(f"Completed scrape for '{self.job_title}': {self.total_jobs} total jobs")
         return self

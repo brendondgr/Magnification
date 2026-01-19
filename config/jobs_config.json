@@ -9,7 +9,9 @@
         "health machine learning intern",
         "health data science intern",
         "data scientist intern",
-        "medical machine learning intern"
+        "medical machine learning intern",
+        "medical computer vision",
+        "applied scientist"
     ],
     "job_titles": [
         [
@@ -19,7 +21,8 @@
             "health",
             "medical",
             "machine learning",
-            "data"
+            "data",
+            "scientist"
         ]
     ],
     "description_keywords": [
@@ -32,7 +35,7 @@
         "zip_recruiter",
         "google"
     ],
-    "hours_old": 72,
-    "results_wanted": 20,
+    "hours_old": 24,
+    "results_wanted": 50,
     "location": ""
 }

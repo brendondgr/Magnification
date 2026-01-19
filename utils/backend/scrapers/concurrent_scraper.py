@@ -9,6 +9,7 @@ This module provides concurrent execution of scraping tasks using ThreadPool:
 
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 from multiprocessing import cpu_count
 from typing import List, Dict, Any, Optional
 import logging
@@ -46,7 +47,8 @@ class JobSpyScraper:
         hours_old: int = DEFAULT_HOURS_OLD,
         country_indeed: str = DEFAULT_COUNTRY,
         max_threads: Optional[int] = None,
-        location: Optional[str] = None
+        location: Optional[str] = None,
+        progress_callback: Optional[callable] = None
     ):
         """
         Initialize the JobSpyScraper.
@@ -68,6 +70,7 @@ class JobSpyScraper:
         self.country_indeed = country_indeed
         self._max_threads = max_threads
         self.location = location
+        self.progress_callback = progress_callback
         
         # Create data directory
         os.makedirs(self.data_dir, exist_ok=True)
@@ -112,6 +115,33 @@ class JobSpyScraper:
         logger.info(f"Job titles: {', '.join(self.job_titles)}")
         logger.info(f"Sites: {', '.join(self.sites)}")
         
+        # Setup progress tracking
+        progress_lock = Lock()
+        total_jobs_found = 0
+        sites_completed = 0
+        total_sites_expected = sum(len(task.sites) for task in self.tasks)
+
+        def progress_listener(new_jobs_count):
+            nonlocal total_jobs_found, sites_completed
+            with progress_lock:
+                total_jobs_found += new_jobs_count
+                sites_completed += 1
+                
+                percent = 0
+                if total_sites_expected > 0:
+                    percent = (sites_completed / total_sites_expected) * 100
+                
+                if self.progress_callback:
+                    # We use a try-except block to prevent callback errors from crashing the thread
+                    try:
+                        self.progress_callback(percent, total_jobs_found)
+                    except Exception as e:
+                        logger.error(f"Progress callback error: {e}")
+
+        # Inject callback into tasks
+        for task in self.tasks:
+            task.progress_callback = progress_listener
+
         # Use ThreadPoolExecutor to run tasks concurrently
         with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
             # Submit all tasks

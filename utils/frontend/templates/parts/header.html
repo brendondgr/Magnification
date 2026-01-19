@@ -27,24 +27,9 @@
 
         <!-- Header Actions -->
         <div class="flex items-center gap-3">
+            <!-- Header Actions -->
             <button id="find-jobs-btn" onclick="FindJobsModal.open()" class="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 shadow-sm transition-colors flex items-center gap-2">
                 <i class="fa-solid fa-magnifying-glass"></i> <span class="hidden sm:inline">Find Jobs</span>
-            </button>
-            
-            <!-- Server Settings Button with Dropdown Container -->
-            <div class="relative">
-                <button onclick="toggleLLMDropdown()" class="relative bg-slate-100 hover:bg-slate-200 dark:bg-neon-gray dark:border dark:border-neon-border text-slate-600 dark:text-neon-blue px-3 py-2 rounded-lg transition-all shadow-sm border border-slate-200 group flex items-center gap-2" title="Server Settings">
-                    <div class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border border-white dark:border-neon-gray transition-colors duration-300" id="header-btn-status-dot"></div>
-                    <i data-lucide="cpu" class="w-5 h-5"></i>
-                    <span class="hidden sm:inline text-sm font-medium">Server Settings</span>
-                </button>
-                <!-- LLM Dropdown will be placed here by loadPartial -->
-                <div id="llm-dropdown-container"></div>
-            </div>
-            
-            <!-- Theme Toggle -->
-            <button onclick="toggleTheme()" class="bg-slate-100 hover:bg-slate-200 dark:bg-neon-gray dark:border dark:border-neon-border text-slate-600 dark:text-neon-blue px-3 py-2 rounded-lg transition-all shadow-sm border border-slate-200" title="Toggle Theme">
-                <i id="theme-toggle-icon" class="fa-solid fa-moon text-slate-400"></i>
             </button>
         </div>
     </div>

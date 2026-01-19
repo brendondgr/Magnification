@@ -117,6 +117,15 @@ def execute_full_scraping_workflow(
         update_progress('scraping', 10, {'message': f'Starting scrape for {len(search_terms)} terms...'})
         logger.info("Step 2: Executing concurrent scraping...")
         
+        # Create a callback to bridge scraper progress to workflow progress (10% -> 80%)
+        def scraper_progress_handler(scraper_percent, jobs_count):
+            # Map 0-100% scraper progress to 10-80% workflow progress
+            workflow_percent = 10 + (scraper_percent * 0.7)
+            update_progress('scraping', workflow_percent, {
+                'message': f'Scraping... ({int(scraper_percent)}% done) - Found {jobs_count} jobs',
+                'jobs_found': jobs_count
+            })
+
         # Note: JobSpyScraper takes 'job_titles' argument but we pass search_terms
         scraper = JobSpyScraper(
             job_titles=search_terms, 
@@ -124,7 +133,8 @@ def execute_full_scraping_workflow(
             results_wanted=results_wanted,
             hours_old=hours_old,
             country_indeed=DEFAULT_COUNTRY,
-            location=location
+            location=location,
+            progress_callback=scraper_progress_handler
         )
         
         scraper.run()
