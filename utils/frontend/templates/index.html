@@ -760,6 +760,21 @@
               </sc-for>
             </div>
 
+            <sc-if value="{{ hasScrapeEvents }}" hint-placeholder-val="">
+              <div style="width:100%;margin-top:22px">
+                <div style="font:600 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Live Activity</div>
+                <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                  <sc-for list="{{ scrapeEvents }}" as="ev" hint-placeholder-count="4">
+                    <div style="display:flex;gap:10px;align-items:center">
+                      <span style="flex:0 0 auto;width:7px;height:7px;border-radius:99px;background:{{ ev.dot }}"></span>
+                      <span style="flex:0 0 auto;font:500 10px/1.4 var(--font-mono);color:var(--muted);min-width:40px">{{ ev.time }}</span>
+                      <span style="min-width:0;font:400 12px/1.4 var(--font-body);color:var(--text)">{{ ev.msg }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
             <sc-if value="{{ scrapeDone }}" hint-placeholder-val="">
               <button onclick="{{ viewNewJobs }}" style="margin-top:26px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;height:48px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);cursor:pointer;animation:jf-rise .35s ease">
                 View New Jobs
@@ -866,7 +881,7 @@ class Component extends DCLogic {
       groups:[], maxResults:25, useLLM:true, fromProfile:false,
       countries:{USA:true}, jobType:'', genBusy:false,
       termDraft:'', groupDrafts:{},
-      percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false,
+      percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false, scrapeEvents:[],
       // ---- Profile panel ----
       profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false,
       profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],resume_text:'',source_filename:'',exists:false},
@@ -1125,7 +1140,7 @@ class Component extends DCLogic {
     const sites=this.sitesToConfig();
     if(!sites.length){ this.showToast('Select at least one site'); return; }
     if(!this.state.terms.length){ this.showToast('Add at least one search term'); return; }
-    this.setState({findView:'progress',percent:0,found:0,saved:0,notHidden:0,stage:'Initializing',statusMsg:'Saving configuration…',scrapeDone:false});
+    this.setState({findView:'progress',percent:0,found:0,saved:0,notHidden:0,stage:'Initializing',statusMsg:'Saving configuration…',scrapeDone:false,scrapeEvents:[]});
     try{
       const saveRes=await fetch('/api/config/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.configToSave())});
       const saveData=await saveRes.json();
@@ -1150,6 +1165,7 @@ class Component extends DCLogic {
         const patch={percent:Math.round(prog.percent||0), stage:this.formatStage(prog.stage), statusMsg:details.message||''};
         if(details.jobs_found!==undefined) patch.found=details.jobs_found;
         if(details.jobs_kept!==undefined) patch.notHidden=details.jobs_kept;
+        if(Array.isArray(data.events)) patch.scrapeEvents=data.events;
         this.setState(patch);
         if(data.status==='completed'){
           clearInterval(this._poll);
@@ -1422,6 +1438,10 @@ class Component extends DCLogic {
     const rangeStyle='width:100%;height:6px;-webkit-appearance:none;appearance:none;border-radius:99px;background:var(--border2);outline:none;accent-color:var(--accent);cursor:pointer';
     const ringC=2*Math.PI*64;
     const scrapeStats=[{label:'Jobs Found',value:s.found,color:'var(--accent-text)'},{label:'Jobs Saved',value:s.saved,color:'var(--c-applied)'},{label:'Not Hidden',value:s.notHidden,color:'var(--c-offer-text)'}];
+    // live scraping activity feed (newest first)
+    const evColor=(stg)=>stg==='failed'?'#E5484D':((stg==='completed'||stg==='complete')?'var(--c-offer-text)':(stg==='analyzing'?'var(--c-applied)':'var(--accent)'));
+    const scrapeEvents=(s.scrapeEvents||[]).slice().reverse().map((e,i)=>({key:i,time:'+'+(e.t!=null?e.t:0)+'s',msg:e.message||'',dot:evColor(e.stage)}));
+    const hasScrapeEvents=scrapeEvents.length>0;
 
     // ---- profile panel ----
     const pf=s.profile;
@@ -1498,7 +1518,7 @@ class Component extends DCLogic {
 
       percent:s.percent, stage:s.stage, statusMsg:s.statusMsg,
       ringDash:(ringC*s.percent/100)+' '+ringC,
-      scrapeStats, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs(),
+      scrapeStats, scrapeEvents, hasScrapeEvents, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs(),
 
       // ---- header buttons ----
       openProfile:()=>this.openProfile(), profileBtnStyle:secBtn,
