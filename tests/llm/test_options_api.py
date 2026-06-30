@@ -28,6 +28,9 @@ def _preserve_config_files():
         if os.path.exists(path):
             backups[path] = path + ".bak"
             shutil.copy2(path, backups[path])
+            # Start each test from a clean slate (defaults) so round-trip assertions
+            # don't depend on the user's ambient, tuned config values.
+            os.remove(path)
     try:
         yield
     finally:
