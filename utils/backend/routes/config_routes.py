@@ -33,7 +33,10 @@ def save_jobs_config(data):
             raise ValueError("search_terms must be a list")
         if not isinstance(data.get('sites'), list):
             raise ValueError("sites must be a list")
-            
+
+        # Ensure the config directory exists before writing (first-run safety)
+        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+
         with open(CONFIG_PATH, 'w') as f:
             json.dump(data, f, indent=4)
         return True

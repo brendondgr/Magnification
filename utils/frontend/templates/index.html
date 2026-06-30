@@ -587,30 +587,145 @@ class Component extends DCLogic {
   }
   _anyInterview(statuses){ return ['Interview 1','Interview 2','Interview 3'].some(n=>{ const s=statuses.find(x=>x.status===n); return s&&s.checked; }); }
 
-  // ---------- mutations (local optimistic; persistence wired in step 4) ----------
+  // ---------- mutations (optimistic local update + backend persistence) ----------
   patchJob(id, fn){ this.setState(s=>({jobs:s.jobs.map(j=>{ if(j.id!==id) return j; const nj=fn(Object.assign({},j)); nj.applied=this.deriveApplied(nj); nj.column=this.deriveColumn(nj); return nj; })})); }
 
-  toggleIgnore(id){ this.patchJob(id, j=>{ j.ignore=j.ignore?0:1; return j; }); }
+  async apiStatus(id, status, checked, date){
+    const res=await fetch('/api/jobs/'+id+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,checked:checked?1:0,date_reached:checked?(date||this.todayStr()):null})});
+    if(!res.ok) throw new Error('status PATCH failed: '+res.status);
+  }
+
+  toggleIgnore(id){
+    const cur=this.state.jobs.find(j=>j.id===id); if(!cur) return;
+    const next=cur.ignore?0:1;
+    this.patchJob(id, j=>{ j.ignore=next; return j; });
+    fetch('/api/jobs/'+id+'/ignore',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ignore:next})})
+      .then(r=>{ if(!r.ok) throw new Error('ignore PATCH '+r.status); })
+      .catch(e=>{ console.error(e); this.patchJob(id, j=>{ j.ignore=cur.ignore; return j; }); this.showToast('Could not update job'); });
+  }
   markApplied(id){
+    const cur=this.state.jobs.find(j=>j.id===id); if(!cur) return;
     this.patchJob(id, j=>{ j.statuses=this.statusesForColumn(j.statuses,'applied'); return j; });
     this.showToast('Moved to Applied');
+    this.persistStatuses(id, cur.statuses, this.statusesForColumn(cur.statuses,'applied'));
   }
   moveTo(col){ const id=this.dragId; if(!id) return; this.setState({dragOverCol:null});
-    this.patchJob(id, j=>{ j.statuses=this.statusesForColumn(j.statuses,col); return j; }); this.dragId=null; }
-  toggleStatus(id, name){
-    this.patchJob(id, j=>{ j.statuses=j.statuses.map(st=> st.status===name?Object.assign({},st,{checked:st.checked?0:1,date_reached:st.checked?null:this.todayStr()}):st); return j; });
+    const cur=this.state.jobs.find(j=>j.id===id); this.dragId=null; if(!cur) return;
+    const next=this.statusesForColumn(cur.statuses,col);
+    this.patchJob(id, j=>{ j.statuses=next; return j; });
+    this.persistStatuses(id, cur.statuses, next);
   }
-  clearDatabase(){ if(window.confirm('Clear all jobs from the database? This cannot be undone.')) this.setState({jobs:[],selectedId:null}); }
+  toggleStatus(id, name){
+    const cur=this.state.jobs.find(j=>j.id===id); if(!cur) return;
+    const before=(cur.statuses.find(s=>s.status===name)||{}).checked?1:0;
+    const after=before?0:1; const date=after?this.todayStr():null;
+    this.patchJob(id, j=>{ j.statuses=j.statuses.map(st=> st.status===name?Object.assign({},st,{checked:after,date_reached:date}):st); return j; });
+    this.apiStatus(id,name,after,date).catch(e=>{ console.error(e);
+      this.patchJob(id, j=>{ j.statuses=j.statuses.map(st=> st.status===name?Object.assign({},st,{checked:before}):st); return j; });
+      this.showToast('Could not update status'); });
+  }
+  // Persist only the statuses that changed between two status arrays.
+  persistStatuses(id, before, after){
+    const prev={}; (before||[]).forEach(s=>{ prev[s.status]=s; });
+    const calls=[];
+    (after||[]).forEach(s=>{ const p=prev[s.status]; const pc=p&&p.checked?1:0; const nc=s.checked?1:0;
+      if(pc!==nc) calls.push(this.apiStatus(id,s.status,nc,s.date_reached)); });
+    Promise.all(calls).catch(e=>{ console.error(e); this.showToast('Some changes did not save'); this.loadJobs(); });
+  }
+  clearDatabase(){
+    if(!window.confirm('Clear all jobs from the database? This cannot be undone.')) return;
+    this.setState({jobs:[],selectedId:null});
+    fetch('/api/database/clear',{method:'POST',headers:{'Content-Type':'application/json'}})
+      .then(r=>{ if(!r.ok) throw new Error('clear '+r.status); return r.json(); })
+      .then(()=>{ this.showToast('Database cleared'); this.loadJobs(); })
+      .catch(e=>{ console.error(e); this.showToast('Could not clear database'); this.loadJobs(); });
+  }
 
-  // ---------- scrape (mock for step 3; real lifecycle wired in step 4) ----------
-  startScrape(){
-    this.setState({findView:'progress',percent:0,found:0,saved:0,notHidden:0,stage:'Initializing',statusMsg:'Spinning up scrapers…',scrapeDone:false});
-    const stages=[[8,'Initializing','Spinning up scrapers…'],[26,'Searching','Querying listings…'],[68,'Processing','Aggregating results…'],[84,'Filtering','Applying keyword & LLM filters…'],[96,'Saving','Writing matches to the database…'],[100,'Complete','Done — fresh jobs are ready to review.']];
-    let i=0; clearInterval(this._scr);
-    this._scr=setInterval(()=>{ const [p,st,msg]=stages[i];
-      this.setState({percent:p,stage:st,statusMsg:msg,found:Math.round(p*0.43),saved:Math.round(p*0.31),notHidden:Math.round(p*0.27)});
-      i++; if(i>=stages.length){ clearInterval(this._scr); this.setState({scrapeDone:true}); }
-    },720);
+  // ---------- find-modal config <-> backend ----------
+  sitesToConfig(){ return Object.keys(this.state.sites).filter(k=>this.state.sites[k]).map(label=>Component.SITE_LABEL_TO_KEY[label]||label.toLowerCase()); }
+  hoursToAgeIndex(hours){ let idx=0; Component.AGE_HOURS.forEach((h,i)=>{ if(h<=hours) idx=i; }); return idx; }
+  async openFindAndLoad(){
+    this.setState({findOpen:true,findView:'config',scrapeDone:false});
+    try{
+      const res=await fetch('/api/config/load'); if(!res.ok) return; const c=await res.json();
+      this._loadedConfig=c||{};
+      const terms=(c.search_terms&&c.search_terms.length)?c.search_terms:(c.job_titles||[]);
+      let groups=[]; const dk=c.description_keywords;
+      if(Array.isArray(dk)){ groups = dk.length&&Array.isArray(dk[0]) ? dk.map(g=>g.slice()) : (dk.length?[dk.slice()]:[]); }
+      const sitesObj={}; Component.SITES.forEach(l=>{ sitesObj[l]=false; });
+      (c.sites||[]).forEach(k=>{ const l=Component.SITE_KEY_TO_LABEL[String(k).toLowerCase()]; if(l) sitesObj[l]=true; });
+      if(!(c.sites||[]).length){ Component.SITES.forEach(l=>{ sitesObj[l]=this.state.sites[l]; }); }
+      this.setState({
+        terms:terms.slice(), groups,
+        location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
+        ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
+        useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
+      });
+    }catch(e){ console.error('config load failed', e); }
+  }
+  configToSave(){
+    const s=this.state;
+    return Object.assign({}, this._loadedConfig||{}, {
+      search_terms:s.terms.slice(),
+      description_keywords:s.groups.map(g=>g.slice()),
+      sites:this.sitesToConfig(),
+      hours_old:Component.AGE_HOURS[s.ageIndex],
+      results_wanted:s.maxResults,
+      location:s.location.trim(),
+      use_llm:s.useLLM
+    });
+  }
+  formatStage(stage){
+    if(!stage) return 'Processing…';
+    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed'};
+    return m[stage]||(stage.charAt(0).toUpperCase()+stage.slice(1));
+  }
+
+  // ---------- scrape lifecycle (real API) ----------
+  async startScrape(){
+    const sites=this.sitesToConfig();
+    if(!sites.length){ this.showToast('Select at least one site'); return; }
+    if(!this.state.terms.length){ this.showToast('Add at least one search term'); return; }
+    this.setState({findView:'progress',percent:0,found:0,saved:0,notHidden:0,stage:'Initializing',statusMsg:'Saving configuration…',scrapeDone:false});
+    try{
+      const saveRes=await fetch('/api/config/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.configToSave())});
+      const saveData=await saveRes.json();
+      if(!saveRes.ok||!saveData.success){ throw new Error(saveData.message||'config save failed'); }
+      const startRes=await fetch('/api/scrape/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({use_config:true})});
+      const startData=await startRes.json();
+      if(!startData.success){ throw new Error(startData.message||'scrape start failed'); }
+      this._scrapeJobId=startData.job_id;
+      this.pollScrape(startData.job_id);
+    }catch(e){
+      console.error(e);
+      this.setState({stage:'Scraping Failed',statusMsg:String(e.message||e),scrapeDone:true});
+    }
+  }
+  pollScrape(jobId){
+    clearInterval(this._poll);
+    this._poll=setInterval(async()=>{
+      try{
+        const res=await fetch('/api/scrape/status/'+jobId);
+        const data=await res.json();
+        const prog=data.progress||{}; const details=prog.details||{};
+        const patch={percent:Math.round(prog.percent||0), stage:this.formatStage(prog.stage), statusMsg:details.message||''};
+        if(details.jobs_found!==undefined) patch.found=details.jobs_found;
+        if(details.jobs_kept!==undefined) patch.notHidden=details.jobs_kept;
+        this.setState(patch);
+        if(data.status==='completed'){
+          clearInterval(this._poll);
+          const steps=(data.results&&data.results.steps)||{};
+          const found=(steps.processing&&steps.processing.processed_count)||patch.found||0;
+          const saved=(steps.storage&&steps.storage.stored_count)||0;
+          const kept=(steps.filtering&&steps.filtering.kept)!==undefined?steps.filtering.kept:(patch.notHidden||0);
+          this.setState({percent:100,stage:'Complete',statusMsg:'Found '+found+' jobs · '+kept+' kept · '+saved+' new saved.',found,saved,notHidden:kept,scrapeDone:true});
+          this.loadJobs();
+        } else if(data.status==='failed'){
+          clearInterval(this._poll);
+          this.setState({stage:'Scraping Failed',statusMsg:data.error||'Scrape failed',scrapeDone:true});
+        }
+      }catch(e){ console.error('poll error', e); }
+    },1000);
   }
   closeFind(){ clearInterval(this._scr); clearInterval(this._poll); this.setState({findOpen:false,findView:'config',scrapeDone:false}); }
   viewNewJobs(){ this.closeFind(); this.setState({tab:'newjobs'}); }
@@ -752,7 +867,7 @@ class Component extends DCLogic {
       scrapeStats, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs()
     };
   }
-  openFind(){ this.setState({findOpen:true,findView:'config'}); }
+  openFind(){ this.openFindAndLoad(); }
 }
 
 </script>
