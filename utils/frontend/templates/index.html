@@ -180,21 +180,25 @@
             <sc-for list="{{ gridJobs }}" as="job" hint-placeholder-count="6">
               <article style="{{ job.cardStyle }}">
                 <div style="display:flex;align-items:flex-start;gap:12px">
-                  <div style="{{ job.avatar }}">{{ job.initials }}</div>
                   <div style="flex:1;min-width:0">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                       <span style="{{ job.siteBadge }}">{{ job.site }}</span>
-                      <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
-                        <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
-                      </sc-if>
-                      <span style="font:400 11px/1 var(--font-mono);color:var(--muted)">{{ job.ago }}</span>
+                      <span style="font:400 11px/1 var(--font-mono);color:var(--muted)">{{ job.dateStr }}</span>
                     </div>
                     <h3 style="margin:8px 0 2px;font:600 16px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</h3>
                     <div style="font:400 13px/1.3 var(--font-body);color:var(--muted)">{{ job.company }}</div>
                   </div>
-                  <button onclick="{{ job.onIgnore }}" title="Ignore" style="{{ job.ignoreBtn }}">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22"></path></svg>
-                  </button>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:0 0 auto">
+                    <button onclick="{{ job.onIgnore }}" title="Ignore" style="{{ job.ignoreBtn }}">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22"></path></svg>
+                    </button>
+                    <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
+                        <button onclick="{{ job.onMatchInfo }}" title="Match breakdown" style="{{ job.matchInfoBtn }}">?</button>
+                      </div>
+                    </sc-if>
+                  </div>
                 </div>
 
                 <div style="display:flex;flex-wrap:wrap;gap:7px;margin:13px 0">
@@ -742,6 +746,46 @@
     </div>
   </sc-if>
 
+  <!-- ============ MATCH BREAKDOWN POPUP ============ -->
+  <sc-if value="{{ matchPopup }}" hint-placeholder-val="">
+    <div onclick="{{ closeMatchPopup }}" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);animation:jf-fade .2s ease;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onclick="{{ stop }}" style="width:min(440px,100%);max-height:84vh;overflow-y:auto;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;animation:jf-pop .28s cubic-bezier(.16,1,.3,1)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+          <div style="min-width:0">
+            <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Profile Match</div>
+            <div style="margin-top:6px;font:600 15px/1.2 var(--font-body);color:var(--text)">{{ matchPopup.title }}</div>
+          </div>
+          <span style="font:700 22px/1 var(--font-head);color:{{ matchPopup.matchColor }};white-space:nowrap">{{ matchPopup.matchLabel }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <sc-for list="{{ matchPopup.scoreBars }}" as="b" hint-placeholder-count="4">
+            <div>
+              <div style="display:flex;justify-content:space-between;font:500 11px/1 var(--font-mono);color:var(--muted);margin-bottom:4px"><span>{{ b.label }}</span><span>{{ b.pct }}%</span></div>
+              <div style="height:6px;border-radius:99px;background:var(--border)"><div style="{{ b.bar }}"></div></div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ matchPopup.hasLlmRationale }}" hint-placeholder-val="">
+          <div style="margin-top:14px;font:400 13px/1.5 var(--font-body);color:var(--text)">{{ matchPopup.llmRationale }}</div>
+        </sc-if>
+        <sc-if value="{{ matchPopup.hasSkillMatched }}" hint-placeholder-val="">
+          <div style="margin-top:14px">
+            <div style="font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Your matching skills</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ matchPopup.skillMatched }}" as="sk" hint-placeholder-count="3">
+                <span style="padding:4px 9px;background:color-mix(in srgb,var(--c-offer) 18%,transparent);color:var(--c-offer-text);border-radius:99px;font:600 11px/1 var(--font-body)">{{ sk.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button onclick="{{ closeMatchPopup }}" style="flex:1;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Close</button>
+          <button onclick="{{ matchPopup.onOpenDetail }}" style="flex:1;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Full details</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;newjobs&quot;,&quot;tracker&quot;],&quot;default&quot;:&quot;newjobs&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Look&quot;}}">
@@ -790,7 +834,7 @@ class Component extends DCLogic {
     this.state = {
       theme:'editorial', tab, sidebarOpen:true, search:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null,
-      sortByMatch:false, analyzing:false,
+      sortByMatch:false, analyzing:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0,
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
       groups:[], maxResults:25, useLLM:true,
@@ -856,7 +900,7 @@ class Component extends DCLogic {
       id:j.id, title:j.title||'', company:j.company||'', location:j.location||'',
       compensation:j.compensation||'Not specified', site:this.siteLabel(j.site),
       link:j.link||'', description:j.description||'', ignore:j.ignore?1:0,
-      daysAgo:this.daysAgoFrom(j.created_at),
+      daysAgo:this.daysAgoFrom(j.created_at), createdAt:j.created_at||null,
       analysis, match,
       statuses, applied:this.deriveApplied({statuses}), column:this.deriveColumn({statuses})
     };
@@ -864,6 +908,29 @@ class Component extends DCLogic {
 
   // ---------- helpers ----------
   ago(d){ if(d<=0)return'today'; if(d===1)return'yesterday'; if(d<7)return d+'d ago'; return Math.floor(d/7)+'w ago'; }
+  // Format a stored ISO timestamp as a plain YYYY-MM-DD date (local time).
+  fmtDate(iso){ if(!iso) return ''; const t=Date.parse(iso.endsWith('Z')||iso.includes('+')?iso:iso+'Z'); if(isNaN(t)) return ''; const d=new Date(t); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+  // Tiered color for a match percentage: green (strong) / amber (moderate) / red (weak).
+  matchColorFor(m){ return (m==null)?'var(--muted)':(m>=66?'var(--c-offer-text)':(m>=40?'var(--accent-text)':'#E5484D')); }
+  // Build the shared analysis breakdown (score bars + skills + rationale) used by both
+  // the detail panel and the card match-breakdown popup.
+  buildBreakdown(an, match){
+    const pct=(v)=>Math.round((v||0)*100); const sm=an.skill_match||{};
+    const kh=Object.keys(an.keyword_group_hits||{}).map(label=>({label,terms:(an.keyword_group_hits[label]||[]).join(', ')}));
+    return {
+      scoreBars:[
+        {label:'Semantic',pct:pct(an.semantic_score),bar:'height:6px;border-radius:99px;background:var(--accent);width:'+pct(an.semantic_score)+'%'},
+        {label:'Keyword',pct:pct(an.keyword_score),bar:'height:6px;border-radius:99px;background:var(--accent2);width:'+pct(an.keyword_score)+'%'},
+        {label:'BM25',pct:pct(an.bm25_score),bar:'height:6px;border-radius:99px;background:var(--c-applied);width:'+pct(an.bm25_score)+'%'},
+        {label:'Skills',pct:pct(an.skill_score),bar:'height:6px;border-radius:99px;background:var(--c-offer);width:'+pct(an.skill_score)+'%'},
+      ],
+      llmRationale:an.llm_rationale||'', hasLlmRationale:!!an.llm_rationale,
+      skillMatched:(sm.matched||[]).map(x=>({label:x})), hasSkillMatched:(sm.matched||[]).length>0,
+      skillMissing:(sm.missing||[]).map(x=>({label:x})), hasSkillMissing:(sm.missing||[]).length>0,
+      keywordHits:kh, hasKeywordHits:kh.length>0,
+      matchColor:this.matchColorFor(match)
+    };
+  }
   plain(t){ return (t||'').replace(/[#*]/g,'').replace(/^- /gm,'').replace(/\n+/g,'  ').replace(/\s+/g,' ').trim(); }
   matchSearch(j){ const q=this.state.search.trim().toLowerCase(); if(!q)return true; return (j.title+' '+j.company).toLowerCase().includes(q); }
   showToast(m){ clearTimeout(this._tt); this.setState({toast:m}); this._tt=setTimeout(()=>this.setState({toast:''}),2400); }
@@ -1169,13 +1236,15 @@ class Component extends DCLogic {
     const sc=Component.SITE_COLORS[j.site]||'#888';
     const av=(sz)=>({width:sz+'px',height:sz+'px',flex:'0 0 auto',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:(sz>40?'12px':'9px'),background:'var(--surface2)',border:'var(--bw) solid var(--border)',font:'700 '+(sz>40?16:13)+'px/1 var(--font-head)',color:'var(--text)'});
     const stop=(e)=>{ e.stopPropagation(); };
-    const mc=(j.match==null)?'var(--muted)':(j.match>=66?'var(--c-offer-text)':(j.match>=40?'var(--accent-text)':'var(--c-archive)'));
+    const mc=this.matchColorFor(j.match);
     return Object.assign({},j,{
       hasMatch:j.match!=null,
       matchLabel:(j.match==null?'':j.match+'% match'),
       matchBadge:'font:700 11px/1 var(--font-mono);color:'+mc+';background:var(--bg);border:var(--bw) solid '+mc+';padding:5px 8px;border-radius:7px;white-space:nowrap',
+      matchInfoBtn:'display:flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 auto;border-radius:99px;cursor:pointer;font:700 11px/1 var(--font-mono);border:var(--bw) solid var(--border2);background:transparent;color:var(--muted);padding:0',
+      onMatchInfo:(e)=>{ stop(e); this.setState({matchInfoId:j.id}); },
       initials:(j.company||'?').slice(0,2).toUpperCase(),
-      ago:this.ago(j.daysAgo),
+      ago:this.ago(j.daysAgo), dateStr:this.fmtDate(j.createdAt),
       shortDesc:this.plain(j.description),
       avatar:Object.entries(av(40)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       avatarLg:Object.entries(av(52)).map(([k,v])=>this.css(k)+':'+v).join(';'),
@@ -1252,26 +1321,20 @@ class Component extends DCLogic {
       // recommendation breakdown
       const an=sj.analysis||null;
       d.hasAnalysis=!!an;
-      if(an){
-        const sm=an.skill_match||{};
-        d.skillMatched=(sm.matched||[]).map(x=>({label:x}));
-        d.skillMissing=(sm.missing||[]).map(x=>({label:x}));
-        d.hasSkillMatched=(sm.matched||[]).length>0;
-        d.hasSkillMissing=(sm.missing||[]).length>0;
-        d.keywordHits=Object.keys(an.keyword_group_hits||{}).map(label=>({label,terms:(an.keyword_group_hits[label]||[]).join(', ')}));
-        d.hasKeywordHits=d.keywordHits.length>0;
-        const pct=(v)=>Math.round((v||0)*100);
-        d.scoreBars=[
-          {label:'Semantic',pct:pct(an.semantic_score),bar:'height:6px;border-radius:99px;background:var(--accent);width:'+pct(an.semantic_score)+'%'},
-          {label:'Keyword',pct:pct(an.keyword_score),bar:'height:6px;border-radius:99px;background:var(--accent2);width:'+pct(an.keyword_score)+'%'},
-          {label:'BM25',pct:pct(an.bm25_score),bar:'height:6px;border-radius:99px;background:var(--c-applied);width:'+pct(an.bm25_score)+'%'},
-          {label:'Skills',pct:pct(an.skill_score),bar:'height:6px;border-radius:99px;background:var(--c-offer);width:'+pct(an.skill_score)+'%'},
-        ];
-        d.llmRationale=an.llm_rationale||'';
-        d.hasLlmRationale=!!an.llm_rationale;
-        d.matchColor=(d.match>=66?'var(--c-offer-text)':(d.match>=40?'var(--accent-text)':'var(--c-archive)'));
-      }
+      if(an){ Object.assign(d, this.buildBreakdown(an, d.match)); }
       selectedJob=d;
+    }
+
+    // match-breakdown popup (card "?" button) — reuses the analysis breakdown
+    let matchPopup=null;
+    if(s.matchInfoId!=null){
+      const mj=s.jobs.find(j=>j.id===s.matchInfoId);
+      if(mj && mj.analysis){
+        matchPopup=Object.assign({}, this.buildBreakdown(mj.analysis, mj.match), {
+          title:mj.title||mj.company||'', matchLabel:(mj.match==null?'':mj.match+'% match'),
+          onOpenDetail:()=>this.setState({matchInfoId:null,selectedId:mj.id})
+        });
+      }
     }
 
     // find modal config
@@ -1352,6 +1415,7 @@ class Component extends DCLogic {
       pagerLabel:'Page '+(page+1)+' / '+totalPages,
 
       selectedJob, closeDetail:()=>this.setState({selectedId:null}),
+      matchPopup, closeMatchPopup:()=>this.setState({matchInfoId:null}),
 
       findOpen:s.findOpen, findConfig:s.findView==='config', findProgress:s.findView==='progress',
       closeFind:()=>this.closeFind(), stop:(e)=>e.stopPropagation(),
