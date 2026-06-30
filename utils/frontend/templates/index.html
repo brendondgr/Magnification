@@ -685,6 +685,9 @@
                 </button>
               </label>
               <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Tags inside a group use <b style="color:var(--text)">OR</b>; groups are joined with <b style="color:var(--text)">AND</b>.</p>
+              <sc-if value="{{ fromProfile }}" hint-placeholder-val="">
+                <p style="margin:-4px 0 10px;font:600 11px/1.4 var(--font-body);color:var(--c-offer-text)">★ Prefilled from your active profile — edit freely before searching.</p>
+              </sc-if>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <sc-for list="{{ keywordGroups }}" as="g" hint-placeholder-count="2">
                   <div>
@@ -860,7 +863,7 @@ class Component extends DCLogic {
       sortByMatch:false, analyzing:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
-      groups:[], maxResults:25, useLLM:true,
+      groups:[], maxResults:25, useLLM:true, fromProfile:false,
       countries:{USA:true}, jobType:'', genBusy:false,
       termDraft:'', groupDrafts:{},
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false,
@@ -1045,27 +1048,36 @@ class Component extends DCLogic {
   sitesToConfig(){ return Object.keys(this.state.sites).filter(k=>this.state.sites[k]).map(label=>Component.SITE_LABEL_TO_KEY[label]||label.toLowerCase()); }
   hoursToAgeIndex(hours){ let idx=0; Component.AGE_HOURS.forEach((h,i)=>{ if(h<=hours) idx=i; }); return idx; }
   async openFindAndLoad(){
-    this.setState({findOpen:true,findView:'config',scrapeDone:false});
-    try{
-      const res=await fetch('/api/config/load'); if(!res.ok) return; const c=await res.json();
-      this._loadedConfig=c||{};
-      const terms=(c.search_terms&&c.search_terms.length)?c.search_terms:(c.job_titles||[]);
-      let groups=[]; const dk=c.description_keywords;
-      if(Array.isArray(dk)){ groups = dk.length&&Array.isArray(dk[0]) ? dk.map(g=>g.slice()) : (dk.length?[dk.slice()]:[]); }
-      const sitesObj={}; Component.SITES.forEach(l=>{ sitesObj[l]=false; });
-      (c.sites||[]).forEach(k=>{ const l=Component.SITE_KEY_TO_LABEL[String(k).toLowerCase()]; if(l) sitesObj[l]=true; });
-      if(!(c.sites||[]).length){ Component.SITES.forEach(l=>{ sitesObj[l]=this.state.sites[l]; }); }
-      const countriesObj={};
-      if(Array.isArray(c.countries)&&c.countries.length){ c.countries.forEach(cn=>{ countriesObj[cn]=true; }); }
-      else { Object.assign(countriesObj, this.state.countries); }
-      this.setState({
-        terms:terms.slice(), groups,
-        location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
-        ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
-        countries:countriesObj, jobType:c.job_type||'',
-        useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
-      });
-    }catch(e){ console.error('config load failed', e); }
+    this.setState({findOpen:true,findView:'config',scrapeDone:false,countryQuery:''});
+    // Load saved config + the active profile in parallel; the profile's titles/keyword
+    // groups take precedence so Find Jobs always reflects the latest built profile.
+    let c={}, prof={};
+    try{ const res=await fetch('/api/config/load'); if(res.ok) c=(await res.json())||{}; }catch(e){ console.error('config load failed', e); }
+    try{ const pr=await fetch('/api/profile'); if(pr.ok) prof=(await pr.json())||{}; }catch(e){ console.error('profile load failed', e); }
+    this._loadedConfig=c;
+    const profTitles=Array.isArray(prof.job_titles)?prof.job_titles.filter(Boolean):[];
+    const profGroups=Array.isArray(prof.keyword_groups)
+      ? prof.keyword_groups.filter(g=>g&&Array.isArray(g.terms)&&g.terms.length).map(g=>g.terms.slice())
+      : [];
+    const terms = profTitles.length ? profTitles.slice()
+      : ((c.search_terms&&c.search_terms.length)?c.search_terms:(c.job_titles||[]));
+    let groups=[];
+    if(profGroups.length){ groups=profGroups; }
+    else { const dk=c.description_keywords; if(Array.isArray(dk)){ groups = dk.length&&Array.isArray(dk[0]) ? dk.map(g=>g.slice()) : (dk.length?[dk.slice()]:[]); } }
+    const fromProfile = profTitles.length>0 || profGroups.length>0;
+    const sitesObj={}; Component.SITES.forEach(l=>{ sitesObj[l]=false; });
+    (c.sites||[]).forEach(k=>{ const l=Component.SITE_KEY_TO_LABEL[String(k).toLowerCase()]; if(l) sitesObj[l]=true; });
+    if(!(c.sites||[]).length){ Component.SITES.forEach(l=>{ sitesObj[l]=this.state.sites[l]; }); }
+    const countriesObj={};
+    if(Array.isArray(c.countries)&&c.countries.length){ c.countries.forEach(cn=>{ countriesObj[cn]=true; }); }
+    else { Object.assign(countriesObj, this.state.countries); }
+    this.setState({
+      terms:terms.slice(), groups, fromProfile,
+      location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
+      ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
+      countries:countriesObj, jobType:c.job_type||'',
+      useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
+    });
   }
   countriesToConfig(){ return Object.keys(this.state.countries).filter(k=>this.state.countries[k]); }
   addCountry(name){ this.setState(st=>({countries:Object.assign({},st.countries,{[name]:true}),countryQuery:''})); }
@@ -1476,6 +1488,7 @@ class Component extends DCLogic {
       siteList, keywordGroups, addGroup:()=>this.setState(st=>({groups:st.groups.concat([[]])})),
       countrySelected, countryOptions, countryOptionsShown, countryNoMatch,
       countryQuery:s.countryQuery, onCountryQuery, onCountryKey, jobTypeList,
+      fromProfile:s.fromProfile,
       genKeywords:()=>this.genKeywords(), genKeywordsLabel:s.genBusy?'Generating…':'Generate (LLM)',
       genKeywordsStyle:'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;cursor:'+(s.genBusy?'default':'pointer')+';font:600 11px/1 var(--font-body);border:var(--bw) solid var(--accent2);background:transparent;color:var(--accent2);text-transform:none;letter-spacing:0;opacity:'+(s.genBusy?'.6':'1'),
       useLLM:s.useLLM, toggleLLM:()=>this.setState(st=>({useLLM:!st.useLLM})),
