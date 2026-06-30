@@ -11,9 +11,23 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from .init_db import get_db_context
-from .models import Job, ApplicationStatus
+from .models import Job, ApplicationStatus, Profile, JobAnalysis
 from .config import APPLICATION_STATUSES
 from .utils import validate_job_data, validate_status, format_date
+
+
+# Fields the caller may set on a Profile via create/update/upsert.
+_PROFILE_FIELDS = (
+    'name', 'is_active', 'source_filename', 'resume_text',
+    'interests_paragraph', 'skills', 'job_titles', 'keyword_groups',
+)
+
+# Fields the caller may set on a JobAnalysis (job_id/profile_id handled separately).
+_ANALYSIS_FIELDS = (
+    'embedding', 'embedding_dim', 'extracted_skills',
+    'semantic_score', 'bm25_score', 'keyword_score', 'skill_score', 'rag_score',
+    'keyword_group_hits', 'skill_match', 'llm_score', 'llm_rationale',
+)
 
 
 # ==================== Job Operations ====================
@@ -427,6 +441,160 @@ def get_job_by_criteria(title: str, company: str, location: str) -> Optional[Dic
         return _job_to_dict(job)
 
 
+# ==================== Profile Operations ====================
+
+def create_profile(profile_data: Dict[str, Any]) -> int:
+    """
+    Create a new profile.
+
+    Args:
+        profile_data: dict with any of name, is_active, source_filename, resume_text,
+            interests_paragraph, skills, job_titles, keyword_groups.
+
+    Returns:
+        int: the new profile's ID.
+    """
+    with get_db_context() as db:
+        profile = Profile()
+        for key in _PROFILE_FIELDS:
+            if key in profile_data:
+                setattr(profile, key, profile_data[key])
+        db.add(profile)
+        db.flush()
+        profile_id = profile.id
+        # Keep the single-active invariant if this one was created active.
+        if profile.is_active:
+            _deactivate_other_profiles(db, profile_id)
+    return profile_id
+
+
+def update_profile(profile_id: int, updates: Dict[str, Any]) -> bool:
+    """Update an existing profile's fields. Returns True if the profile existed."""
+    with get_db_context() as db:
+        profile = db.query(Profile).filter(Profile.id == profile_id).first()
+        if not profile:
+            return False
+        for key in _PROFILE_FIELDS:
+            if key in updates:
+                setattr(profile, key, updates[key])
+        if updates.get('is_active'):
+            _deactivate_other_profiles(db, profile_id)
+    return True
+
+
+def get_profile_by_id(profile_id: int) -> Optional[Dict[str, Any]]:
+    """Retrieve a single profile by ID, or None."""
+    with get_db_context() as db:
+        profile = db.query(Profile).filter(Profile.id == profile_id).first()
+        return _profile_to_dict(profile) if profile else None
+
+
+def get_active_profile() -> Optional[Dict[str, Any]]:
+    """Retrieve the active profile (is_active=1), or None if there is none."""
+    with get_db_context() as db:
+        profile = db.query(Profile).filter(Profile.is_active == 1).order_by(
+            Profile.updated_at.desc()
+        ).first()
+        return _profile_to_dict(profile) if profile else None
+
+
+def list_profiles() -> List[Dict[str, Any]]:
+    """Retrieve all profiles, newest first."""
+    with get_db_context() as db:
+        profiles = db.query(Profile).order_by(Profile.created_at.desc()).all()
+        return [_profile_to_dict(p) for p in profiles]
+
+
+def set_active_profile(profile_id: int) -> bool:
+    """Mark the given profile active and deactivate all others."""
+    with get_db_context() as db:
+        profile = db.query(Profile).filter(Profile.id == profile_id).first()
+        if not profile:
+            return False
+        profile.is_active = 1
+        _deactivate_other_profiles(db, profile_id)
+    return True
+
+
+def upsert_active_profile(profile_data: Dict[str, Any]) -> int:
+    """
+    Convenience for the single-profile UI: update the active profile if one exists,
+    otherwise create a new active "default" profile. Returns the profile ID.
+    """
+    active = get_active_profile()
+    if active:
+        update_profile(active['id'], profile_data)
+        return active['id']
+    data = dict(profile_data)
+    data.setdefault('name', 'default')
+    data['is_active'] = 1
+    return create_profile(data)
+
+
+def delete_profile(profile_id: int) -> bool:
+    """Delete a profile. Returns True if it existed."""
+    with get_db_context() as db:
+        profile = db.query(Profile).filter(Profile.id == profile_id).first()
+        if not profile:
+            return False
+        db.delete(profile)
+    return True
+
+
+def _deactivate_other_profiles(db, keep_id: int) -> None:
+    """Set is_active=0 on every profile except keep_id (call inside a session)."""
+    db.query(Profile).filter(Profile.id != keep_id).update(
+        {Profile.is_active: 0}, synchronize_session=False
+    )
+
+
+# ==================== Job Analysis Operations ====================
+
+def save_job_analysis(job_id: int, analysis: Dict[str, Any],
+                      profile_id: Optional[int] = None) -> int:
+    """
+    Upsert the analysis row for a job (1:1 by job_id).
+
+    Args:
+        job_id: the job this analysis belongs to.
+        analysis: dict with any of the JobAnalysis score/embedding fields.
+        profile_id: the profile the scores were computed against (optional).
+
+    Returns:
+        int: the JobAnalysis row ID.
+    """
+    with get_db_context() as db:
+        record = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
+        if not record:
+            record = JobAnalysis(job_id=job_id)
+            db.add(record)
+        if profile_id is not None:
+            record.profile_id = profile_id
+        for key in _ANALYSIS_FIELDS:
+            if key in analysis:
+                setattr(record, key, analysis[key])
+        db.flush()
+        analysis_id = record.id
+    return analysis_id
+
+
+def get_analysis_for_job(job_id: int, include_embedding: bool = False) -> Optional[Dict[str, Any]]:
+    """Retrieve the analysis for a single job, or None."""
+    with get_db_context() as db:
+        record = db.query(JobAnalysis).filter(JobAnalysis.job_id == job_id).first()
+        return _analysis_to_dict(record, include_embedding) if record else None
+
+
+def get_analysis_for_jobs(job_ids: List[int],
+                          include_embedding: bool = False) -> Dict[int, Dict[str, Any]]:
+    """Retrieve analyses for many jobs, keyed by job_id (missing jobs are omitted)."""
+    if not job_ids:
+        return {}
+    with get_db_context() as db:
+        records = db.query(JobAnalysis).filter(JobAnalysis.job_id.in_(job_ids)).all()
+        return {r.job_id: _analysis_to_dict(r, include_embedding) for r in records}
+
+
 # ==================== Helper Functions ====================
 
 def _job_to_dict(job: Job) -> Dict[str, Any]:
@@ -455,3 +623,50 @@ def _status_to_dict(status: ApplicationStatus) -> Dict[str, Any]:
         'checked': status.checked,
         'date_reached': status.date_reached,
     }
+
+
+def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
+    """Convert a Profile model instance to a dictionary."""
+    return {
+        'id': profile.id,
+        'name': profile.name,
+        'is_active': profile.is_active,
+        'source_filename': profile.source_filename,
+        'resume_text': profile.resume_text,
+        'interests_paragraph': profile.interests_paragraph,
+        'skills': profile.skills or [],
+        'job_titles': profile.job_titles or [],
+        'keyword_groups': profile.keyword_groups or [],
+        'created_at': profile.created_at.isoformat() if profile.created_at else None,
+        'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,
+    }
+
+
+def _analysis_to_dict(analysis: JobAnalysis, include_embedding: bool = False) -> Dict[str, Any]:
+    """
+    Convert a JobAnalysis model instance to a dictionary.
+
+    The raw ``embedding`` bytes are excluded by default (not JSON-serializable);
+    callers that need the vector pass include_embedding=True.
+    """
+    data = {
+        'id': analysis.id,
+        'job_id': analysis.job_id,
+        'profile_id': analysis.profile_id,
+        'embedding_dim': analysis.embedding_dim,
+        'has_embedding': analysis.embedding is not None,
+        'extracted_skills': analysis.extracted_skills or [],
+        'semantic_score': analysis.semantic_score,
+        'bm25_score': analysis.bm25_score,
+        'keyword_score': analysis.keyword_score,
+        'skill_score': analysis.skill_score,
+        'rag_score': analysis.rag_score,
+        'keyword_group_hits': analysis.keyword_group_hits or {},
+        'skill_match': analysis.skill_match or {},
+        'llm_score': analysis.llm_score,
+        'llm_rationale': analysis.llm_rationale,
+        'analyzed_at': analysis.analyzed_at.isoformat() if analysis.analyzed_at else None,
+    }
+    if include_embedding:
+        data['embedding'] = analysis.embedding
+    return data

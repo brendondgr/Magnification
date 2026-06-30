@@ -46,17 +46,21 @@ Magnification/
 │
 ├── utils/                      # All application Python + frontend assets
 │   ├── backend/
-│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm
+│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm, options
 │   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
-│   │   └── database/           # SQLAlchemy models, init, CRUD operations, migrations
+│   │   ├── llm/                # OpenAI-compatible client + endpoint config (recommendation system)
+│   │   ├── recommend/          # RAG/LLM recommendation: embedder, bm25, ranker, skills, service, keywords, profile_builder, runtime_config
+│   │   └── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD
 │   ├── frontend/
-│   │   ├── templates/          # Jinja: index.html, parts/, primary/
-│   │   └── static/             # css/, js/ (components/, renderers, handlers, app)
+│   │   ├── templates/          # index.html — single dc-runtime design export (no Jinja partials)
+│   │   └── static/             # js/dc-runtime.js (vendored React runtime)
 │   └── LocalLLM/               # Local LLM management library (cli, core, server, utils)
 │
 ├── tests/                      # Lightweight tests grouped by area
 │   ├── job_scraper.py
 │   ├── test_config_loading.py
+│   ├── test_frontend_wiring.py # dc-runtime page + job/config API contract
+│   ├── database/               # Profile + JobAnalysis CRUD round-trip
 │   └── docs/                   # Doc/skill-pointer verification tests
 │
 └── data/                       # SQLite database + local data (gitignored)

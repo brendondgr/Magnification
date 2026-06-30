@@ -48,7 +48,9 @@ class JobSpyScraper:
         country_indeed: str = DEFAULT_COUNTRY,
         max_threads: Optional[int] = None,
         location: Optional[str] = None,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        countries: Optional[List[str]] = None,
+        job_type: Optional[str] = None
     ):
         """
         Initialize the JobSpyScraper.
@@ -71,21 +73,26 @@ class JobSpyScraper:
         self._max_threads = max_threads
         self.location = location
         self.progress_callback = progress_callback
-        
+        # Multiple countries: one task per (title x country). Empty/None -> single country_indeed.
+        self.countries = [c for c in (countries or []) if c] or [country_indeed]
+        self.job_type = job_type or None
+
         # Create data directory
         os.makedirs(self.data_dir, exist_ok=True)
-        
-        # Create task instances
+
+        # Create task instances (one per job title per country)
         self.tasks: List[JobScrapeTask] = [
             JobScrapeTask(
                 job_title=title,
                 sites=self.sites,
                 results_wanted=self.results_wanted,
                 hours_old=self.hours_old,
-                country_indeed=self.country_indeed,
-                location=self.location
+                country_indeed=country,
+                location=self.location,
+                job_type=self.job_type
             )
             for title in self.job_titles
+            for country in self.countries
         ]
         
         # Results storage

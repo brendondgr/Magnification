@@ -7,18 +7,28 @@ job_bp = Blueprint('job_bp', __name__)
 
 @job_bp.route('/api/jobs', methods=['GET'])
 def get_jobs():
-    """Get all active jobs with their application statuses."""
+    """Get all active jobs with their application statuses.
+
+    Pass ?with_analysis=1 to attach each job's recommendation analysis (match scores,
+    skill match, keyword hits) under a `analysis` key.
+    """
     try:
         # Get all active jobs (ignore=0)
         jobs = db_ops.get_all_jobs(include_ignored=True)
-        
-        # Hydrate with statuses
+
+        with_analysis = request.args.get('with_analysis') in ('1', 'true', 'yes')
+        analyses = (db_ops.get_analysis_for_jobs([j['id'] for j in jobs])
+                    if with_analysis else {})
+
+        # Hydrate with statuses (+ analysis when requested)
         full_jobs = []
         for job in jobs:
             statuses = db_ops.get_application_status_by_job(job['id'])
             job['statuses'] = statuses
+            if with_analysis:
+                job['analysis'] = analyses.get(job['id'])
             full_jobs.append(job)
-            
+
         return jsonify(full_jobs)
     except Exception as e:
         logger.error(f"Error fetching jobs: {e}")

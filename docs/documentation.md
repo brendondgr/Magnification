@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Magnification ("Job Finder") is a personal job-search application. It scrapes job listings from multiple boards, stores them in a local database, and presents them through a web UI where the user can review new jobs, track applications on a kanban board, and optionally run a local LLM to assist with job descriptions.
+Magnification ("Job Finder") is a personal job-search application. It scrapes job listings from multiple boards, stores them in a local database, and presents them through a web UI where the user can review new jobs, track applications on a kanban board, and get **recommendations**: a RAG + LLM system builds a profile from the user's résumé and scores each scraped job against it (semantic + BM25 + keyword-group + skill signals, with an optional LLM verdict). See `docs/recommendation.md` and `docs/profile.md`.
 
 Primary users: the developer (single-user, local-first). It is not a multi-tenant or publicly deployed app at this stage.
 
@@ -12,17 +12,18 @@ Primary users: the developer (single-user, local-first). It is not a multi-tenan
 | --- | --- |
 | Language / runtime | Python ≥ 3.12, managed with `uv` |
 | Web framework | Flask (server-rendered Jinja, blueprint-based API) |
-| Frontend | HTML + Jinja partials, vanilla JS modules, Tailwind (CDN), FontAwesome/Lucide icons |
-| Database | SQLite via SQLAlchemy ORM |
-| Scraping | `python-jobspy` + a custom concurrent scraper and LinkedIn description scraper |
-| Local LLM | `utils/LocalLLM` — llama-server management, model downloads, GPU detection |
+| Frontend | Single `index.html` design export driven by a vendored `dc-runtime.js` (React runtime); no build step |
+| Database | SQLite via SQLAlchemy ORM (`Job`, `ApplicationStatus`, `Profile`, `JobAnalysis`) |
+| Scraping | `python-jobspy` + a custom concurrent scraper and a parallel LinkedIn description scraper |
+| Recommendation | `fastembed` (bge-small-en-v1.5, CPU) + `rank-bm25`; `pypdf` for résumé parsing; `utils/backend/recommend` |
+| LLM | OpenAI-compatible client (`utils/backend/llm`, configurable endpoint) for all AI features; `utils/LocalLLM` still manages an optional bundled llama-server |
 | Logging | `loguru` (wrapped by `LoggerWrapper`) |
 
 ## Architecture (current)
 
 Magnification is a **Flask/Jinja monolith** (Mode F in `docs/skills/repository-structure/structures/web-interfaces.md`):
 
-- `app.py` boots Flask, registers four blueprints (config, scrape, job, llm), initializes the SQLite database and logger, and serves the SPA-style `index.html` plus its HTML partials.
+- `app.py` boots Flask, registers the blueprints (config, scrape, job, llm, options, profile, recommend), initializes the SQLite database and logger, and serves the dc-runtime `index.html`.
 - `utils/backend/` holds the API blueprints, scraping pipeline, and database layer.
 - `utils/frontend/` holds Jinja templates (`templates/`) and static assets (`static/css`, `static/js`).
 - `utils/LocalLLM/` is a self-contained local-LLM management library exposed through the `llm` blueprint.
@@ -36,6 +37,8 @@ These existing references remain canonical for their subsystems:
 - `docs/database.md` — database schema and models
 - `docs/job_scraping.md` — the scraping pipeline
 - `docs/find_jobs.md` — the "Find Jobs" configuration/flow
+- `docs/recommendation.md` — the RAG + LLM recommendation system
+- `docs/profile.md` — the résumé → profile builder
 - `docs/ui.md` — UI notes
 
 ## Major Decisions
@@ -47,5 +50,7 @@ These existing references remain canonical for their subsystems:
 ## Current Status
 
 - Working Flask app: scraping, job listing/tracking, LLM management endpoints.
-- Documentation and agent skills initialized per `bdgrSkills/initialize.md` (this overhaul).
-- **Next:** physical migration to `web/` and a React frontend rebuild — not started.
+- **RAG + LLM recommendation overhaul complete:** Profile + Options menus, résumé→profile
+  builder, configurable OpenAI-compatible endpoint, fastembed + BM25 hybrid scoring with
+  optional LLM verdict, parallel LinkedIn fetch, multi-country + job-type + LLM-keyword Find Jobs.
+- **Next:** physical migration to `web/` and a full React frontend rebuild — not started.

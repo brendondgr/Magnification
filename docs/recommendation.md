@@ -1,0 +1,62 @@
+# Recommendation System — Magnification
+
+A hybrid **RAG + LLM** recommender that scores each scraped job against the active
+[profile](profile.md) and surfaces a per-job **match score** with a breakdown.
+
+## Signals (hybrid score)
+
+Computed per job by `utils/backend/recommend/ranker.py` and combined into `rag_score` (0..1):
+
+| Signal | Source | Notes |
+| --- | --- | --- |
+| **semantic** | `embedder.cosine(profile_vec, job_vec)` | bge-small-en-v1.5 (384-dim, CPU). Profile vector = embedding of interests + skills + titles + keyword terms. |
+| **bm25** | `bm25.BM25Index` over the job corpus | Lexical overlap of the profile query vs descriptions, normalized 0..1. |
+| **keyword** | `ranker.keyword_group_score` | Fraction of the profile's keyword groups satisfied — **AND across groups, OR within**. |
+| **skill** | `skills.match_profile_skills` | Fraction of the job's extracted skills the profile covers. |
+
+Weights are configurable in **Options → Runtime** (`runtime_config.weights`); default
+`semantic 0.5 / bm25 0.2 / keyword 0.15 / skill 0.15`.
+
+## Modules (`utils/backend/recommend/`)
+
+| File | Role |
+| --- | --- |
+| `embedder.py` | fastembed bge-small singleton; batch/parallel embed; float32 byte (de)serialization; cosine. |
+| `bm25.py` | rank_bm25 index + tokenizer; raw + normalized scores. |
+| `skills.py` | gazetteer skill extractor (+ optional LLM); `match_profile_skills`. |
+| `ranker.py` | pure hybrid scoring (no I/O) — unit-tested with fake vectors. |
+| `service.py` | orchestration: embed-on-retrieve (reuse stored vectors), skill extraction, scoring, persist `JobAnalysis`; builds the ranked report. |
+| `runtime_config.py` | parallelism + toggles + weights (`config/runtime_config.json`). |
+| `profile_builder.py` | résumé → profile (see [profile.md](profile.md)). |
+
+## Flow
+
+```
+Scrape completes → scraping_service (if runtime.enable_analysis and an active profile exists)
+    → recommend.service.analyze_jobs(new_job_ids)
+        → embed missing job descriptions (parallel, fastembed)   [embed-on-retrieve]
+        → extract skills (gazetteer, or LLM batch if enabled)
+        → ranker.rank_batch(profile, profile_vec, jobs, weights)
+        → save_job_analysis per job (JobAnalysis table)
+
+Manual: POST /api/recommend/analyze  (re-score on demand, e.g. after editing the profile)
+Read:   GET  /api/jobs?with_analysis=1   → each job carries its `analysis`
+        GET  /api/recommend/report       → jobs ranked by rag_score
+```
+
+Analysis is **non-fatal** in the scrape pipeline: if the embedding model is unavailable
+(offline) the scrape still succeeds; jobs simply have no scores until analyzed later.
+
+## UI
+
+New Jobs cards show a **match badge** (color-graded by score) and a **Sort: Match/Newest**
+toggle + **Analyze matches** button. The job detail panel shows a **Profile Match** section:
+the score, per-signal bars, matched vs missing skills, matched keyword groups, and (when LLM
+re-rank is enabled) the LLM rationale. See `docs/component-map.md`.
+
+## Performance / parallelism
+
+- Embedding: fastembed batch with `parallel=embed_workers`.
+- LinkedIn description fetch: parallelized (see `docs/data-flow.md`).
+- LLM skill extraction / verdicts: `OpenAIClient.chat_many` with `llm_workers`.
+- Stored embeddings are reused across re-analysis (only missing ones are recomputed).

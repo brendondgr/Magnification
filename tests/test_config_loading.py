@@ -3,8 +3,11 @@ import sys
 import os
 from pathlib import Path
 
-# Add project root to path
-sys.path.append(str(Path(__file__).resolve().parents[3]))
+import pytest
+
+# Add project root to path (tests/<file> -> project root is parents[1])
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(PROJECT_ROOT))
 
 # Mock logging to avoid noise
 import logging
@@ -37,8 +40,11 @@ def test_workflow_config_loading():
         # If it fails after Step 1, we might still have the results object if we return it
         print(f"Workflow stopped (expectedly): {e}")
 
-    # Read the config file to compare
-    config_path = Path(__file__).resolve().parents[3] / "config" / "jobs_config.json"
+    # Read the config file to compare. jobs_config.json is gitignored runtime
+    # config, so skip gracefully when it is not present (e.g. clean checkout/CI).
+    config_path = PROJECT_ROOT / "config" / "jobs_config.json"
+    if not config_path.exists():
+        pytest.skip(f"runtime config not present: {config_path}")
     with open(config_path, 'r') as f:
         config = json.load(f)
     

@@ -54,10 +54,18 @@
       </sc-for>
     </nav>
 
-    <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <button onclick="{{ openProfile }}" data-desk="" style="{{ profileBtnStyle }}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Profile
+      </button>
       <button onclick="{{ openFind }}" style="display:flex;align-items:center;gap:8px;padding:0 18px;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
         Find Jobs
+      </button>
+      <button onclick="{{ openOptions }}" data-desk="" style="{{ optionsBtnStyle }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        Options
       </button>
     </div>
   </header>
@@ -154,9 +162,18 @@
               <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">New Jobs</h1>
               <p style="margin:8px 0 0;font:400 14px/1 var(--font-body);color:var(--muted)">{{ gridCountLabel }}</p>
             </div>
-            <sc-if value="{{ hasIgnored }}" hint-placeholder-val="">
-              <button onclick="{{ toggleShowIgnored }}" style="{{ showIgnoredStyle }}">{{ showIgnoredLabel }}</button>
-            </sc-if>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <sc-if value="{{ anyMatches }}" hint-placeholder-val="">
+                <button onclick="{{ toggleSort }}" style="{{ sortStyle }}">{{ sortLabel }}</button>
+              </sc-if>
+              <button onclick="{{ analyzeJobs }}" style="{{ analyzeStyle }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+                {{ analyzeLabel }}
+              </button>
+              <sc-if value="{{ hasIgnored }}" hint-placeholder-val="">
+                <button onclick="{{ toggleShowIgnored }}" style="{{ showIgnoredStyle }}">{{ showIgnoredLabel }}</button>
+              </sc-if>
+            </div>
           </div>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px">
@@ -167,6 +184,9 @@
                   <div style="flex:1;min-width:0">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                       <span style="{{ job.siteBadge }}">{{ job.site }}</span>
+                      <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
+                        <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
+                      </sc-if>
                       <span style="font:400 11px/1 var(--font-mono);color:var(--muted)">{{ job.ago }}</span>
                     </div>
                     <h3 style="margin:8px 0 2px;font:600 16px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</h3>
@@ -262,6 +282,55 @@
       </div>
 
       <div style="flex:1;overflow-y:auto;padding:24px 26px">
+        <sc-if value="{{ selectedJob.hasAnalysis }}" hint-placeholder-val="">
+          <div style="margin-bottom:26px;padding:16px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <span style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Profile Match</span>
+              <span style="font:700 18px/1 var(--font-head);color:{{ selectedJob.matchColor }}">{{ selectedJob.matchLabel }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ selectedJob.scoreBars }}" as="b" hint-placeholder-count="4">
+                <div>
+                  <div style="display:flex;justify-content:space-between;font:500 11px/1 var(--font-mono);color:var(--muted);margin-bottom:4px"><span>{{ b.label }}</span><span>{{ b.pct }}%</span></div>
+                  <div style="height:6px;border-radius:99px;background:var(--border)"><div style="{{ b.bar }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ selectedJob.hasLlmRationale }}" hint-placeholder-val="">
+              <div style="margin-top:14px;font:400 13px/1.5 var(--font-body);color:var(--text)">{{ selectedJob.llmRationale }}</div>
+            </sc-if>
+            <sc-if value="{{ selectedJob.hasSkillMatched }}" hint-placeholder-val="">
+              <div style="margin-top:14px">
+                <div style="font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Your matching skills</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ selectedJob.skillMatched }}" as="sk" hint-placeholder-count="3">
+                    <span style="padding:4px 9px;background:color-mix(in srgb,var(--c-offer) 18%,transparent);color:var(--c-offer-text);border-radius:99px;font:600 11px/1 var(--font-body)">{{ sk.label }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ selectedJob.hasSkillMissing }}" hint-placeholder-val="">
+              <div style="margin-top:12px">
+                <div style="font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Skills the job wants you lack</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ selectedJob.skillMissing }}" as="sk" hint-placeholder-count="3">
+                    <span style="padding:4px 9px;background:var(--surface2);color:var(--muted);border:var(--bw) solid var(--border2);border-radius:99px;font:600 11px/1 var(--font-body)">{{ sk.label }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ selectedJob.hasKeywordHits }}" hint-placeholder-val="">
+              <div style="margin-top:12px">
+                <div style="font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Keyword groups matched</div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <sc-for list="{{ selectedJob.keywordHits }}" as="kw" hint-placeholder-count="2">
+                    <div style="font:400 12px/1.3 var(--font-body);color:var(--text)"><b>{{ kw.label }}:</b> {{ kw.terms }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
         <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Application Journey</div>
         <div style="display:flex;flex-direction:column;gap:0;margin-bottom:30px">
           <sc-for list="{{ selectedJob.timeline }}" as="st" hint-placeholder-count="6">
@@ -292,6 +361,207 @@
           Visit Job Post
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
         </button>
+      </div>
+    </aside>
+  </sc-if>
+
+  <!-- ============ PROFILE PANEL ============ -->
+  <sc-if value="{{ profileOpen }}" hint-placeholder-val="">
+    <div onclick="{{ closeProfile }}" style="position:fixed;inset:0;z-index:64;background:rgba(0,0,0,.5);animation:jf-fade .25s ease"></div>
+    <aside style="position:fixed;top:0;right:0;bottom:0;z-index:65;width:min(560px,100vw);background:var(--surface);border-left:var(--bw) solid var(--border);display:flex;flex-direction:column;animation:jf-slide .38s cubic-bezier(.16,1,.3,1)">
+      <div style="display:flex;align-items:center;gap:12px;padding:22px 26px;border-bottom:var(--bw) solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <h2 style="margin:0;font:600 18px/1 var(--font-head)">Profile</h2>
+          <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Built from your résumé · drives recommendations</div>
+        </div>
+        <button onclick="{{ closeProfile }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:22px">
+        <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Résumé — PDF · LaTeX · Markdown</label>
+          <input type="file" accept=".pdf,.tex,.md,.markdown,.txt" onchange="{{ onResumeFile }}" style="width:100%;font:400 13px/1.4 var(--font-body);color:var(--text)">
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
+            <sc-if value="{{ hasResumeText }}" hint-placeholder-val="">
+              <button onclick="{{ rebuildProfile }}" style="display:flex;align-items:center;gap:7px;padding:8px 13px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+                Rebuild from résumé (LLM)
+              </button>
+            </sc-if>
+            <sc-if value="{{ pfStatus }}" hint-placeholder-val="">
+              <span style="font:400 12px/1.3 var(--font-body);color:var(--muted)">{{ pfStatus }}</span>
+            </sc-if>
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Research / Job Interests</label>
+          <textarea value="{{ pfInterests }}" oninput="{{ onPfInterests }}" placeholder="A paragraph describing your interests, background, and the work you want…" style="width:100%;min-height:110px;padding:12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1.5 var(--font-body);outline:none;resize:vertical"></textarea>
+        </div>
+
+        <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Skills</label>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+            <sc-for list="{{ pfSkills }}" as="sk" hint-placeholder-count="3">
+              <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent);color:var(--accent-ink);border-radius:99px;font:600 12px/1 var(--font-body)">
+                {{ sk.label }}
+                <button onclick="{{ sk.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+              </span>
+            </sc-for>
+            <input value="{{ pfSkillDraft }}" oninput="{{ onPfSkillDraft }}" onkeydown="{{ onPfSkillKey }}" placeholder="add skill…" style="flex:1;min-width:120px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Titles — search queries</label>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+            <sc-for list="{{ pfTitles }}" as="ti" hint-placeholder-count="2">
+              <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent2);color:#fff;border-radius:99px;font:600 12px/1 var(--font-body)">
+                {{ ti.label }}
+                <button onclick="{{ ti.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+              </span>
+            </sc-for>
+            <input value="{{ pfTitleDraft }}" oninput="{{ onPfTitleDraft }}" onkeydown="{{ onPfTitleKey }}" placeholder="add job title…" style="flex:1;min-width:120px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Keyword Group Preferences</label>
+          <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Terms within a group are <b style="color:var(--text)">OR</b>; groups are joined with <b style="color:var(--text)">AND</b> (e.g. AI/ML <i>and</i> Healthcare).</p>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ pfGroups }}" as="g" hint-placeholder-count="2">
+              <div style="padding:10px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                  <input value="{{ g.label }}" oninput="{{ g.onLabel }}" placeholder="group label (e.g. Domain)" style="flex:1;height:32px;padding:0 10px;background:var(--surface);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);outline:none">
+                  <button onclick="{{ g.onRemove }}" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--muted);cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg></button>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                  <sc-for list="{{ g.tags }}" as="tg" hint-placeholder-count="2">
+                    <span style="display:flex;align-items:center;gap:5px;padding:5px 9px;background:var(--accent2);color:#fff;border-radius:99px;font:600 11px/1 var(--font-body)">
+                      {{ tg.label }}
+                      <button onclick="{{ tg.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                    </span>
+                  </sc-for>
+                  <input value="{{ g.draft }}" oninput="{{ g.onDraft }}" onkeydown="{{ g.onKey }}" placeholder="add term…" style="flex:1;min-width:100px;height:26px;background:transparent;border:none;outline:none;color:var(--text);font:400 12px/1 var(--font-body)">
+                </div>
+              </div>
+            </sc-for>
+            <button onclick="{{ addPfGroup }}" style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:8px 13px;background:transparent;border:1.5px dashed var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add AND group
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;padding:18px 26px;border-top:var(--bw) solid var(--border)">
+        <button onclick="{{ closeProfile }}" style="flex:1;height:44px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer">Close</button>
+        <button onclick="{{ saveProfile }}" style="flex:2;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer">Save Profile</button>
+      </div>
+    </aside>
+  </sc-if>
+
+  <!-- ============ OPTIONS PANEL ============ -->
+  <sc-if value="{{ optionsOpen }}" hint-placeholder-val="">
+    <div onclick="{{ closeOptions }}" style="position:fixed;inset:0;z-index:66;background:rgba(0,0,0,.5);animation:jf-fade .25s ease"></div>
+    <aside style="position:fixed;top:0;right:0;bottom:0;z-index:67;width:min(520px,100vw);background:var(--surface);border-left:var(--bw) solid var(--border);display:flex;flex-direction:column;animation:jf-slide .38s cubic-bezier(.16,1,.3,1)">
+      <div style="display:flex;align-items:center;gap:12px;padding:22px 26px;border-bottom:var(--bw) solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent2);color:#fff">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <h2 style="margin:0;font:600 18px/1 var(--font-head)">Options</h2>
+          <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">LLM endpoint &amp; recommendation runtime</div>
+        </div>
+        <button onclick="{{ closeOptions }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div style="display:flex;gap:6px;padding:14px 26px 0">
+        <button onclick="{{ setOptTabLlm }}" style="{{ optLlmTabStyle }}">LLM Endpoint</button>
+        <button onclick="{{ setOptTabRuntime }}" style="{{ optRtTabStyle }}">Runtime</button>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:18px">
+        <!-- LLM TAB -->
+        <sc-if value="{{ optTabLlm }}" hint-placeholder-val="{{ true }}">
+          <button onclick="{{ toggleLlmEnabled }}" style="{{ llmEnabledRow }}">
+            <span style="{{ llmEnabledChk }}"><sc-if value="{{ llmEnabled }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">Enabled</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Use this OpenAI-compatible endpoint for all AI features</div></div>
+          </button>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Base URL — include /v1</label>
+            <input value="{{ llmBaseUrl }}" oninput="{{ onLlmBaseUrl }}" placeholder="http://127.0.0.1:8080/v1" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-mono);outline:none">
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">API Key</label>
+            <input type="password" value="{{ llmApiKey }}" oninput="{{ onLlmApiKey }}" placeholder="(optional for local servers)" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-mono);outline:none">
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Model</label>
+            <input value="{{ llmModel }}" oninput="{{ onLlmModel }}" placeholder="e.g. gpt-4o-mini or a local model name" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Temperature</label>
+              <input type="number" step="0.05" min="0" max="2" value="{{ llmTemp }}" oninput="{{ onLlmTemp }}" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+            </div>
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Max Tokens</label>
+              <input type="number" step="64" min="1" value="{{ llmMaxTokens }}" oninput="{{ onLlmMaxTokens }}" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button onclick="{{ testLlmOptions }}" style="display:flex;align-items:center;gap:7px;padding:0 16px;height:42px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer">Test connection</button>
+            <button onclick="{{ saveLlmOptions }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer">Save Endpoint</button>
+          </div>
+          <sc-if value="{{ llmTestText }}" hint-placeholder-val="">
+            <div style="font:500 13px/1.4 var(--font-body);color:{{ llmTestColor }}">{{ llmTestText }}</div>
+          </sc-if>
+        </sc-if>
+
+        <!-- RUNTIME TAB -->
+        <sc-if value="{{ optTabRuntime }}" hint-placeholder-val="">
+          <button onclick="{{ toggleRtAnalysis }}" style="{{ rtAnalysisRow }}">
+            <span style="{{ rtAnalysisChk }}"><sc-if value="{{ rtEnableAnalysis }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">Analyze on scrape</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Embed + score new jobs against the active profile</div></div>
+          </button>
+          <button onclick="{{ toggleRtRerank }}" style="{{ rtRerankRow }}">
+            <span style="{{ rtRerankChk }}"><sc-if value="{{ rtEnableRerank }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM re-rank</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Add an LLM verdict + rationale to the top candidates</div></div>
+          </button>
+          <button onclick="{{ toggleRtLlmSkills }}" style="{{ rtLlmSkillsRow }}">
+            <span style="{{ rtLlmSkillsChk }}"><sc-if value="{{ rtEnableLlmSkills }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM skill extraction</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Use the LLM (vs the fast gazetteer) to extract skills</div></div>
+          </button>
+
+          <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">Parallelism</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Embed workers</label><input type="number" min="1" value="{{ rtEmbedWorkers }}" oninput="{{ onRtEmbedWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LinkedIn workers</label><input type="number" min="1" value="{{ rtLinkedinWorkers }}" oninput="{{ onRtLinkedinWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LLM workers</label><input type="number" min="1" value="{{ rtLlmWorkers }}" oninput="{{ onRtLlmWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LLM top-N</label><input type="number" min="1" value="{{ rtTopN }}" oninput="{{ onRtTopN }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+          </div>
+
+          <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">Score weights</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Semantic</label><input type="number" step="0.05" min="0" max="1" value="{{ wSemantic }}" oninput="{{ onWSemantic }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">BM25</label><input type="number" step="0.05" min="0" max="1" value="{{ wBm25 }}" oninput="{{ onWBm25 }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Keyword</label><input type="number" step="0.05" min="0" max="1" value="{{ wKeyword }}" oninput="{{ onWKeyword }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Skill</label><input type="number" step="0.05" min="0" max="1" value="{{ wSkill }}" oninput="{{ onWSkill }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+          </div>
+          <button onclick="{{ saveRuntimeOptions }}" style="display:flex;align-items:center;justify-content:center;gap:7px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;margin-top:4px">Save Runtime Settings</button>
+        </sc-if>
+
+        <sc-if value="{{ optStatus }}" hint-placeholder-val="">
+          <div style="font:400 12px/1.3 var(--font-body);color:var(--muted)">{{ optStatus }}</div>
+        </sc-if>
       </div>
     </aside>
   </sc-if>
@@ -360,8 +630,33 @@
               </div>
             </div>
 
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start">
+              <div>
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Countries (Indeed/Glassdoor)</label>
+                <div style="display:flex;flex-wrap:wrap;gap:7px">
+                  <sc-for list="{{ countryList }}" as="c" hint-placeholder-count="4">
+                    <button onclick="{{ c.onToggle }}" style="{{ c.style }}"><span style="{{ c.check }}"></span>{{ c.name }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
+                <div style="display:flex;flex-wrap:wrap;gap:7px">
+                  <sc-for list="{{ jobTypeList }}" as="jt" hint-placeholder-count="5">
+                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}">{{ jt.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
             <div>
-              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Title / Description Keywords</label>
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">
+                <span>Title / Description Keywords</span>
+                <button onclick="{{ genKeywords }}" style="{{ genKeywordsStyle }}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+                  {{ genKeywordsLabel }}
+                </button>
+              </label>
               <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Tags inside a group use <b style="color:var(--text)">OR</b>; groups are joined with <b style="color:var(--text)">AND</b>.</p>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <sc-for list="{{ keywordGroups }}" as="g" hint-placeholder-count="2">
@@ -478,6 +773,8 @@ class Component extends DCLogic {
     {key:'archived',label:'Archived',c:'--c-archive'}
   ];
   static SITES = ['Indeed','LinkedIn','Glassdoor','ZipRecruiter','Google'];
+  static COUNTRIES = ['USA','UK','Canada','Australia','India','Germany','France','Netherlands','Ireland','Singapore'];
+  static JOB_TYPES = [['','Any'],['fulltime','Full-time'],['internship','Internship'],['contract','Contract'],['parttime','Part-time']];
   static SITE_COLORS = {LinkedIn:'#0A66C2',Indeed:'#2557A7',Glassdoor:'#0CAA41',ZipRecruiter:'#3A7D34',Google:'#EA4335'};
   // Map config-site keys (and DB site strings) <-> display labels used in the UI.
   static SITE_KEY_TO_LABEL = {indeed:'Indeed',linkedin:'LinkedIn',glassdoor:'Glassdoor',zip_recruiter:'ZipRecruiter',google:'Google'};
@@ -493,11 +790,21 @@ class Component extends DCLogic {
     this.state = {
       theme:'editorial', tab, sidebarOpen:true, search:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null,
+      sortByMatch:false, analyzing:false,
       terms:['Software Engineer'], location:'Remote', ageIndex:0,
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
       groups:[], maxResults:25, useLLM:true,
+      countries:{USA:true}, jobType:'', genBusy:false,
       termDraft:'', groupDrafts:{},
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false,
+      // ---- Profile panel ----
+      profileOpen:false, pfBusy:false, pfStatus:'',
+      profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],resume_text:'',source_filename:'',exists:false},
+      pfSkillDraft:'', pfTitleDraft:'', pfGroupDrafts:{},
+      // ---- Options panel ----
+      optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
+      llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
+      runtime:{enable_analysis:true,enable_llm_rerank:false,enable_llm_skills:false,embed_workers:4,embed_batch_size:32,linkedin_workers:4,linkedin_delay:0.5,llm_workers:4,top_n_llm:10,weights:{semantic:0.5,bm25:0.2,keyword:0.15,skill:0.15}},
       jobs:[], loading:true
     };
     this.dragId=null;
@@ -509,7 +816,7 @@ class Component extends DCLogic {
   // ---------- API: reads ----------
   async loadJobs(){
     try{
-      const res = await fetch('/api/jobs');
+      const res = await fetch('/api/jobs?with_analysis=1');
       if(!res.ok) throw new Error('HTTP '+res.status);
       const data = await res.json();
       this.setState({jobs:Array.isArray(data)?data.map(j=>this.mapDbJob(j)):[], loading:false});
@@ -543,11 +850,14 @@ class Component extends DCLogic {
   }
   mapDbJob(j){
     const statuses=Array.isArray(j.statuses)?j.statuses:[];
+    const analysis=j.analysis||null;
+    const match=(analysis && typeof analysis.rag_score==='number')?Math.round(analysis.rag_score*100):null;
     return {
       id:j.id, title:j.title||'', company:j.company||'', location:j.location||'',
       compensation:j.compensation||'Not specified', site:this.siteLabel(j.site),
       link:j.link||'', description:j.description||'', ignore:j.ignore?1:0,
       daysAgo:this.daysAgoFrom(j.created_at),
+      analysis, match,
       statuses, applied:this.deriveApplied({statuses}), column:this.deriveColumn({statuses})
     };
   }
@@ -655,14 +965,19 @@ class Component extends DCLogic {
       const sitesObj={}; Component.SITES.forEach(l=>{ sitesObj[l]=false; });
       (c.sites||[]).forEach(k=>{ const l=Component.SITE_KEY_TO_LABEL[String(k).toLowerCase()]; if(l) sitesObj[l]=true; });
       if(!(c.sites||[]).length){ Component.SITES.forEach(l=>{ sitesObj[l]=this.state.sites[l]; }); }
+      const countriesObj={};
+      if(Array.isArray(c.countries)&&c.countries.length){ c.countries.forEach(cn=>{ countriesObj[cn]=true; }); }
+      else { Object.assign(countriesObj, this.state.countries); }
       this.setState({
         terms:terms.slice(), groups,
         location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
         ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
+        countries:countriesObj, jobType:c.job_type||'',
         useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
       });
     }catch(e){ console.error('config load failed', e); }
   }
+  countriesToConfig(){ return Object.keys(this.state.countries).filter(k=>this.state.countries[k]); }
   configToSave(){
     const s=this.state;
     return Object.assign({}, this._loadedConfig||{}, {
@@ -672,8 +987,28 @@ class Component extends DCLogic {
       hours_old:Component.AGE_HOURS[s.ageIndex],
       results_wanted:s.maxResults,
       location:s.location.trim(),
+      countries:this.countriesToConfig(),
+      job_type:s.jobType||null,
       use_llm:s.useLLM
     });
+  }
+  // LLM-generate search terms + AND/OR keyword groups + job type for the Find modal.
+  genKeywords(){
+    if(this.state.genBusy) return;
+    this.setState({genBusy:true});
+    fetch('/api/recommend/keywords',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(r=>r.json())
+      .then(d=>{
+        this.setState({genBusy:false});
+        if(!d.success){ this.showToast(d.message||'Keyword generation failed'); return; }
+        const patch={};
+        if(Array.isArray(d.search_terms)&&d.search_terms.length) patch.terms=d.search_terms.slice();
+        if(Array.isArray(d.keyword_groups)&&d.keyword_groups.length) patch.groups=d.keyword_groups.map(g=>(g.terms||[]).slice());
+        if(d.job_type) patch.jobType=d.job_type;
+        this.setState(patch);
+        this.showToast('Generated keywords from your profile');
+      })
+      .catch(e=>{ console.error(e); this.setState({genBusy:false}); this.showToast('Keyword generation failed'); });
   }
   formatStage(stage){
     if(!stage) return 'Processing…';
@@ -730,11 +1065,115 @@ class Component extends DCLogic {
   closeFind(){ clearInterval(this._scr); clearInterval(this._poll); this.setState({findOpen:false,findView:'config',scrapeDone:false}); }
   viewNewJobs(){ this.closeFind(); this.setState({tab:'newjobs'}); }
 
+  // ---------- recommendation analysis ----------
+  analyzeJobs(){
+    if(this.state.analyzing) return;
+    this.setState({analyzing:true});
+    this.showToast('Scoring jobs against your profile…');
+    fetch('/api/recommend/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(r=>r.json())
+      .then(d=>{
+        this.setState({analyzing:false});
+        if(d.success){ this.showToast('Analyzed '+(d.analyzed||0)+' jobs'); this.setState({sortByMatch:true}); this.loadJobs(); }
+        else { this.showToast(d.message||'Analysis failed'); }
+      })
+      .catch(e=>{ console.error(e); this.setState({analyzing:false}); this.showToast('Analysis failed'); });
+  }
+
+  // ---------- profile panel (real API) ----------
+  openProfile(){ this.setState({profileOpen:true,pfStatus:''}); this.loadProfile(); }
+  closeProfile(){ this.setState({profileOpen:false}); }
+  async loadProfile(){
+    try{
+      const r=await fetch('/api/profile'); const d=await r.json();
+      this.setState({profile:{
+        interests_paragraph:d.interests_paragraph||'', skills:d.skills||[], job_titles:d.job_titles||[],
+        keyword_groups:Array.isArray(d.keyword_groups)?d.keyword_groups:[],
+        resume_text:d.resume_text||'', source_filename:d.source_filename||'', exists:!!d.exists
+      }});
+    }catch(e){ console.error('profile load failed', e); this.showToast('Could not load profile'); }
+  }
+  pfSet(patch){ this.setState(st=>({profile:Object.assign({},st.profile,patch)})); }
+  onResumeFile(e){
+    const file=e.target.files && e.target.files[0]; if(!file) return;
+    const fd=new FormData(); fd.append('file',file);
+    this.setState({pfBusy:true,pfStatus:'Reading résumé…'});
+    fetch('/api/profile/upload',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
+      if(!d.success){ this.setState({pfBusy:false,pfStatus:d.message||'Upload failed'}); return; }
+      const p=d.profile||{};
+      this.setState(st=>({
+        profile:Object.assign({},st.profile,{
+          interests_paragraph:p.interests_paragraph||st.profile.interests_paragraph,
+          skills:(p.skills&&p.skills.length)?p.skills:st.profile.skills,
+          job_titles:(p.job_titles&&p.job_titles.length)?p.job_titles:st.profile.job_titles,
+          keyword_groups:(p.keyword_groups&&p.keyword_groups.length)?p.keyword_groups:st.profile.keyword_groups,
+          resume_text:d.resume_text||'', source_filename:d.source_filename||''
+        }),
+        pfBusy:false,
+        pfStatus: d.llm_used ? 'Drafted from résumé — review & save.' : (d.llm_error? ('LLM off ('+d.llm_error+') — fill in manually.') : 'Résumé read — enable the LLM in Options to auto-draft.')
+      }));
+    }).catch(err=>{ console.error(err); this.setState({pfBusy:false,pfStatus:'Upload failed'}); });
+  }
+  rebuildProfile(){
+    const text=this.state.profile.resume_text; if(!text){ this.showToast('Upload a résumé first'); return; }
+    this.setState({pfBusy:true,pfStatus:'Rebuilding from résumé…'});
+    fetch('/api/profile/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resume_text:text})})
+      .then(r=>r.json()).then(d=>{
+        if(!d.success){ this.setState({pfBusy:false,pfStatus:d.message||'Rebuild failed — is the LLM enabled?'}); return; }
+        const p=d.profile||{};
+        this.setState(st=>({profile:Object.assign({},st.profile,{interests_paragraph:p.interests_paragraph,skills:p.skills,job_titles:p.job_titles,keyword_groups:p.keyword_groups}),pfBusy:false,pfStatus:'Rebuilt — review & save.'}));
+      }).catch(e=>{ console.error(e); this.setState({pfBusy:false,pfStatus:'Rebuild failed'}); });
+  }
+  saveProfile(){
+    const p=this.state.profile;
+    const body={interests_paragraph:p.interests_paragraph||'',skills:p.skills||[],job_titles:p.job_titles||[],keyword_groups:p.keyword_groups||[],resume_text:p.resume_text||'',source_filename:p.source_filename||''};
+    this.setState({pfBusy:true});
+    fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(r=>r.json()).then(()=>{ this.setState(st=>({pfBusy:false,pfStatus:'Saved.',profile:Object.assign({},st.profile,{exists:true})})); this.showToast('Profile saved'); })
+      .catch(e=>{ console.error(e); this.setState({pfBusy:false}); this.showToast('Could not save profile'); });
+  }
+
+  // ---------- options panel (real API) ----------
+  openOptions(){ this.setState({optionsOpen:true,optStatus:'',llmTest:null}); this.loadOptions(); }
+  closeOptions(){ this.setState({optionsOpen:false}); }
+  async loadOptions(){
+    try{
+      const [lr,rr]=await Promise.all([fetch('/api/options/llm'),fetch('/api/options/runtime')]);
+      const llm=await lr.json(); const runtime=await rr.json();
+      this.setState({llm:Object.assign({},this.state.llm,llm),runtime:Object.assign({},this.state.runtime,runtime,{weights:Object.assign({},this.state.runtime.weights,runtime.weights||{})})});
+    }catch(e){ console.error('options load failed', e); this.showToast('Could not load options'); }
+  }
+  llmSet(patch){ this.setState(st=>({llm:Object.assign({},st.llm,patch)})); }
+  rtSet(patch){ this.setState(st=>({runtime:Object.assign({},st.runtime,patch)})); }
+  rtWeightSet(key,val){ this.setState(st=>({runtime:Object.assign({},st.runtime,{weights:Object.assign({},st.runtime.weights,{[key]:val})})})); }
+  saveLlmOptions(){
+    this.setState({optBusy:true});
+    fetch('/api/options/llm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.state.llm)})
+      .then(r=>r.json()).then(()=>{ this.setState({optBusy:false,optStatus:'LLM endpoint saved.'}); this.showToast('LLM endpoint saved'); })
+      .catch(e=>{ console.error(e); this.setState({optBusy:false}); this.showToast('Could not save LLM config'); });
+  }
+  testLlmOptions(){
+    this.setState({optBusy:true,llmTest:null,optStatus:'Testing connection…'});
+    fetch('/api/options/llm/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.state.llm)})
+      .then(r=>r.json()).then(d=>{ this.setState({optBusy:false,llmTest:d,optStatus:d.ok?'Connection OK.':('Failed: '+(d.error||'unknown'))}); })
+      .catch(e=>{ console.error(e); this.setState({optBusy:false,llmTest:{ok:false,error:String(e)},optStatus:'Test failed'}); });
+  }
+  saveRuntimeOptions(){
+    this.setState({optBusy:true});
+    fetch('/api/options/runtime',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.state.runtime)})
+      .then(r=>r.json()).then(()=>{ this.setState({optBusy:false,optStatus:'Runtime settings saved.'}); this.showToast('Runtime settings saved'); })
+      .catch(e=>{ console.error(e); this.setState({optBusy:false}); this.showToast('Could not save runtime settings'); });
+  }
+
   decorate(j){
     const sc=Component.SITE_COLORS[j.site]||'#888';
     const av=(sz)=>({width:sz+'px',height:sz+'px',flex:'0 0 auto',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:(sz>40?'12px':'9px'),background:'var(--surface2)',border:'var(--bw) solid var(--border)',font:'700 '+(sz>40?16:13)+'px/1 var(--font-head)',color:'var(--text)'});
     const stop=(e)=>{ e.stopPropagation(); };
+    const mc=(j.match==null)?'var(--muted)':(j.match>=66?'var(--c-offer-text)':(j.match>=40?'var(--accent-text)':'var(--c-archive)'));
     return Object.assign({},j,{
+      hasMatch:j.match!=null,
+      matchLabel:(j.match==null?'':j.match+'% match'),
+      matchBadge:'font:700 11px/1 var(--font-mono);color:'+mc+';background:var(--bg);border:var(--bw) solid '+mc+';padding:5px 8px;border-radius:7px;white-space:nowrap',
       initials:(j.company||'?').slice(0,2).toUpperCase(),
       ago:this.ago(j.daysAgo),
       shortDesc:this.plain(j.description),
@@ -785,7 +1224,11 @@ class Component extends DCLogic {
 
     // new jobs grid
     const all=s.jobs.filter(j=>!j.applied&&this.matchSearch(j));
-    const visible=all.filter(j=>s.showIgnored||!j.ignore);
+    const visibleUnsorted=all.filter(j=>s.showIgnored||!j.ignore);
+    const visible=s.sortByMatch
+      ? visibleUnsorted.slice().sort((a,b)=>((b.match==null?-1:b.match)-(a.match==null?-1:a.match)))
+      : visibleUnsorted;
+    const anyMatches=all.some(j=>j.match!=null);
     const PAGE=50; const page=s.page; const start=page*PAGE;
     const gridJobs=visible.slice(start,start+PAGE).map(j=>this.decorate(j));
     const hasIgnored=all.some(j=>j.ignore);
@@ -806,6 +1249,28 @@ class Component extends DCLogic {
           label:'font:'+(checked?'600':'400')+' 14px/1 var(--font-body);color:'+(checked?'var(--text)':'var(--muted)')};
       });
       d.descNodes=this.fmtNodes(sj.description);
+      // recommendation breakdown
+      const an=sj.analysis||null;
+      d.hasAnalysis=!!an;
+      if(an){
+        const sm=an.skill_match||{};
+        d.skillMatched=(sm.matched||[]).map(x=>({label:x}));
+        d.skillMissing=(sm.missing||[]).map(x=>({label:x}));
+        d.hasSkillMatched=(sm.matched||[]).length>0;
+        d.hasSkillMissing=(sm.missing||[]).length>0;
+        d.keywordHits=Object.keys(an.keyword_group_hits||{}).map(label=>({label,terms:(an.keyword_group_hits[label]||[]).join(', ')}));
+        d.hasKeywordHits=d.keywordHits.length>0;
+        const pct=(v)=>Math.round((v||0)*100);
+        d.scoreBars=[
+          {label:'Semantic',pct:pct(an.semantic_score),bar:'height:6px;border-radius:99px;background:var(--accent);width:'+pct(an.semantic_score)+'%'},
+          {label:'Keyword',pct:pct(an.keyword_score),bar:'height:6px;border-radius:99px;background:var(--accent2);width:'+pct(an.keyword_score)+'%'},
+          {label:'BM25',pct:pct(an.bm25_score),bar:'height:6px;border-radius:99px;background:var(--c-applied);width:'+pct(an.bm25_score)+'%'},
+          {label:'Skills',pct:pct(an.skill_score),bar:'height:6px;border-radius:99px;background:var(--c-offer);width:'+pct(an.skill_score)+'%'},
+        ];
+        d.llmRationale=an.llm_rationale||'';
+        d.hasLlmRationale=!!an.llm_rationale;
+        d.matchColor=(d.match>=66?'var(--c-offer-text)':(d.match>=40?'var(--accent-text)':'var(--c-archive)'));
+      }
       selectedJob=d;
     }
 
@@ -824,9 +1289,40 @@ class Component extends DCLogic {
       onKey:(e)=>{ const v=(s.groupDrafts[gi]||'').trim(); if(e.key==='Enter'&&v){ e.preventDefault(); this.setState(st=>({groups:st.groups.map((gr,k)=>k===gi?gr.concat(v):gr),groupDrafts:Object.assign({},st.groupDrafts,{[gi]:''})})); } },
       onRemove:()=>this.setState(st=>({groups:st.groups.filter((_,k)=>k!==gi)}))
     }));
+    const countryList=Component.COUNTRIES.map(name=>{ const on=!!s.countries[name];
+      return {name,onToggle:()=>this.setState(st=>({countries:Object.assign({},st.countries,{[name]:!st.countries[name]})})),
+        style:'display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent)':'var(--border)')+';background:'+(on?'color-mix(in srgb,var(--accent) 14%,transparent)':'var(--bg)')+';color:var(--text)',
+        check:'width:13px;height:13px;border-radius:4px;flex:0 0 auto;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent')};
+    });
+    const jobTypeList=Component.JOB_TYPES.map(([val,label])=>{ const on=s.jobType===val;
+      return {val,label,onSelect:()=>this.setState({jobType:val}),
+        style:'padding:7px 12px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent2)':'var(--border)')+';background:'+(on?'var(--accent2)':'var(--bg)')+';color:'+(on?'#fff':'var(--text)')};
+    });
     const rangeStyle='width:100%;height:6px;-webkit-appearance:none;appearance:none;border-radius:99px;background:var(--border2);outline:none;accent-color:var(--accent);cursor:pointer';
     const ringC=2*Math.PI*64;
     const scrapeStats=[{label:'Jobs Found',value:s.found,color:'var(--accent-text)'},{label:'Jobs Saved',value:s.saved,color:'var(--c-applied)'},{label:'Not Hidden',value:s.notHidden,color:'var(--c-offer-text)'}];
+
+    // ---- profile panel ----
+    const pf=s.profile;
+    const addPfTag=(field,draftKey,val)=>{ const v=(val||'').trim(); if(!v) return; this.pfSet({[field]:(pf[field]||[]).concat(v)}); this.setState({[draftKey]:''}); };
+    const pfSkills=(pf.skills||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({skills:pf.skills.filter((_,k)=>k!==i)})}));
+    const pfTitles=(pf.job_titles||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({job_titles:pf.job_titles.filter((_,k)=>k!==i)})}));
+    const pfGroups=(pf.keyword_groups||[]).map((g,gi)=>({
+      label:g.label||'',
+      onLabel:(e)=>{ const v=e.target.value; this.pfSet({keyword_groups:pf.keyword_groups.map((gr,k)=>k===gi?Object.assign({},gr,{label:v}):gr)}); },
+      tags:(g.terms||[]).map((t,ti)=>({label:t,onRemove:()=>this.pfSet({keyword_groups:pf.keyword_groups.map((gr,k)=>k===gi?Object.assign({},gr,{terms:gr.terms.filter((_,m)=>m!==ti)}):gr)})})),
+      draft:s.pfGroupDrafts[gi]||'',
+      onDraft:(e)=>{ const v=e.target.value; this.setState(st=>({pfGroupDrafts:Object.assign({},st.pfGroupDrafts,{[gi]:v})})); },
+      onKey:(e)=>{ const v=(s.pfGroupDrafts[gi]||'').trim(); if(e.key==='Enter'&&v){ e.preventDefault(); this.pfSet({keyword_groups:pf.keyword_groups.map((gr,k)=>k===gi?Object.assign({},gr,{terms:(gr.terms||[]).concat(v)}):gr)}); this.setState(st=>({pfGroupDrafts:Object.assign({},st.pfGroupDrafts,{[gi]:''})})); } },
+      onRemove:()=>this.pfSet({keyword_groups:pf.keyword_groups.filter((_,k)=>k!==gi)})
+    }));
+
+    // ---- options panel ----
+    const llm=s.llm; const rt=s.runtime; const w=rt.weights||{};
+    const secBtn='display:flex;align-items:center;gap:8px;padding:0 16px;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer';
+    const tabStyle=(on)=>'flex:1;padding:11px 0;border:none;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);background:'+(on?'var(--surface2)':'transparent')+';color:'+(on?'var(--text)':'var(--muted)');
+    const toggleRow=(on)=>'display:flex;align-items:center;gap:11px;width:100%;padding:13px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;border:var(--bw) solid '+(on?'var(--accent)':'var(--border)');
+    const toggleChk=(on)=>'width:20px;height:20px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent');
 
     return {
       rootStyle, toast:s.toast,
@@ -845,6 +1341,13 @@ class Component extends DCLogic {
       hasIgnored, showIgnoredLabel:s.showIgnored?'Hide Ignored':'Show Ignored ('+all.filter(j=>j.ignore).length+')',
       toggleShowIgnored:()=>this.setState(st=>({showIgnored:!st.showIgnored})),
       showIgnoredStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.showIgnored?'var(--surface2)':'transparent'),
+      analyzeJobs:()=>this.analyzeJobs(),
+      analyzeLabel:s.analyzing?'Analyzing…':'Analyze matches',
+      analyzeStyle:'display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--r-sm);cursor:'+(s.analyzing?'default':'pointer')+';font:600 13px/1 var(--font-body);border:none;color:var(--accent-ink);background:var(--accent);opacity:'+(s.analyzing?'.6':'1'),
+      anyMatches, sortByMatch:s.sortByMatch,
+      toggleSort:()=>this.setState(st=>({sortByMatch:!st.sortByMatch,page:0})),
+      sortLabel:s.sortByMatch?'Sort: Match':'Sort: Newest',
+      sortStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.sortByMatch?'var(--surface2)':'transparent'),
       showPager:visible.length>PAGE, prevPage:()=>this.setState(st=>({page:Math.max(0,st.page-1)})), nextPage:()=>this.setState(st=>({page:Math.min(totalPages-1,st.page+1)})),
       pagerLabel:'Page '+(page+1)+' / '+totalPages,
 
@@ -857,6 +1360,9 @@ class Component extends DCLogic {
       maxResults:s.maxResults, onMax:(e)=>this.setState({maxResults:+e.target.value}),
       ageIndex:s.ageIndex, ageLabel:Component.AGES[s.ageIndex], onAge:(e)=>this.setState({ageIndex:+e.target.value}),
       siteList, keywordGroups, addGroup:()=>this.setState(st=>({groups:st.groups.concat([[]])})),
+      countryList, jobTypeList,
+      genKeywords:()=>this.genKeywords(), genKeywordsLabel:s.genBusy?'Generating…':'Generate (LLM)',
+      genKeywordsStyle:'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;cursor:'+(s.genBusy?'default':'pointer')+';font:600 11px/1 var(--font-body);border:var(--bw) solid var(--accent2);background:transparent;color:var(--accent2);text-transform:none;letter-spacing:0;opacity:'+(s.genBusy?'.6':'1'),
       useLLM:s.useLLM, toggleLLM:()=>this.setState(st=>({useLLM:!st.useLLM})),
       llmRow:'display:flex;align-items:flex-start;gap:13px;padding:15px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;border:var(--bw) solid '+(s.useLLM?'var(--accent)':'var(--border)'),
       llmCheck:'width:22px;height:22px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-top:1px;border:2px solid '+(s.useLLM?'var(--accent)':'var(--border2)')+';background:'+(s.useLLM?'var(--accent)':'transparent'),
@@ -864,7 +1370,52 @@ class Component extends DCLogic {
 
       percent:s.percent, stage:s.stage, statusMsg:s.statusMsg,
       ringDash:(ringC*s.percent/100)+' '+ringC,
-      scrapeStats, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs()
+      scrapeStats, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs(),
+
+      // ---- header buttons ----
+      openProfile:()=>this.openProfile(), profileBtnStyle:secBtn,
+      openOptions:()=>this.openOptions(), optionsBtnStyle:secBtn,
+
+      // ---- profile panel ----
+      profileOpen:s.profileOpen, closeProfile:()=>this.closeProfile(),
+      pfBusy:s.pfBusy, pfStatus:s.pfStatus, profileExists:pf.exists,
+      pfResumeName:pf.source_filename||'', hasResumeText:!!pf.resume_text,
+      onResumeFile:(e)=>this.onResumeFile(e), rebuildProfile:()=>this.rebuildProfile(), saveProfile:()=>this.saveProfile(),
+      pfInterests:pf.interests_paragraph||'', onPfInterests:(e)=>this.pfSet({interests_paragraph:e.target.value}),
+      pfSkills, pfSkillDraft:s.pfSkillDraft, onPfSkillDraft:(e)=>this.setState({pfSkillDraft:e.target.value}),
+      onPfSkillKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('skills','pfSkillDraft',s.pfSkillDraft); } },
+      pfTitles, pfTitleDraft:s.pfTitleDraft, onPfTitleDraft:(e)=>this.setState({pfTitleDraft:e.target.value}),
+      onPfTitleKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('job_titles','pfTitleDraft',s.pfTitleDraft); } },
+      pfGroups, addPfGroup:()=>this.pfSet({keyword_groups:(pf.keyword_groups||[]).concat([{label:'',terms:[]}])}),
+
+      // ---- options panel ----
+      optionsOpen:s.optionsOpen, closeOptions:()=>this.closeOptions(),
+      optTabLlm:s.optionsTab==='llm', optTabRuntime:s.optionsTab==='runtime',
+      setOptTabLlm:()=>this.setState({optionsTab:'llm'}), setOptTabRuntime:()=>this.setState({optionsTab:'runtime'}),
+      optLlmTabStyle:tabStyle(s.optionsTab==='llm'), optRtTabStyle:tabStyle(s.optionsTab==='runtime'),
+      optBusy:s.optBusy, optStatus:s.optStatus,
+      llmEnabled:llm.enabled, toggleLlmEnabled:()=>this.llmSet({enabled:!llm.enabled}),
+      llmEnabledRow:toggleRow(llm.enabled), llmEnabledChk:toggleChk(llm.enabled),
+      llmBaseUrl:llm.base_url, onLlmBaseUrl:(e)=>this.llmSet({base_url:e.target.value}),
+      llmApiKey:llm.api_key, onLlmApiKey:(e)=>this.llmSet({api_key:e.target.value}),
+      llmModel:llm.model, onLlmModel:(e)=>this.llmSet({model:e.target.value}),
+      llmTemp:llm.temperature, onLlmTemp:(e)=>this.llmSet({temperature:+e.target.value}),
+      llmMaxTokens:llm.max_tokens, onLlmMaxTokens:(e)=>this.llmSet({max_tokens:+e.target.value}),
+      saveLlmOptions:()=>this.saveLlmOptions(), testLlmOptions:()=>this.testLlmOptions(),
+      llmTestText: s.llmTest ? (s.llmTest.ok?('Connected'+(s.llmTest.sample?(' · reply: '+s.llmTest.sample):'')):('Failed: '+(s.llmTest.error||'unknown'))) : '',
+      llmTestColor: s.llmTest ? (s.llmTest.ok?'var(--c-offer-text)':'#E5484D') : 'var(--muted)',
+      rtEnableAnalysis:rt.enable_analysis, toggleRtAnalysis:()=>this.rtSet({enable_analysis:!rt.enable_analysis}), rtAnalysisRow:toggleRow(rt.enable_analysis), rtAnalysisChk:toggleChk(rt.enable_analysis),
+      rtEnableRerank:rt.enable_llm_rerank, toggleRtRerank:()=>this.rtSet({enable_llm_rerank:!rt.enable_llm_rerank}), rtRerankRow:toggleRow(rt.enable_llm_rerank), rtRerankChk:toggleChk(rt.enable_llm_rerank),
+      rtEnableLlmSkills:rt.enable_llm_skills, toggleRtLlmSkills:()=>this.rtSet({enable_llm_skills:!rt.enable_llm_skills}), rtLlmSkillsRow:toggleRow(rt.enable_llm_skills), rtLlmSkillsChk:toggleChk(rt.enable_llm_skills),
+      rtEmbedWorkers:rt.embed_workers, onRtEmbedWorkers:(e)=>this.rtSet({embed_workers:+e.target.value}),
+      rtLinkedinWorkers:rt.linkedin_workers, onRtLinkedinWorkers:(e)=>this.rtSet({linkedin_workers:+e.target.value}),
+      rtLlmWorkers:rt.llm_workers, onRtLlmWorkers:(e)=>this.rtSet({llm_workers:+e.target.value}),
+      rtTopN:rt.top_n_llm, onRtTopN:(e)=>this.rtSet({top_n_llm:+e.target.value}),
+      wSemantic:w.semantic, onWSemantic:(e)=>this.rtWeightSet('semantic',+e.target.value),
+      wBm25:w.bm25, onWBm25:(e)=>this.rtWeightSet('bm25',+e.target.value),
+      wKeyword:w.keyword, onWKeyword:(e)=>this.rtWeightSet('keyword',+e.target.value),
+      wSkill:w.skill, onWSkill:(e)=>this.rtWeightSet('skill',+e.target.value),
+      saveRuntimeOptions:()=>this.saveRuntimeOptions()
     };
   }
   openFind(){ this.openFindAndLoad(); }

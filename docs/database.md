@@ -63,6 +63,55 @@ Tracks the progression of applications through various interview and decision st
 - Each `job_id` will have exactly 9 application status records (one for each status value)
 - Records are only created for jobs where `jobs.ignore` = 0
 - Jobs with `jobs.ignore` = 1 will never have corresponding records in this table
+
+---
+
+### 3. Profiles Table (recommendation system)
+Stores user profiles built from a resume; the active profile is the comparison target for RAG + LLM scoring.
+
+**Table Name**: `profiles`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `name` (String(120), Not Null, default `"default"`) - human label
+- `is_active` (Integer, default 0) - 1 for the single active profile used for scoring
+- `source_filename` (String(512), Nullable) - original resume filename (pdf/tex/md)
+- `resume_text` (Text, Nullable) - extracted plain text of the resume
+- `interests_paragraph` (Text, Nullable) - open-body interests paragraph (LLM matching)
+- `skills` (JSON, Nullable) - list of skill strings
+- `job_titles` (JSON, Nullable) - list of search-query job titles
+- `keyword_groups` (JSON, Nullable) - list of `{label, terms:[...]}`; **AND across groups, OR within a group** (same convention as `utils/backend/scrapers/job_filter`)
+- `created_at` / `updated_at` (DateTime)
+
+**Invariant**: at most one profile has `is_active=1` (enforced by `set_active_profile` / `upsert_active_profile` in `operations.py`). Index: `idx_profiles_active`.
+
+---
+
+### 4. Job Analyses Table (recommendation system)
+Per-job recommendation artifacts, **1:1 with `jobs`**. The embedding is profile-independent and computed once on retrieval; the scores are computed against `profile_id` and overwritten on re-analysis.
+
+**Table Name**: `job_analyses`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `job_id` (Integer, FK → `jobs.id` ON DELETE CASCADE, **unique** → 1:1)
+- `profile_id` (Integer, FK → `profiles.id` ON DELETE SET NULL, Nullable)
+- `embedding` (LargeBinary, Nullable) - packed float32 bytes of the bge-small-en-v1.5 vector
+- `embedding_dim` (Integer, Nullable) - 384 for bge-small-en-v1.5
+- `extracted_skills` (JSON, Nullable) - skills found in the job description
+- `semantic_score` / `bm25_score` / `keyword_score` / `skill_score` (Float, Nullable) - component signals
+- `rag_score` (Float, Nullable) - combined hybrid relevance (0..1)
+- `keyword_group_hits` (JSON, Nullable) - `{group_label: [matched terms]}`
+- `skill_match` (JSON, Nullable) - `{matched:[...], missing:[...]}`
+- `llm_score` (Float, Nullable) - optional LLM verdict (0..100)
+- `llm_rationale` (Text, Nullable) - optional LLM explanation
+- `analyzed_at` (DateTime)
+
+**Relationship Rules**:
+- Deleting a `Job` cascades to its `JobAnalysis` (ORM-level cascade via the `Job.analysis` backref).
+- Indexes: `idx_job_analyses_job_id` (unique), `idx_job_analyses_profile_id`, `idx_job_analyses_rag_score`.
+
+> Both tables are created by `Base.metadata.create_all()` in `init_db.init_database()`; no destructive migration is required since they are new tables.
 - The `checked` field enables tracking which milestones have been reached
 - The `date_reached` field stores when a milestone transitioned from 0 to 1
 

@@ -50,6 +50,41 @@ The client loads partials (`header`, `mobile-nav`, `sidebar`, `new-jobs`, `track
 | `/api/server/stop` | POST | Stop the local LLM server |
 | `/api/server/status` | GET | Local LLM server status |
 
+> Note: `llm_bp` manages the **bundled local llama-server** (model downloads, GPU detection, start/stop). The recommendation features instead talk to a configurable **OpenAI-compatible endpoint** via the Options API below — which may point at the local server or any remote API.
+
+## Options API (`options_bp`)
+
+Configures the recommendation system. Config is stored in gitignored JSON (`config/llm_endpoint_config.json`, `config/runtime_config.json`).
+
+| Path | Method | Purpose |
+| --- | --- | --- |
+| `/api/options/llm` | GET / POST | Get / save the OpenAI-compatible endpoint config (base_url, api_key, model, temperature, max_tokens, timeout, enabled) |
+| `/api/options/llm/test` | POST | Probe the endpoint (uses posted config if given, else saved); returns `{ok, ...}` |
+| `/api/options/runtime` | GET / POST | Get / save runtime knobs (parallel worker counts, analysis toggles, score weights, top_n_llm) |
+
+## Profile API (`profile_bp`)
+
+Builds/edits the active recommendation profile (see `docs/profile.md`).
+
+| Path | Method | Purpose |
+| --- | --- | --- |
+| `/api/profile` | GET | Load the active profile (or an empty skeleton with `exists:false`) |
+| `/api/profile` | POST | Upsert the active profile from edited fields |
+| `/api/profile/upload` | POST | Upload a résumé (PDF/.tex/.md), extract text, return an LLM-drafted (or empty) profile — not persisted |
+| `/api/profile/build` | POST | Rebuild a draft from stored `resume_text` (requires the LLM) |
+
+## Recommend API (`recommend_bp`)
+
+RAG scoring of jobs against the active profile (see `docs/recommendation.md`).
+
+| Path | Method | Purpose |
+| --- | --- | --- |
+| `/api/recommend/analyze` | POST | Embed + score jobs against the active profile (body: optional `{job_ids}`); persists `JobAnalysis` |
+| `/api/recommend/report` | GET | Jobs ranked by `rag_score` (query: `limit`, `include_ignored`) |
+| `/api/recommend/keywords` | POST | LLM-generate search terms + AND/OR keyword groups + job type (body: optional `{seed}`; falls back to the active profile) |
+
+`GET /api/jobs?with_analysis=1` attaches each job's analysis under an `analysis` key.
+
 ## UI States (per view)
 
 - **New Jobs grid:** loading (scrape in progress), empty (no jobs / all ignored), populated, error (API failure).

@@ -105,7 +105,11 @@ def execute_full_scraping_workflow(
         if location is None:
             location = config.get('location', '')
             location = location if location else None
-        
+
+        # Multi-country + job-type (from config; empty -> single default country)
+        countries = config.get('countries') or []
+        job_type = config.get('job_type') or None
+
         if not search_terms:
             logger.warning("No search terms provided. Workflow aborted.")
             results['errors'].append("No search terms provided")
@@ -120,7 +124,9 @@ def execute_full_scraping_workflow(
             'sites': sites,
             'results_wanted': results_wanted,
             'hours_old': hours_old,
-            'location': location
+            'location': location,
+            'countries': countries,
+            'job_type': job_type
         }
         
         logger.info(f"  Search terms: {search_terms}")
@@ -141,13 +147,15 @@ def execute_full_scraping_workflow(
 
         # Note: JobSpyScraper takes 'job_titles' argument but we pass search_terms
         scraper = JobSpyScraper(
-            job_titles=search_terms, 
+            job_titles=search_terms,
             sites=sites,
             results_wanted=results_wanted,
             hours_old=hours_old,
             country_indeed=DEFAULT_COUNTRY,
             location=location,
-            progress_callback=scraper_progress_handler
+            progress_callback=scraper_progress_handler,
+            countries=countries,
+            job_type=job_type
         )
         
         scraper.run()
@@ -291,6 +299,24 @@ def execute_full_scraping_workflow(
             }
             logger.info(f"  Kept {len(filter_results['kept'])}, ignored {len(filter_results['ignored'])}")
         
+        # Step 6: Recommendation analysis (RAG) — embed + score new jobs against the
+        # active profile. Optional and non-fatal (e.g. the embedding model may be
+        # unavailable offline); gated by runtime config + an existing profile.
+        if save_to_database and job_ids:
+            try:
+                from ..recommend.runtime_config import get_runtime_config
+                from ..database.operations import get_active_profile
+                runtime_cfg = get_runtime_config()
+                if runtime_cfg.get('enable_analysis') and get_active_profile() is not None:
+                    update_progress('analyzing', 97, {'message': 'Scoring against your profile...'})
+                    from ..recommend.service import analyze_jobs
+                    analysis_result = analyze_jobs(job_ids=job_ids, runtime=runtime_cfg)
+                    results['steps']['analysis'] = {'analyzed': analysis_result.get('analyzed', 0)}
+                    logger.info(f"  Analyzed {analysis_result.get('analyzed', 0)} jobs against profile")
+            except Exception as e:
+                logger.error(f"Analysis step failed (non-fatal): {e}")
+                results['errors'].append(f"Analysis error: {e}")
+
         results['success'] = True
         update_progress('completed', 100, {
             'message': 'Completed',

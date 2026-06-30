@@ -12,7 +12,10 @@ Usage:
 
 import re
 import time
+import random
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 
 import requests
@@ -21,8 +24,26 @@ from bs4 import BeautifulSoup
 from .scraper_config import (
     LINKEDIN_GUEST_API_URL,
     LINKEDIN_FETCH_DELAY,
-    LINKEDIN_REQUEST_TIMEOUT
+    LINKEDIN_REQUEST_TIMEOUT,
+    LINKEDIN_DEFAULT_WORKERS,
 )
+
+
+def _resolve_fetch_settings(max_workers, delay):
+    """Resolve (max_workers, delay) from args, else runtime_config, else scraper_config."""
+    if max_workers is None or delay is None:
+        try:
+            from utils.backend.recommend.runtime_config import get_runtime_config
+            rc = get_runtime_config()
+            if max_workers is None:
+                max_workers = rc.get("linkedin_workers")
+            if delay is None:
+                delay = rc.get("linkedin_delay")
+        except Exception:  # pragma: no cover - config optional
+            pass
+    max_workers = max(1, int(max_workers if max_workers else LINKEDIN_DEFAULT_WORKERS))
+    delay = float(delay if delay is not None else LINKEDIN_FETCH_DELAY)
+    return max_workers, delay
 
 logger = logging.getLogger(__name__)
 
@@ -196,19 +217,25 @@ def fetch_linkedin_description(job_id: str) -> Optional[str]:
 def fetch_descriptions_for_jobs(
     jobs: List[Dict[str, Any]],
     progress_callback: Optional[callable] = None,
-    only_these_jobs: Optional[List[Dict[str, Any]]] = None
+    only_these_jobs: Optional[List[Dict[str, Any]]] = None,
+    max_workers: Optional[int] = None,
+    delay: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Fetch descriptions for all LinkedIn jobs in a list.
-    
-    Only fetches descriptions for jobs from LinkedIn that don't already
-    have descriptions. Adds a delay between requests to avoid rate limiting.
-    
+    Fetch descriptions for all LinkedIn jobs in a list, **in parallel**.
+
+    Only fetches descriptions for LinkedIn jobs that don't already have one. Requests run
+    on a bounded ThreadPoolExecutor; each worker waits a small jittered delay before its
+    request to spread load and reduce rate-limiting. Worker count + delay come from the
+    args, else the runtime config (linkedin_workers/linkedin_delay), else scraper defaults.
+
     Args:
-        jobs: List of job dictionaries
+        jobs: List of job dictionaries (mutated in place with descriptions)
         progress_callback: Optional function(current, total) for progress updates
         only_these_jobs: Optional subset of jobs to fetch descriptions for
-    
+        max_workers: Parallel fetch workers (default from runtime config)
+        delay: Per-worker jittered pre-request delay in seconds (default from runtime config)
+
     Returns:
         The same list with descriptions added to LinkedIn jobs
     """
@@ -252,36 +279,52 @@ def fetch_descriptions_for_jobs(
         logger.info("No LinkedIn jobs need description fetching")
         return jobs
     
-    logger.info(f"Fetching descriptions for {len(linkedin_jobs_to_fetch)} LinkedIn jobs...")
-    
+    workers, fetch_delay = _resolve_fetch_settings(max_workers, delay)
+    total = len(linkedin_jobs_to_fetch)
+    workers = min(workers, total)
+    logger.info(
+        f"Fetching descriptions for {total} LinkedIn jobs ({workers} workers, "
+        f"{fetch_delay}s jittered delay)..."
+    )
+
     fetched_count = 0
     failed_count = 0
-    
-    for idx, (job_index, job_id) in enumerate(linkedin_jobs_to_fetch):
-        # Report progress
-        if progress_callback:
+    completed = 0
+    lock = threading.Lock()
+
+    def _worker(item):
+        job_index, job_id = item
+        # Jittered pre-request delay spreads concurrent requests to ease rate limiting.
+        if fetch_delay > 0:
+            time.sleep(fetch_delay * (0.5 + random.random()))
+        return job_index, job_id, fetch_linkedin_description(job_id)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(_worker, item) for item in linkedin_jobs_to_fetch]
+        for future in as_completed(futures):
             try:
-                progress_callback(idx + 1, len(linkedin_jobs_to_fetch))
-            except Exception as e:
-                logger.debug(f"Progress callback error: {e}")
-        
-        # Fetch the description
-        description = fetch_linkedin_description(job_id)
-        
-        if description:
-            jobs[job_index]['description'] = description
-            fetched_count += 1
-            logger.debug(f"Fetched description for job {job_id} ({len(description)} chars)")
-        else:
-            failed_count += 1
-        
-        # Rate limiting delay (skip for last item)
-        if idx < len(linkedin_jobs_to_fetch) - 1:
-            time.sleep(LINKEDIN_FETCH_DELAY)
-    
+                job_index, job_id, description = future.result()
+            except Exception as e:  # pragma: no cover - defensive
+                logger.error(f"LinkedIn fetch worker error: {e}")
+                description = None
+                job_index = job_id = None
+
+            if description:
+                jobs[job_index]['description'] = description
+                fetched_count += 1
+            else:
+                failed_count += 1
+
+            completed += 1
+            if progress_callback:
+                try:
+                    progress_callback(completed, total)
+                except Exception as e:
+                    logger.debug(f"Progress callback error: {e}")
+
     logger.info(
         f"LinkedIn descriptions: {fetched_count} fetched, "
-        f"{failed_count} failed out of {len(linkedin_jobs_to_fetch)} total"
+        f"{failed_count} failed out of {total} total"
     )
-    
+
     return jobs

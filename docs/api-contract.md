@@ -38,6 +38,28 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 - `POST /api/server/start` / `POST /api/server/stop` → control the local llama server.
 - `GET /api/server/status` → server running state.
 
+## Options (recommendation system) (`options_bp`)
+
+- `GET /api/options/llm` → the OpenAI-compatible endpoint config: `{enabled, base_url, api_key, model, temperature, max_tokens, timeout}`. `base_url` is expected to include the `/v1` prefix.
+- `POST /api/options/llm` — body: any subset of those keys (unknown keys ignored) → merged + persisted to `config/llm_endpoint_config.json`; returns `{success, config}`.
+- `POST /api/options/llm/test` — body: optional config overrides → builds a client (ignoring `enabled`), sends a tiny chat probe, returns `{ok: true, model, sample}` (200) or `{ok: false, error}` (502/400).
+- `GET /api/options/runtime` → runtime knobs: `{enable_analysis, enable_llm_rerank, enable_llm_skills, embed_workers, embed_batch_size, linkedin_workers, linkedin_delay, llm_workers, top_n_llm, weights:{semantic,bm25,keyword,skill}}`.
+- `POST /api/options/runtime` — body: any subset (weights deep-merged) → persisted to `config/runtime_config.json`; returns `{success, config}`.
+
+## Profile (recommendation system) (`profile_bp`)
+
+- `GET /api/profile` → active profile `{exists, interests_paragraph, skills, job_titles, keyword_groups, resume_text, source_filename, ...}` (or `{exists:false}` + empty fields).
+- `POST /api/profile` — body: any of `interests_paragraph, skills, job_titles, keyword_groups, resume_text, source_filename, name` → `upsert_active_profile`; returns `{success, profile}`.
+- `POST /api/profile/upload` — multipart `file` (.pdf/.tex/.md/.markdown/.txt) → `{success, source_filename, resume_text, profile, llm_used, llm_error}`. Draft is **not** persisted.
+- `POST /api/profile/build` — body: `{resume_text}` → `{success, profile, llm_used}` (requires the LLM endpoint enabled).
+
+## Recommend (recommendation system) (`recommend_bp`)
+
+- `POST /api/recommend/analyze` — body: optional `{job_ids:[int,...]}` (omit to analyze all) → `{success, analyzed, profile_id, top:[...]}`. 400 if no active profile.
+- `GET /api/recommend/report` — query `limit` (default 50), `include_ignored` → `{success, count, jobs:[{...job, analysis:{...}}]}` sorted by `rag_score` desc.
+- `POST /api/recommend/keywords` — body: optional `{seed}` (else uses the active profile) → `{success, search_terms:[...], keyword_groups:[{label,terms}], job_type}`. 400 if the LLM endpoint is disabled or there is no seed/profile.
+- `GET /api/jobs?with_analysis=1` → each job dict gains `analysis: {rag_score, semantic_score, bm25_score, keyword_score, skill_score, keyword_group_hits, skill_match:{matched,missing}, extracted_skills, llm_score, llm_rationale, ...}` (or `null`).
+
 ## Shared Schema
 
 Job and related records are defined as SQLAlchemy models in `utils/backend/database/models.py`. See `docs/database.md` for the schema deep-dive.
