@@ -555,6 +555,10 @@
             <span style="{{ rtLlmSkillsChk }}"><sc-if value="{{ rtEnableLlmSkills }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
             <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM skill extraction</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Use the LLM (vs the fast gazetteer) to extract skills</div></div>
           </button>
+          <button onclick="{{ toggleRtLlmComp }}" style="{{ rtLlmCompRow }}">
+            <span style="{{ rtLlmCompChk }}"><sc-if value="{{ rtEnableLlmComp }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM compensation extraction</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Pull pay from the job description when the board lists none (e.g. LinkedIn)</div></div>
+          </button>
 
           <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">Parallelism</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -889,7 +893,7 @@ class Component extends DCLogic {
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
-      runtime:{enable_analysis:true,enable_llm_rerank:false,enable_llm_skills:false,embed_workers:4,embed_batch_size:32,linkedin_workers:4,linkedin_delay:0.5,llm_workers:4,top_n_llm:10,weights:{semantic:0.5,bm25:0.2,keyword:0.15,skill:0.15}},
+      runtime:{enable_analysis:true,enable_llm_rerank:false,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:4,linkedin_delay:0.5,llm_workers:4,top_n_llm:10,weights:{semantic:0.5,bm25:0.2,keyword:0.15,skill:0.15}},
       jobs:[], loading:true
     };
     this.dragId=null;
@@ -1131,7 +1135,7 @@ class Component extends DCLogic {
   }
   formatStage(stage){
     if(!stage) return 'Processing…';
-    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed'};
+    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',extracting_compensation:'Extracting Compensation',analyzing:'Scoring Matches',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed'};
     return m[stage]||(stage.charAt(0).toUpperCase()+stage.slice(1));
   }
 
@@ -1558,6 +1562,7 @@ class Component extends DCLogic {
       rtEnableAnalysis:rt.enable_analysis, toggleRtAnalysis:()=>this.rtSet({enable_analysis:!rt.enable_analysis}), rtAnalysisRow:toggleRow(rt.enable_analysis), rtAnalysisChk:toggleChk(rt.enable_analysis),
       rtEnableRerank:rt.enable_llm_rerank, toggleRtRerank:()=>this.rtSet({enable_llm_rerank:!rt.enable_llm_rerank}), rtRerankRow:toggleRow(rt.enable_llm_rerank), rtRerankChk:toggleChk(rt.enable_llm_rerank),
       rtEnableLlmSkills:rt.enable_llm_skills, toggleRtLlmSkills:()=>this.rtSet({enable_llm_skills:!rt.enable_llm_skills}), rtLlmSkillsRow:toggleRow(rt.enable_llm_skills), rtLlmSkillsChk:toggleChk(rt.enable_llm_skills),
+      rtEnableLlmComp:rt.enable_llm_compensation, toggleRtLlmComp:()=>this.rtSet({enable_llm_compensation:!rt.enable_llm_compensation}), rtLlmCompRow:toggleRow(rt.enable_llm_compensation), rtLlmCompChk:toggleChk(rt.enable_llm_compensation),
       rtEmbedWorkers:rt.embed_workers, onRtEmbedWorkers:(e)=>this.rtSet({embed_workers:+e.target.value}),
       rtLinkedinWorkers:rt.linkedin_workers, onRtLinkedinWorkers:(e)=>this.rtSet({linkedin_workers:+e.target.value}),
       rtLlmWorkers:rt.llm_workers, onRtLlmWorkers:(e)=>this.rtSet({llm_workers:+e.target.value}),

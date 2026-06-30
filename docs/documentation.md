@@ -53,4 +53,9 @@ These existing references remain canonical for their subsystems:
 - **RAG + LLM recommendation overhaul complete:** Profile + Options menus, résumé→profile
   builder, configurable OpenAI-compatible endpoint, fastembed + BM25 hybrid scoring with
   optional LLM verdict, parallel LinkedIn fetch, multi-country + job-type + LLM-keyword Find Jobs.
+- **UI/UX refinements complete:** cleaner New Jobs cards (no company icon, relocated match %
+  with a breakdown popover + color tiers, YYYY-MM-DD dates), a stylized résumé drag-and-drop +
+  "Build Profile (LLM)" action, a unified searchable country selector, Find Jobs prefilled from
+  the active profile, a live step-by-step scraping activity feed, and LLM compensation extraction
+  that recovers pay from job descriptions (e.g. LinkedIn).
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.

@@ -1,13 +1,18 @@
 # Find Jobs Feature - Implementation Plan
 
 > **Recommendation-era additions (current).** Beyond the original plan below, the Find Jobs
-> modal now also supports: **multi-select Countries** (`config.countries` → one scrape task per
-> title × country via `country_indeed`, for Indeed/Glassdoor), a **Job Type** filter
+> modal now also supports: a unified **Where** selector — one searchable multi-country control
+> (`config.countries` → one scrape task per title × country via `country_indeed`) plus an
+> optional **City / Remote** field (`config.location`) — a **Job Type** filter
 > (`config.job_type` ∈ fulltime/internship/contract/parttime → jobspy `job_type`), and a
-> **Generate (LLM)** button that calls `POST /api/recommend/keywords` to auto-fill search terms,
-> AND/OR keyword groups, and the job type from the active profile. Scraped jobs are scored
-> against the profile after the run (see `docs/recommendation.md`). The frontend is the
-> dc-runtime `index.html`, not the legacy Jinja partials referenced below.
+> **Generate (LLM)** button that calls `POST /api/recommend/keywords`. On open, the modal
+> **prefills Title (search terms) and Description keyword groups from the active profile**
+> (`job_titles` / `keyword_groups`) when present, falling back to saved config, and re-fetches
+> each time so it always reflects the latest built profile. The progress view shows a **live,
+> step-by-step activity feed** sourced from the scrape job's append-only `events` log. Scraped
+> jobs are scored against the profile after the run, and (when the LLM is enabled) missing
+> compensation is recovered from the description prose (see `docs/recommendation.md`). The
+> frontend is the dc-runtime `index.html`, not the legacy Jinja partials referenced below.
 
 ## Overview
 This document outlines the comprehensive plan to implement the "Find Jobs" functionality, connecting the front-end button to the scraping system, jobs_config.json, and the database. The feature enables users to configure scraping parameters, execute job searches, and seamlessly integrate results into the application database.

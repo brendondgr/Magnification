@@ -246,6 +246,35 @@ def execute_full_scraping_workflow(
                     'fetched': 0
                 }
         
+        # Step 3.7: LLM compensation extraction — recover pay that is only written in the
+        # description prose (common on LinkedIn, which shows "Not specified" otherwise).
+        # Gated by the LLM endpoint being enabled + the runtime toggle; non-fatal.
+        try:
+            from ..recommend.runtime_config import get_runtime_config
+            comp_rc = get_runtime_config()
+            if comp_rc.get('enable_llm_compensation'):
+                from ..llm.config import load_llm_endpoint_config
+                if load_llm_endpoint_config().get('enabled'):
+                    from ..recommend.compensation import extract_compensation_llm, needs_compensation
+                    from ..llm.client import OpenAIClient
+                    pending = [j for j in processed_jobs if needs_compensation(j)]
+                    if pending:
+                        update_progress('extracting_compensation', 89, {
+                            'message': f'Extracting compensation from {len(pending)} description(s) via LLM...'
+                        })
+                        client = OpenAIClient.from_config()
+                        extracted = extract_compensation_llm(
+                            processed_jobs, client, max_workers=comp_rc.get('llm_workers', 4)
+                        )
+                        results['steps']['compensation'] = {'candidates': len(pending), 'extracted': extracted}
+                        update_progress('extracting_compensation', 90, {
+                            'message': f'Recovered compensation for {extracted} job(s)'
+                        })
+                        logger.info(f"  LLM compensation: extracted {extracted}/{len(pending)}")
+        except Exception as e:
+            logger.error(f"Compensation extraction failed (non-fatal): {e}")
+            results['errors'].append(f"Compensation error: {e}")
+
         # Step 4: Store in database
         job_ids = []
         if save_to_database:

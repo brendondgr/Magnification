@@ -24,6 +24,7 @@ Weights are configurable in **Options → Runtime** (`runtime_config.weights`); 
 | `embedder.py` | fastembed bge-small singleton; batch/parallel embed; float32 byte (de)serialization; cosine. |
 | `bm25.py` | rank_bm25 index + tokenizer; raw + normalized scores. |
 | `skills.py` | gazetteer skill extractor (+ optional LLM); `match_profile_skills`. |
+| `compensation.py` | LLM compensation extraction — recovers pay from the description prose for jobs the board left blank (parallel `chat_many`); returns None when no pay is stated (never fabricates). Gated by `enable_llm_compensation` + an enabled endpoint; runs in the scrape pipeline before storage. |
 | `ranker.py` | pure hybrid scoring (no I/O) — unit-tested with fake vectors. |
 | `service.py` | orchestration: embed-on-retrieve (reuse stored vectors), skill extraction, scoring, persist `JobAnalysis`; builds the ranked report. |
 | `runtime_config.py` | parallelism + toggles + weights (`config/runtime_config.json`). |
