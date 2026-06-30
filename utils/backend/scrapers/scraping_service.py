@@ -105,7 +105,11 @@ def execute_full_scraping_workflow(
         if location is None:
             location = config.get('location', '')
             location = location if location else None
-        
+
+        # Multi-country + job-type (from config; empty -> single default country)
+        countries = config.get('countries') or []
+        job_type = config.get('job_type') or None
+
         if not search_terms:
             logger.warning("No search terms provided. Workflow aborted.")
             results['errors'].append("No search terms provided")
@@ -120,7 +124,9 @@ def execute_full_scraping_workflow(
             'sites': sites,
             'results_wanted': results_wanted,
             'hours_old': hours_old,
-            'location': location
+            'location': location,
+            'countries': countries,
+            'job_type': job_type
         }
         
         logger.info(f"  Search terms: {search_terms}")
@@ -141,13 +147,15 @@ def execute_full_scraping_workflow(
 
         # Note: JobSpyScraper takes 'job_titles' argument but we pass search_terms
         scraper = JobSpyScraper(
-            job_titles=search_terms, 
+            job_titles=search_terms,
             sites=sites,
             results_wanted=results_wanted,
             hours_old=hours_old,
             country_indeed=DEFAULT_COUNTRY,
             location=location,
-            progress_callback=scraper_progress_handler
+            progress_callback=scraper_progress_handler,
+            countries=countries,
+            job_type=job_type
         )
         
         scraper.run()

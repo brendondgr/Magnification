@@ -39,6 +39,7 @@ class JobScrapeTask:
     hours_old: int = DEFAULT_HOURS_OLD
     country_indeed: str = DEFAULT_COUNTRY
     location: Optional[str] = None
+    job_type: Optional[str] = None  # jobspy: fulltime|parttime|internship|contract
     
     # Results storage
     jobs_data: List[Dict[str, Any]] = field(default_factory=list, init=False)
@@ -66,7 +67,9 @@ class JobScrapeTask:
                     'country_indeed': self.country_indeed,
                     'location': self.location
                 }
-                
+                if self.job_type:
+                    scrape_args['job_type'] = self.job_type
+
                 # Special handling for Google
                 if site == 'google' and self.location:
                     google_term = self._generate_google_search_term()

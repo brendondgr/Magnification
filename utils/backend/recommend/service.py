@@ -53,6 +53,10 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     } for j in jobs]
     analyses = ranker.rank_batch(profile, profile_vec, rjobs, weights=runtime.get("weights"))
 
+    if runtime.get("enable_llm_rerank"):
+        _report(progress_callback, "llm", 90, "LLM verdict on top matches…")
+        _llm_rerank(jobs, analyses, profile, runtime)
+
     for j, an in zip(jobs, analyses):
         vec = job_vecs.get(j["id"], [])
         payload = {
@@ -66,6 +70,8 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
             "extracted_skills": skills_map.get(j["id"], []),
             "embedding": embedder.to_bytes(vec) if vec else None,
             "embedding_dim": len(vec) or None,
+            "llm_score": an.get("llm_score"),
+            "llm_rationale": an.get("llm_rationale"),
         }
         db_ops.save_job_analysis(j["id"], payload, profile_id=profile["id"])
 
@@ -146,6 +152,43 @@ def _extract_skills_for_jobs(jobs, profile, runtime) -> Dict[int, List[str]]:
         j["id"]: skills.extract_skills(j.get("description") or "", extra_skills=profile_skills)
         for j in jobs
     }
+
+
+_LLM_VERDICT_PROMPT = (
+    "You are a job-fit evaluator for a specific candidate. Given the candidate profile and a "
+    "job, return ONLY a JSON object {\"score\": <integer 0-100>, \"rationale\": \"<1-2 "
+    "sentences>\"} rating how well the job fits the candidate. No prose, no code fences."
+)
+
+
+def _llm_rerank(jobs, analyses, profile, runtime) -> None:
+    """Add llm_score + llm_rationale (in place) to the top-N analyses by rag_score."""
+    cfg = load_llm_endpoint_config()
+    if not cfg.get("enabled"):
+        return
+    top_n = int(runtime.get("top_n_llm", 10))
+    order = sorted(range(len(analyses)), key=lambda i: analyses[i].get("rag_score") or 0.0,
+                   reverse=True)[:top_n]
+    if not order:
+        return
+    profile_summary = ranker.build_profile_query(profile)[:2000]
+    try:
+        client = OpenAIClient.from_config(cfg)
+        messages = [[
+            {"role": "system", "content": _LLM_VERDICT_PROMPT},
+            {"role": "user", "content": f"Candidate profile:\n{profile_summary}\n\n"
+                                        f"Job: {jobs[i].get('title', '')}\n"
+                                        f"{(jobs[i].get('description') or '')[:4000]}"},
+        ] for i in order]
+        results = client.chat_many(messages, max_workers=int(runtime.get("llm_workers", 4)),
+                                   as_json=True)
+        for idx, verdict in zip(order, results):
+            if isinstance(verdict, dict):
+                score = verdict.get("score")
+                analyses[idx]["llm_score"] = float(score) if isinstance(score, (int, float)) else None
+                analyses[idx]["llm_rationale"] = verdict.get("rationale")
+    except Exception as e:
+        logger.warning(f"LLM re-rank failed (non-fatal): {e}")
 
 
 def _report(cb, stage, percent, message):

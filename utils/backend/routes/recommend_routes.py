@@ -7,7 +7,9 @@ from flask import Blueprint, request, jsonify
 from loguru import logger
 
 from utils.backend.database import operations as db_ops
-from utils.backend.recommend import service
+from utils.backend.recommend import service, keywords
+from utils.backend.llm.config import load_llm_endpoint_config
+from utils.backend.llm.client import OpenAIClient, LLMConfigError
 
 recommend_bp = Blueprint("recommend_bp", __name__)
 
@@ -26,6 +28,30 @@ def analyze():
     except Exception as e:
         logger.error(f"Recommendation analysis failed: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+@recommend_bp.route("/api/recommend/keywords", methods=["POST"])
+def gen_keywords():
+    """
+    LLM-generate search terms + AND/OR keyword groups + a job type. Body: optional
+    {seed:str}; falls back to the active profile when no seed is given.
+    """
+    cfg = load_llm_endpoint_config()
+    if not cfg.get("enabled"):
+        return jsonify({"success": False, "message": "Enable the LLM endpoint in Options first."}), 400
+    data = request.json or {}
+    seed = (data.get("seed") or "").strip() or keywords.seed_from_profile(db_ops.get_active_profile())
+    if not seed:
+        return jsonify({"success": False, "message": "Provide a seed or create a profile first."}), 400
+    try:
+        client = OpenAIClient.from_config(cfg)
+        result = keywords.generate_keywords(seed, client)
+        return jsonify({"success": True, **result})
+    except LLMConfigError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Keyword generation failed: {e}")
+        return jsonify({"success": False, "message": str(e)}), 502
 
 
 @recommend_bp.route("/api/recommend/report", methods=["GET"])

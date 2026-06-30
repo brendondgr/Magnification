@@ -37,6 +37,22 @@
 - [x] App code untouched by this overhaul; `app.py`, routes, and DB modules pass `py_compile`
 - [ ] Full Flask import/run smoke test — **deferred:** the local `.venv` has no deps installed and `uv sync` can't build `regex` offline (missing `Python.h`). Run `uv sync --dev && uv run pytest && uv run python -c "import app"` in a provisioned environment.
 
+## RAG + LLM Recommendation Overhaul — Definition of Done
+
+Plan: `docs/plans/rag-llm-recommendation.md`. Delivered on branch `rag-llm-recommendation`
+(worktree), committed per phase, merged to `main`.
+
+- [x] (1/7) Dependencies (fastembed, rank-bm25, pypdf, requests) + plan doc
+- [x] (2/7) `Profile` + `JobAnalysis` tables + CRUD + tests
+- [x] (3/7) OpenAI-compatible LLM client + endpoint/runtime config + Options API + tests
+- [x] (4/7) Résumé→profile builder + Profile API + Profile & Options panels + tests (verified in-browser)
+- [x] (5/7) Gazetteer skill extraction + parallel LinkedIn description fetch + tests
+- [x] (6/7) Hybrid RAG ranker + embed-on-retrieve pipeline + match-score UI + tests (real bge model verified)
+- [x] (7/7) LLM verdict/rationale (top-N) + LLM keyword generation + multi-country/job-type Find Jobs + merge
+- [x] All tests green (`pytest`), `import app` clean; UI panels verified via preview tools
+- [ ] **Live end-to-end with a real LLM endpoint** — not exercised (no endpoint configured in this env);
+  all LLM paths are covered by mocked tests. Configure an endpoint in Options to use the LLM features.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

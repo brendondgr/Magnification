@@ -57,6 +57,7 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 
 - `POST /api/recommend/analyze` — body: optional `{job_ids:[int,...]}` (omit to analyze all) → `{success, analyzed, profile_id, top:[...]}`. 400 if no active profile.
 - `GET /api/recommend/report` — query `limit` (default 50), `include_ignored` → `{success, count, jobs:[{...job, analysis:{...}}]}` sorted by `rag_score` desc.
+- `POST /api/recommend/keywords` — body: optional `{seed}` (else uses the active profile) → `{success, search_terms:[...], keyword_groups:[{label,terms}], job_type}`. 400 if the LLM endpoint is disabled or there is no seed/profile.
 - `GET /api/jobs?with_analysis=1` → each job dict gains `analysis: {rag_score, semantic_score, bm25_score, keyword_score, skill_score, keyword_group_hits, skill_match:{matched,missing}, extracted_skills, llm_score, llm_rationale, ...}` (or `null`).
 
 ## Shared Schema

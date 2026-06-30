@@ -630,8 +630,33 @@
               </div>
             </div>
 
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start">
+              <div>
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Countries (Indeed/Glassdoor)</label>
+                <div style="display:flex;flex-wrap:wrap;gap:7px">
+                  <sc-for list="{{ countryList }}" as="c" hint-placeholder-count="4">
+                    <button onclick="{{ c.onToggle }}" style="{{ c.style }}"><span style="{{ c.check }}"></span>{{ c.name }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
+                <div style="display:flex;flex-wrap:wrap;gap:7px">
+                  <sc-for list="{{ jobTypeList }}" as="jt" hint-placeholder-count="5">
+                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}">{{ jt.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
             <div>
-              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Title / Description Keywords</label>
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">
+                <span>Title / Description Keywords</span>
+                <button onclick="{{ genKeywords }}" style="{{ genKeywordsStyle }}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+                  {{ genKeywordsLabel }}
+                </button>
+              </label>
               <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Tags inside a group use <b style="color:var(--text)">OR</b>; groups are joined with <b style="color:var(--text)">AND</b>.</p>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <sc-for list="{{ keywordGroups }}" as="g" hint-placeholder-count="2">
@@ -748,6 +773,8 @@ class Component extends DCLogic {
     {key:'archived',label:'Archived',c:'--c-archive'}
   ];
   static SITES = ['Indeed','LinkedIn','Glassdoor','ZipRecruiter','Google'];
+  static COUNTRIES = ['USA','UK','Canada','Australia','India','Germany','France','Netherlands','Ireland','Singapore'];
+  static JOB_TYPES = [['','Any'],['fulltime','Full-time'],['internship','Internship'],['contract','Contract'],['parttime','Part-time']];
   static SITE_COLORS = {LinkedIn:'#0A66C2',Indeed:'#2557A7',Glassdoor:'#0CAA41',ZipRecruiter:'#3A7D34',Google:'#EA4335'};
   // Map config-site keys (and DB site strings) <-> display labels used in the UI.
   static SITE_KEY_TO_LABEL = {indeed:'Indeed',linkedin:'LinkedIn',glassdoor:'Glassdoor',zip_recruiter:'ZipRecruiter',google:'Google'};
@@ -767,6 +794,7 @@ class Component extends DCLogic {
       terms:['Software Engineer'], location:'Remote', ageIndex:0,
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
       groups:[], maxResults:25, useLLM:true,
+      countries:{USA:true}, jobType:'', genBusy:false,
       termDraft:'', groupDrafts:{},
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false,
       // ---- Profile panel ----
@@ -937,14 +965,19 @@ class Component extends DCLogic {
       const sitesObj={}; Component.SITES.forEach(l=>{ sitesObj[l]=false; });
       (c.sites||[]).forEach(k=>{ const l=Component.SITE_KEY_TO_LABEL[String(k).toLowerCase()]; if(l) sitesObj[l]=true; });
       if(!(c.sites||[]).length){ Component.SITES.forEach(l=>{ sitesObj[l]=this.state.sites[l]; }); }
+      const countriesObj={};
+      if(Array.isArray(c.countries)&&c.countries.length){ c.countries.forEach(cn=>{ countriesObj[cn]=true; }); }
+      else { Object.assign(countriesObj, this.state.countries); }
       this.setState({
         terms:terms.slice(), groups,
         location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
         ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
+        countries:countriesObj, jobType:c.job_type||'',
         useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
       });
     }catch(e){ console.error('config load failed', e); }
   }
+  countriesToConfig(){ return Object.keys(this.state.countries).filter(k=>this.state.countries[k]); }
   configToSave(){
     const s=this.state;
     return Object.assign({}, this._loadedConfig||{}, {
@@ -954,8 +987,28 @@ class Component extends DCLogic {
       hours_old:Component.AGE_HOURS[s.ageIndex],
       results_wanted:s.maxResults,
       location:s.location.trim(),
+      countries:this.countriesToConfig(),
+      job_type:s.jobType||null,
       use_llm:s.useLLM
     });
+  }
+  // LLM-generate search terms + AND/OR keyword groups + job type for the Find modal.
+  genKeywords(){
+    if(this.state.genBusy) return;
+    this.setState({genBusy:true});
+    fetch('/api/recommend/keywords',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(r=>r.json())
+      .then(d=>{
+        this.setState({genBusy:false});
+        if(!d.success){ this.showToast(d.message||'Keyword generation failed'); return; }
+        const patch={};
+        if(Array.isArray(d.search_terms)&&d.search_terms.length) patch.terms=d.search_terms.slice();
+        if(Array.isArray(d.keyword_groups)&&d.keyword_groups.length) patch.groups=d.keyword_groups.map(g=>(g.terms||[]).slice());
+        if(d.job_type) patch.jobType=d.job_type;
+        this.setState(patch);
+        this.showToast('Generated keywords from your profile');
+      })
+      .catch(e=>{ console.error(e); this.setState({genBusy:false}); this.showToast('Keyword generation failed'); });
   }
   formatStage(stage){
     if(!stage) return 'Processing…';
@@ -1236,6 +1289,15 @@ class Component extends DCLogic {
       onKey:(e)=>{ const v=(s.groupDrafts[gi]||'').trim(); if(e.key==='Enter'&&v){ e.preventDefault(); this.setState(st=>({groups:st.groups.map((gr,k)=>k===gi?gr.concat(v):gr),groupDrafts:Object.assign({},st.groupDrafts,{[gi]:''})})); } },
       onRemove:()=>this.setState(st=>({groups:st.groups.filter((_,k)=>k!==gi)}))
     }));
+    const countryList=Component.COUNTRIES.map(name=>{ const on=!!s.countries[name];
+      return {name,onToggle:()=>this.setState(st=>({countries:Object.assign({},st.countries,{[name]:!st.countries[name]})})),
+        style:'display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent)':'var(--border)')+';background:'+(on?'color-mix(in srgb,var(--accent) 14%,transparent)':'var(--bg)')+';color:var(--text)',
+        check:'width:13px;height:13px;border-radius:4px;flex:0 0 auto;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent')};
+    });
+    const jobTypeList=Component.JOB_TYPES.map(([val,label])=>{ const on=s.jobType===val;
+      return {val,label,onSelect:()=>this.setState({jobType:val}),
+        style:'padding:7px 12px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent2)':'var(--border)')+';background:'+(on?'var(--accent2)':'var(--bg)')+';color:'+(on?'#fff':'var(--text)')};
+    });
     const rangeStyle='width:100%;height:6px;-webkit-appearance:none;appearance:none;border-radius:99px;background:var(--border2);outline:none;accent-color:var(--accent);cursor:pointer';
     const ringC=2*Math.PI*64;
     const scrapeStats=[{label:'Jobs Found',value:s.found,color:'var(--accent-text)'},{label:'Jobs Saved',value:s.saved,color:'var(--c-applied)'},{label:'Not Hidden',value:s.notHidden,color:'var(--c-offer-text)'}];
@@ -1298,6 +1360,9 @@ class Component extends DCLogic {
       maxResults:s.maxResults, onMax:(e)=>this.setState({maxResults:+e.target.value}),
       ageIndex:s.ageIndex, ageLabel:Component.AGES[s.ageIndex], onAge:(e)=>this.setState({ageIndex:+e.target.value}),
       siteList, keywordGroups, addGroup:()=>this.setState(st=>({groups:st.groups.concat([[]])})),
+      countryList, jobTypeList,
+      genKeywords:()=>this.genKeywords(), genKeywordsLabel:s.genBusy?'Generating…':'Generate (LLM)',
+      genKeywordsStyle:'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;cursor:'+(s.genBusy?'default':'pointer')+';font:600 11px/1 var(--font-body);border:var(--bw) solid var(--accent2);background:transparent;color:var(--accent2);text-transform:none;letter-spacing:0;opacity:'+(s.genBusy?'.6':'1'),
       useLLM:s.useLLM, toggleLLM:()=>this.setState(st=>({useLLM:!st.useLLM})),
       llmRow:'display:flex;align-items:flex-start;gap:13px;padding:15px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;border:var(--bw) solid '+(s.useLLM?'var(--accent)':'var(--border)'),
       llmCheck:'width:22px;height:22px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-top:1px;border:2px solid '+(s.useLLM?'var(--accent)':'var(--border2)')+';background:'+(s.useLLM?'var(--accent)':'transparent'),

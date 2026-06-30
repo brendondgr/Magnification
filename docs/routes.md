@@ -81,6 +81,7 @@ RAG scoring of jobs against the active profile (see `docs/recommendation.md`).
 | --- | --- | --- |
 | `/api/recommend/analyze` | POST | Embed + score jobs against the active profile (body: optional `{job_ids}`); persists `JobAnalysis` |
 | `/api/recommend/report` | GET | Jobs ranked by `rag_score` (query: `limit`, `include_ignored`) |
+| `/api/recommend/keywords` | POST | LLM-generate search terms + AND/OR keyword groups + job type (body: optional `{seed}`; falls back to the active profile) |
 
 `GET /api/jobs?with_analysis=1` attaches each job's analysis under an `analysis` key.
 
