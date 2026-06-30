@@ -450,7 +450,6 @@
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;newjobs&quot;,&quot;tracker&quot;],&quot;default&quot;:&quot;newjobs&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Look&quot;}}">
-
 class Component extends DCLogic {
   static THEMES = {
     neon: {
@@ -480,8 +479,13 @@ class Component extends DCLogic {
   ];
   static SITES = ['Indeed','LinkedIn','Glassdoor','ZipRecruiter','Google'];
   static SITE_COLORS = {LinkedIn:'#0A66C2',Indeed:'#2557A7',Glassdoor:'#0CAA41',ZipRecruiter:'#3A7D34',Google:'#EA4335'};
-  static STATUS_NAMES = ['Saved','Applied','Interview 1','Interview 2','Offer','Rejected/Ghosted'];
+  // Map config-site keys (and DB site strings) <-> display labels used in the UI.
+  static SITE_KEY_TO_LABEL = {indeed:'Indeed',linkedin:'LinkedIn',glassdoor:'Glassdoor',zip_recruiter:'ZipRecruiter',google:'Google'};
+  static SITE_LABEL_TO_KEY = {Indeed:'indeed',LinkedIn:'linkedin',Glassdoor:'glassdoor',ZipRecruiter:'zip_recruiter',Google:'google'};
+  // The nine real application statuses persisted by the backend (drives the timeline).
+  static STATUS_NAMES = ['Applied','Interview 1','Interview 2','Interview 3','Post-Interview Rejection','Offer','Accepted','Rejected','Ignored/Ghosted'];
   static AGES = ['24 hours','3 days','1 week','2 weeks','3 weeks','30 days'];
+  static AGE_HOURS = [24,72,168,336,504,720];
 
   constructor(props){
     super(props);
@@ -489,63 +493,75 @@ class Component extends DCLogic {
     this.state = {
       theme:'editorial', tab, sidebarOpen:true, search:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null,
-      terms:['Software Engineer','Frontend'], location:'Remote', ageIndex:2,
+      terms:['Software Engineer'], location:'Remote', ageIndex:0,
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
-      groups:[['react','typescript'],['senior','staff']], maxResults:25, useLLM:true,
+      groups:[], maxResults:25, useLLM:true,
       termDraft:'', groupDrafts:{},
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false,
-      jobs:this.buildJobs()
+      jobs:[], loading:true
     };
     this.dragId=null;
+    this._scrapeJobId=null;
   }
-  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); }
+  componentDidMount(){ this.loadJobs(); }
+  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); }
 
-  static desc(t,c){
-    return "# About the role\nWe're hiring a **"+t+"** to join "+c+". You'll own product-facing features end to end and partner closely with design and backend.\n# What you'll do\n- Build and maintain high-quality, accessible interfaces\n- Collaborate across **product, design, and platform** teams\n- Drive features from spec to production and iterate on real usage\n# What we're looking for\n- 4+ years of relevant engineering experience\n- Strong fundamentals in **JavaScript / TypeScript**\n- A bias toward shipping, measuring, and improving";
-  }
-  static computeStatuses(col, applied){
-    const dates=['Jun 12','Jun 16','Jun 21','Jun 24','Jun 27','Jun 29'];
-    const checked=new Set(['Saved']);
-    if(applied){
-      checked.add('Applied');
-      if(col==='interviewing') checked.add('Interview 1');
-      if(col==='offers'){checked.add('Interview 1');checked.add('Interview 2');checked.add('Offer');}
-      if(col==='archived'){checked.add('Interview 1');checked.add('Rejected/Ghosted');}
+  // ---------- API: reads ----------
+  async loadJobs(){
+    try{
+      const res = await fetch('/api/jobs');
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      this.setState({jobs:Array.isArray(data)?data.map(j=>this.mapDbJob(j)):[], loading:false});
+    }catch(e){
+      console.error('Failed to load jobs:', e);
+      this.setState({jobs:[], loading:false});
+      this.showToast('Could not load jobs');
     }
-    return Component.STATUS_NAMES.map((n,i)=>({name:n,checked:checked.has(n),date:checked.has(n)?dates[i]:null}));
-  }
-  buildJobs(){
-    const r=(title,company,location,compensation,site,daysAgo,applied,ignore,column)=>({title,company,location,compensation,site,daysAgo,applied,ignore,column});
-    const raw=[
-      r('Senior Frontend Engineer','Linear','Remote','$180k – $220k','LinkedIn',1,false,false,''),
-      r('Full Stack Developer','Ramp','New York, NY','$160k – $200k','Indeed',2,false,false,''),
-      r('Backend Engineer, Payments','Stripe','Remote','$190k – $240k','Glassdoor',3,false,false,''),
-      r('React Native Engineer','Robinhood','Menlo Park, CA','$170k – $210k','Indeed',4,false,false,''),
-      r('Staff Software Engineer','Notion','San Francisco, CA','$230k – $300k','LinkedIn',5,false,false,''),
-      r('DevOps Engineer','Vercel','Remote','$150k – $190k','Google',6,false,false,''),
-      r('Frontend Engineer, Design Systems','Figma','Remote','$175k – $215k','LinkedIn',2,false,true,''),
-      r('Platform Engineer','Datadog','Remote','$165k – $205k','ZipRecruiter',8,false,false,''),
-      r('Senior Product Engineer','Retool','Remote','$185k – $225k','Indeed',9,false,true,''),
-      r('Software Engineer II','Airtable','Remote','$155k – $195k','Indeed',12,true,false,'applied'),
-      r('Frontend Engineer','Webflow','Remote','$160k – $200k','LinkedIn',14,true,false,'applied'),
-      r('Full Stack Engineer','Mercury','San Francisco, CA','$175k – $215k','Glassdoor',16,true,false,'applied'),
-      r('UI Engineer','Vercel','Remote','$170k – $210k','LinkedIn',18,true,false,'interviewing'),
-      r('Senior Engineer','Plaid','Remote','$190k – $230k','Indeed',20,true,false,'interviewing'),
-      r('Staff Frontend Engineer','Coinbase','Remote','$220k – $280k','LinkedIn',24,true,false,'offers'),
-      r('Software Engineer','Brex','San Francisco, CA','$165k – $205k','Indeed',28,true,false,'archived')
-    ];
-    return raw.map((j,i)=>Object.assign({id:i+1,link:'#',description:Component.desc(j.title,j.company),statuses:Component.computeStatuses(j.column,j.applied)},j));
   }
 
-  // helpers
+  // ---------- DB -> view-model mapping ----------
+  statusChecked(job, name){ const st=(job.statuses||[]).find(s=>s.status===name); return !!(st && st.checked); }
+  deriveApplied(job){ return this.statusChecked(job,'Applied'); }
+  deriveColumn(job){
+    if(this.statusChecked(job,'Rejected')||this.statusChecked(job,'Post-Interview Rejection')||this.statusChecked(job,'Ignored/Ghosted')) return 'archived';
+    if(this.statusChecked(job,'Offer')||this.statusChecked(job,'Accepted')) return 'offers';
+    if(this.statusChecked(job,'Interview 1')||this.statusChecked(job,'Interview 2')||this.statusChecked(job,'Interview 3')) return 'interviewing';
+    return 'applied';
+  }
+  daysAgoFrom(iso){
+    if(!iso) return 0;
+    const t=Date.parse(iso.endsWith('Z')||iso.includes('+')?iso:iso+'Z');
+    if(isNaN(t)) return 0;
+    return Math.max(0, Math.floor((Date.now()-t)/86400000));
+  }
+  siteLabel(raw){
+    if(!raw) return '';
+    const k=String(raw).toLowerCase();
+    if(Component.SITE_KEY_TO_LABEL[k]) return Component.SITE_KEY_TO_LABEL[k];
+    return String(raw).charAt(0).toUpperCase()+String(raw).slice(1);
+  }
+  mapDbJob(j){
+    const statuses=Array.isArray(j.statuses)?j.statuses:[];
+    return {
+      id:j.id, title:j.title||'', company:j.company||'', location:j.location||'',
+      compensation:j.compensation||'Not specified', site:this.siteLabel(j.site),
+      link:j.link||'', description:j.description||'', ignore:j.ignore?1:0,
+      daysAgo:this.daysAgoFrom(j.created_at),
+      statuses, applied:this.deriveApplied({statuses}), column:this.deriveColumn({statuses})
+    };
+  }
+
+  // ---------- helpers ----------
   ago(d){ if(d<=0)return'today'; if(d===1)return'yesterday'; if(d<7)return d+'d ago'; return Math.floor(d/7)+'w ago'; }
-  plain(t){ return t.replace(/[#*]/g,'').replace(/^- /gm,'').replace(/\n+/g,'  ').replace(/\s+/g,' ').trim(); }
+  plain(t){ return (t||'').replace(/[#*]/g,'').replace(/^- /gm,'').replace(/\n+/g,'  ').replace(/\s+/g,' ').trim(); }
   matchSearch(j){ const q=this.state.search.trim().toLowerCase(); if(!q)return true; return (j.title+' '+j.company).toLowerCase().includes(q); }
   showToast(m){ clearTimeout(this._tt); this.setState({toast:m}); this._tt=setTimeout(()=>this.setState({toast:''}),2400); }
+  todayStr(){ return new Date().toISOString().split('T')[0]; }
 
   inline(t){ return t.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((p,i)=> (p.startsWith('**')&&p.endsWith('**')) ? React.createElement('strong',{key:i,style:{color:'var(--text)',fontWeight:600}},p.slice(2,-2)) : p ); }
   fmtNodes(text){
-    const lines=text.split('\n'); const out=[]; let buf=[];
+    const lines=(text||'').split('\n'); const out=[]; let buf=[];
     const flush=()=>{ if(buf.length){ out.push(React.createElement('ul',{key:'u'+out.length,style:{margin:'4px 0 16px',paddingLeft:'18px',display:'flex',flexDirection:'column',gap:'7px'}}, buf.map((t,i)=>React.createElement('li',{key:i,style:{font:'400 14px/1.6 var(--font-body)',color:'var(--muted)'}},this.inline(t))))); buf=[]; } };
     lines.forEach((ln,i)=>{ const t=ln.trim();
       if(!t){flush();return;}
@@ -556,23 +572,47 @@ class Component extends DCLogic {
     flush(); return React.createElement('div',null,out);
   }
 
-  // mutations
-  toggleIgnore(id){ this.setState(s=>({jobs:s.jobs.map(j=>j.id===id?Object.assign({},j,{ignore:!j.ignore}):j)})); }
-  markApplied(id){ this.setState(s=>({jobs:s.jobs.map(j=>j.id===id?Object.assign({},j,{applied:true,column:'applied',statuses:Component.computeStatuses('applied',true)}):j)})); this.showToast('Moved to Applied'); }
-  moveTo(col){ const id=this.dragId; if(!id)return; this.setState(s=>({dragOverCol:null,jobs:s.jobs.map(j=>j.id===id?Object.assign({},j,{applied:true,column:col,statuses:Component.computeStatuses(col,true)}):j)})); this.dragId=null; }
-  toggleStatus(id,idx){ this.setState(s=>({jobs:s.jobs.map(j=>{ if(j.id!==id)return j; const sts=j.statuses.map((st,i)=> i===idx?Object.assign({},st,{checked:!st.checked,date:!st.checked?'Jun 30':null}):st); return Object.assign({},j,{statuses:sts}); })})); }
+  // Build the target status array for a tracker column (mirrors legacy drop semantics).
+  statusesForColumn(statuses, col){
+    const today=this.todayStr();
+    const set=(name,checked)=>{ const s=statuses.find(x=>x.status===name); if(s){ s.checked=checked?1:0; s.date_reached=checked?(s.date_reached||today):null; } };
+    const copy=statuses.map(s=>Object.assign({},s));
+    const find=n=>copy.find(s=>s.status===n);
+    const setc=(n,c)=>{ const s=find(n); if(s){ s.checked=c?1:0; s.date_reached=c?(s.date_reached||today):null; } };
+    if(col==='applied'){ copy.forEach(s=>{ s.checked=(s.status==='Applied')?1:0; s.date_reached=s.checked?(s.date_reached||today):null; }); }
+    else if(col==='interviewing'){ setc('Applied',true); if(!this._anyInterview(copy)) setc('Interview 1',true); ['Offer','Accepted','Rejected','Post-Interview Rejection','Ignored/Ghosted'].forEach(n=>setc(n,false)); }
+    else if(col==='offers'){ setc('Applied',true); setc('Offer',true); ['Rejected','Post-Interview Rejection','Ignored/Ghosted'].forEach(n=>setc(n,false)); }
+    else if(col==='archived'){ setc('Applied',true); setc('Rejected',true); ['Offer','Accepted'].forEach(n=>setc(n,false)); }
+    return copy;
+  }
+  _anyInterview(statuses){ return ['Interview 1','Interview 2','Interview 3'].some(n=>{ const s=statuses.find(x=>x.status===n); return s&&s.checked; }); }
+
+  // ---------- mutations (local optimistic; persistence wired in step 4) ----------
+  patchJob(id, fn){ this.setState(s=>({jobs:s.jobs.map(j=>{ if(j.id!==id) return j; const nj=fn(Object.assign({},j)); nj.applied=this.deriveApplied(nj); nj.column=this.deriveColumn(nj); return nj; })})); }
+
+  toggleIgnore(id){ this.patchJob(id, j=>{ j.ignore=j.ignore?0:1; return j; }); }
+  markApplied(id){
+    this.patchJob(id, j=>{ j.statuses=this.statusesForColumn(j.statuses,'applied'); return j; });
+    this.showToast('Moved to Applied');
+  }
+  moveTo(col){ const id=this.dragId; if(!id) return; this.setState({dragOverCol:null});
+    this.patchJob(id, j=>{ j.statuses=this.statusesForColumn(j.statuses,col); return j; }); this.dragId=null; }
+  toggleStatus(id, name){
+    this.patchJob(id, j=>{ j.statuses=j.statuses.map(st=> st.status===name?Object.assign({},st,{checked:st.checked?0:1,date_reached:st.checked?null:this.todayStr()}):st); return j; });
+  }
   clearDatabase(){ if(window.confirm('Clear all jobs from the database? This cannot be undone.')) this.setState({jobs:[],selectedId:null}); }
 
+  // ---------- scrape (mock for step 3; real lifecycle wired in step 4) ----------
   startScrape(){
     this.setState({findView:'progress',percent:0,found:0,saved:0,notHidden:0,stage:'Initializing',statusMsg:'Spinning up scrapers…',scrapeDone:false});
-    const stages=[[8,'Initializing','Spinning up scrapers…'],[26,'Searching Indeed','Querying Indeed listings…'],[48,'Searching LinkedIn','Querying LinkedIn listings…'],[68,'Searching Google','Aggregating Google results…'],[84,'Filtering','Applying keyword & LLM filters…'],[96,'Saving','Writing matches to the database…'],[100,'Complete','Done — fresh jobs are ready to review.']];
+    const stages=[[8,'Initializing','Spinning up scrapers…'],[26,'Searching','Querying listings…'],[68,'Processing','Aggregating results…'],[84,'Filtering','Applying keyword & LLM filters…'],[96,'Saving','Writing matches to the database…'],[100,'Complete','Done — fresh jobs are ready to review.']];
     let i=0; clearInterval(this._scr);
     this._scr=setInterval(()=>{ const [p,st,msg]=stages[i];
       this.setState({percent:p,stage:st,statusMsg:msg,found:Math.round(p*0.43),saved:Math.round(p*0.31),notHidden:Math.round(p*0.27)});
       i++; if(i>=stages.length){ clearInterval(this._scr); this.setState({scrapeDone:true}); }
     },720);
   }
-  closeFind(){ clearInterval(this._scr); this.setState({findOpen:false,findView:'config',scrapeDone:false}); }
+  closeFind(){ clearInterval(this._scr); clearInterval(this._poll); this.setState({findOpen:false,findView:'config',scrapeDone:false}); }
   viewNewJobs(){ this.closeFind(); this.setState({tab:'newjobs'}); }
 
   decorate(j){
@@ -580,7 +620,7 @@ class Component extends DCLogic {
     const av=(sz)=>({width:sz+'px',height:sz+'px',flex:'0 0 auto',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:(sz>40?'12px':'9px'),background:'var(--surface2)',border:'var(--bw) solid var(--border)',font:'700 '+(sz>40?16:13)+'px/1 var(--font-head)',color:'var(--text)'});
     const stop=(e)=>{ e.stopPropagation(); };
     return Object.assign({},j,{
-      initials:j.company.slice(0,2).toUpperCase(),
+      initials:(j.company||'?').slice(0,2).toUpperCase(),
       ago:this.ago(j.daysAgo),
       shortDesc:this.plain(j.description),
       avatar:Object.entries(av(40)).map(([k,v])=>this.css(k)+':'+v).join(';'),
@@ -591,7 +631,7 @@ class Component extends DCLogic {
       onDragEnd:()=>{ this.dragId=null; if(this.state.dragOverCol) this.setState({dragOverCol:null}); },
       onIgnore:(e)=>{ stop(e); this.toggleIgnore(j.id); },
       onApply:(e)=>{ stop(e); this.markApplied(j.id); },
-      onLink:(e)=>{ stop(e); window.open('https://www.google.com/search?q='+encodeURIComponent(j.title+' '+j.company),'_blank'); },
+      onLink:(e)=>{ stop(e); const url=j.link||('https://www.google.com/search?q='+encodeURIComponent(j.title+' '+j.company)); window.open(url,'_blank'); },
       ignoreBtn:'display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);cursor:pointer;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border2)')+';background:'+(j.ignore?'rgba(229,72,77,.12)':'transparent')+';color:'+(j.ignore?'#E5484D':'var(--muted)'),
       cardStyle:'display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius);padding:18px;animation:jf-rise .35s ease;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border)')+';opacity:'+(j.ignore?'.62':'1')
     });
@@ -611,7 +651,7 @@ class Component extends DCLogic {
       mkMobTab('newjobs','New Jobs',React.createElement('g',null,React.createElement('rect',{x:3,y:3,width:7,height:7,rx:1}),React.createElement('rect',{x:14,y:3,width:7,height:7,rx:1}),React.createElement('rect',{x:3,y:14,width:7,height:7,rx:1}),React.createElement('rect',{x:14,y:14,width:7,height:7,rx:1}))),
       mkMobTab('tracker','Tracker',React.createElement('g',null,React.createElement('rect',{x:3,y:3,width:7,height:18,rx:1}),React.createElement('rect',{x:14,y:3,width:7,height:11,rx:1}))),
     ];
-    mobTabs.push({key:'find',label:'Find',onClick:()=>this.setState({findOpen:true,findView:'config'}),icon:React.createElement('g',null,React.createElement('circle',{cx:11,cy:11,r:7}),React.createElement('line',{x1:16.5,y1:16.5,x2:21,y2:21})),iconWrap:'',style:'flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;background:none;border:none;cursor:pointer;color:var(--accent-text)'});
+    mobTabs.push({key:'find',label:'Find',onClick:()=>this.openFind(),icon:React.createElement('g',null,React.createElement('circle',{cx:11,cy:11,r:7}),React.createElement('line',{x1:16.5,y1:16.5,x2:21,y2:21})),iconWrap:'',style:'flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;background:none;border:none;cursor:pointer;color:var(--accent-text)'});
 
     // tracker columns
     const columns=Component.COLS.map(c=>{
@@ -641,13 +681,14 @@ class Component extends DCLogic {
     const sj=s.jobs.find(j=>j.id===s.selectedId);
     if(sj){
       const d=this.decorate(sj);
-      const lastIdx=sj.statuses.length-1;
-      d.timeline=sj.statuses.map((st,idx)=>{ const isRej=st.name.indexOf('Reject')>=0; const isOffer=st.name==='Offer';
-        const col=isRej?'#E5484D':(isOffer?'var(--c-offer)':'var(--accent)');
-        return {name:st.name,checked:st.checked,date:st.date,onToggle:()=>this.toggleStatus(sj.id,idx),
-          line: idx<lastIdx ? 'position:absolute;left:13px;top:24px;bottom:-12px;width:2px;background:'+(st.checked?col:'var(--border)') : 'display:none',
-          dot:'position:relative;z-index:1;flex:0 0 auto;width:28px;height:28px;border-radius:99px;display:flex;align-items:center;justify-content:center;border:2px solid '+(st.checked?col:'var(--border2)')+';background:'+(st.checked?col:'var(--surface)'),
-          label:'font:'+(st.checked?'600':'400')+' 14px/1 var(--font-body);color:'+(st.checked?'var(--text)':'var(--muted)')};
+      const tl=sj.statuses&&sj.statuses.length?sj.statuses:Component.STATUS_NAMES.map(n=>({status:n,checked:0,date_reached:null}));
+      const lastIdx=tl.length-1;
+      d.timeline=tl.map((st,idx)=>{ const isRej=/Reject|Ghosted/.test(st.status); const isOffer=st.status==='Offer'||st.status==='Accepted';
+        const col=isRej?'#E5484D':(isOffer?'var(--c-offer)':'var(--accent)'); const checked=!!st.checked;
+        return {name:st.status,checked,date:st.date_reached||null,onToggle:()=>this.toggleStatus(sj.id,st.status),
+          line: idx<lastIdx ? 'position:absolute;left:13px;top:24px;bottom:-12px;width:2px;background:'+(checked?col:'var(--border)') : 'display:none',
+          dot:'position:relative;z-index:1;flex:0 0 auto;width:28px;height:28px;border-radius:99px;display:flex;align-items:center;justify-content:center;border:2px solid '+(checked?col:'var(--border2)')+';background:'+(checked?col:'var(--surface)'),
+          label:'font:'+(checked?'600':'400')+' 14px/1 var(--font-body);color:'+(checked?'var(--text)':'var(--muted)')};
       });
       d.descNodes=this.fmtNodes(sj.description);
       selectedJob=d;
@@ -677,12 +718,9 @@ class Component extends DCLogic {
       navTabs, mobTabs,
       toggleSidebar:()=>this.setState(st=>({sidebarOpen:!st.sidebarOpen})),
       sidebarStyle:'flex:0 0 auto;overflow:hidden;background:var(--surface);border-right:var(--bw) solid var(--border);transition:width .28s cubic-bezier(.4,0,.2,1);width:'+(s.sidebarOpen?'258px':'0px'),
-      search:s.search, onSearch:(e)=>this.setState({search:e.target.value}),
+      search:s.search, onSearch:(e)=>this.setState({search:e.target.value,page:0}),
       pipelineStats, clearDatabase:()=>this.clearDatabase(),
-      setThemeNeon:()=>this.setState({theme:'neon'}), setThemeEditorial:()=>this.setState({theme:'editorial'}),
-      swNeon:'padding:7px 13px;border:none;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);background:'+(s.theme==='neon'?'var(--accent)':'transparent')+';color:'+(s.theme==='neon'?'var(--accent-ink)':'var(--muted)'),
-      swEdit:'padding:7px 13px;border:none;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);background:'+(s.theme==='editorial'?'var(--accent)':'transparent')+';color:'+(s.theme==='editorial'?'var(--accent-ink)':'var(--muted)'),
-      openFind:()=>this.setState({findOpen:true,findView:'config'}),
+      openFind:()=>this.openFind(),
 
       isTracker:s.tab==='tracker', isNewJobs:s.tab==='newjobs',
       columns, trackedCount,
@@ -714,6 +752,7 @@ class Component extends DCLogic {
       scrapeStats, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs()
     };
   }
+  openFind(){ this.setState({findOpen:true,findView:'config'}); }
 }
 
 </script>
