@@ -616,14 +616,45 @@
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-              <div>
-                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Location</label>
-                <input value="{{ location }}" oninput="{{ onLocation }}" placeholder="e.g. Remote" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Where — Countries</label>
+              <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                <sc-for list="{{ countrySelected }}" as="c" hint-placeholder-count="2">
+                  <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent);color:var(--accent-ink);border-radius:99px;font:600 12px/1 var(--font-body);animation:jf-pop .2s ease">
+                    {{ c.name }}
+                    <button onclick="{{ c.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                  </span>
+                </sc-for>
+                <input value="{{ countryQuery }}" oninput="{{ onCountryQuery }}" onkeydown="{{ onCountryKey }}" placeholder="type a country…" style="flex:1;min-width:140px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
               </div>
+              <sc-if value="{{ countryOptionsShown }}" hint-placeholder-val="">
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+                  <sc-for list="{{ countryOptions }}" as="o" hint-placeholder-count="3">
+                    <button onclick="{{ o.onAdd }}" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid var(--border2);background:var(--surface);color:var(--text)">+ {{ o.name }}</button>
+                  </sc-for>
+                  <sc-if value="{{ countryNoMatch }}" hint-placeholder-val="">
+                    <span style="font:400 12px/1.4 var(--font-body);color:var(--muted);padding:6px 4px">No matching country</span>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <div style="margin-top:12px">
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">City / Remote — optional</label>
+                <input value="{{ location }}" oninput="{{ onLocation }}" placeholder="e.g. Remote, New York…" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
               <div>
                 <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Max Results — {{ maxResults }}</label>
                 <input type="range" min="5" max="50" step="5" value="{{ maxResults }}" oninput="{{ onMax }}" style="{{ rangeStyle }}">
+              </div>
+              <div>
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
+                <div style="display:flex;flex-wrap:wrap;gap:7px">
+                  <sc-for list="{{ jobTypeList }}" as="jt" hint-placeholder-count="5">
+                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}">{{ jt.label }}</button>
+                  </sc-for>
+                </div>
               </div>
             </div>
 
@@ -642,25 +673,6 @@
                     <span style="{{ s.check }}"></span>{{ s.name }}
                   </button>
                 </sc-for>
-              </div>
-            </div>
-
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start">
-              <div>
-                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Countries (Indeed/Glassdoor)</label>
-                <div style="display:flex;flex-wrap:wrap;gap:7px">
-                  <sc-for list="{{ countryList }}" as="c" hint-placeholder-count="4">
-                    <button onclick="{{ c.onToggle }}" style="{{ c.style }}"><span style="{{ c.check }}"></span>{{ c.name }}</button>
-                  </sc-for>
-                </div>
-              </div>
-              <div>
-                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
-                <div style="display:flex;flex-wrap:wrap;gap:7px">
-                  <sc-for list="{{ jobTypeList }}" as="jt" hint-placeholder-count="5">
-                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}">{{ jt.label }}</button>
-                  </sc-for>
-                </div>
               </div>
             </div>
 
@@ -828,7 +840,7 @@ class Component extends DCLogic {
     {key:'archived',label:'Archived',c:'--c-archive'}
   ];
   static SITES = ['Indeed','LinkedIn','Glassdoor','ZipRecruiter','Google'];
-  static COUNTRIES = ['USA','UK','Canada','Australia','India','Germany','France','Netherlands','Ireland','Singapore'];
+  static COUNTRIES = ['USA','UK','Canada','Australia','India','Germany','France','Netherlands','Ireland','Singapore','Spain','Italy','Sweden','Switzerland','Belgium','Austria','Denmark','Norway','Finland','Poland','Portugal','New Zealand','Japan','Hong Kong','Mexico','Brazil','Argentina','Chile','Colombia','South Africa','Nigeria','UAE','Saudi Arabia','Israel','Turkey','Greece','Czech Republic','Romania','Hungary','Ukraine','Philippines','Indonesia','Malaysia','Thailand','Vietnam','South Korea','China','Pakistan','Bangladesh','Egypt'];
   static JOB_TYPES = [['','Any'],['fulltime','Full-time'],['internship','Internship'],['contract','Contract'],['parttime','Part-time']];
   static SITE_COLORS = {LinkedIn:'#0A66C2',Indeed:'#2557A7',Glassdoor:'#0CAA41',ZipRecruiter:'#3A7D34',Google:'#EA4335'};
   // Map config-site keys (and DB site strings) <-> display labels used in the UI.
@@ -846,7 +858,7 @@ class Component extends DCLogic {
       theme:'editorial', tab, sidebarOpen:true, search:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null,
       sortByMatch:false, analyzing:false, matchInfoId:null,
-      terms:['Software Engineer'], location:'Remote', ageIndex:0,
+      terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
       groups:[], maxResults:25, useLLM:true,
       countries:{USA:true}, jobType:'', genBusy:false,
@@ -1056,6 +1068,8 @@ class Component extends DCLogic {
     }catch(e){ console.error('config load failed', e); }
   }
   countriesToConfig(){ return Object.keys(this.state.countries).filter(k=>this.state.countries[k]); }
+  addCountry(name){ this.setState(st=>({countries:Object.assign({},st.countries,{[name]:true}),countryQuery:''})); }
+  removeCountry(name){ this.setState(st=>{ const c=Object.assign({},st.countries); delete c[name]; return {countries:c}; }); }
   configToSave(){
     const s=this.state;
     return Object.assign({}, this._loadedConfig||{}, {
@@ -1374,11 +1388,21 @@ class Component extends DCLogic {
       onKey:(e)=>{ const v=(s.groupDrafts[gi]||'').trim(); if(e.key==='Enter'&&v){ e.preventDefault(); this.setState(st=>({groups:st.groups.map((gr,k)=>k===gi?gr.concat(v):gr),groupDrafts:Object.assign({},st.groupDrafts,{[gi]:''})})); } },
       onRemove:()=>this.setState(st=>({groups:st.groups.filter((_,k)=>k!==gi)}))
     }));
-    const countryList=Component.COUNTRIES.map(name=>{ const on=!!s.countries[name];
-      return {name,onToggle:()=>this.setState(st=>({countries:Object.assign({},st.countries,{[name]:!st.countries[name]})})),
-        style:'display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent)':'var(--border)')+';background:'+(on?'color-mix(in srgb,var(--accent) 14%,transparent)':'var(--bg)')+';color:var(--text)',
-        check:'width:13px;height:13px;border-radius:4px;flex:0 0 auto;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent')};
-    });
+    // Unified country selector: chips for selected + searchable add-from-list.
+    const countrySelected=Object.keys(s.countries).filter(k=>s.countries[k]).map(name=>({name,onRemove:()=>this.removeCountry(name)}));
+    const cq=(s.countryQuery||'').trim().toLowerCase();
+    const countryOptions = cq ? Component.COUNTRIES.filter(n=>!s.countries[n] && n.toLowerCase().includes(cq)).slice(0,10).map(name=>({name,onAdd:()=>this.addCountry(name)})) : [];
+    const countryOptionsShown = !!cq;
+    const countryNoMatch = !!cq && countryOptions.length===0;
+    const onCountryQuery=(e)=>this.setState({countryQuery:e.target.value});
+    const onCountryKey=(e)=>{
+      if(e.key==='Enter'){ e.preventDefault(); const q=(s.countryQuery||'').trim(); if(!q) return; const lc=q.toLowerCase();
+        const pick=Component.COUNTRIES.find(n=>n.toLowerCase()===lc) || Component.COUNTRIES.find(n=>!s.countries[n] && n.toLowerCase().includes(lc));
+        if(pick) this.addCountry(pick);
+      } else if(e.key==='Backspace' && !s.countryQuery){
+        const keys=Object.keys(s.countries).filter(k=>s.countries[k]); if(keys.length) this.removeCountry(keys[keys.length-1]);
+      }
+    };
     const jobTypeList=Component.JOB_TYPES.map(([val,label])=>{ const on=s.jobType===val;
       return {val,label,onSelect:()=>this.setState({jobType:val}),
         style:'padding:7px 12px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent2)':'var(--border)')+';background:'+(on?'var(--accent2)':'var(--bg)')+';color:'+(on?'#fff':'var(--text)')};
@@ -1450,7 +1474,8 @@ class Component extends DCLogic {
       maxResults:s.maxResults, onMax:(e)=>this.setState({maxResults:+e.target.value}),
       ageIndex:s.ageIndex, ageLabel:Component.AGES[s.ageIndex], onAge:(e)=>this.setState({ageIndex:+e.target.value}),
       siteList, keywordGroups, addGroup:()=>this.setState(st=>({groups:st.groups.concat([[]])})),
-      countryList, jobTypeList,
+      countrySelected, countryOptions, countryOptionsShown, countryNoMatch,
+      countryQuery:s.countryQuery, onCountryQuery, onCountryKey, jobTypeList,
       genKeywords:()=>this.genKeywords(), genKeywordsLabel:s.genBusy?'Generating…':'Generate (LLM)',
       genKeywordsStyle:'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;cursor:'+(s.genBusy?'default':'pointer')+';font:600 11px/1 var(--font-body);border:var(--bw) solid var(--accent2);background:transparent;color:var(--accent2);text-transform:none;letter-spacing:0;opacity:'+(s.genBusy?'.6':'1'),
       useLLM:s.useLLM, toggleLLM:()=>this.setState(st=>({useLLM:!st.useLLM})),
