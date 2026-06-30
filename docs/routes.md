@@ -62,6 +62,17 @@ Configures the recommendation system. Config is stored in gitignored JSON (`conf
 | `/api/options/llm/test` | POST | Probe the endpoint (uses posted config if given, else saved); returns `{ok, ...}` |
 | `/api/options/runtime` | GET / POST | Get / save runtime knobs (parallel worker counts, analysis toggles, score weights, top_n_llm) |
 
+## Profile API (`profile_bp`)
+
+Builds/edits the active recommendation profile (see `docs/profile.md`).
+
+| Path | Method | Purpose |
+| --- | --- | --- |
+| `/api/profile` | GET | Load the active profile (or an empty skeleton with `exists:false`) |
+| `/api/profile` | POST | Upsert the active profile from edited fields |
+| `/api/profile/upload` | POST | Upload a résumé (PDF/.tex/.md), extract text, return an LLM-drafted (or empty) profile — not persisted |
+| `/api/profile/build` | POST | Rebuild a draft from stored `resume_text` (requires the LLM) |
+
 ## UI States (per view)
 
 - **New Jobs grid:** loading (scrape in progress), empty (no jobs / all ignored), populated, error (API failure).

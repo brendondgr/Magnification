@@ -46,6 +46,13 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 - `GET /api/options/runtime` → runtime knobs: `{enable_analysis, enable_llm_rerank, enable_llm_skills, embed_workers, embed_batch_size, linkedin_workers, linkedin_delay, llm_workers, top_n_llm, weights:{semantic,bm25,keyword,skill}}`.
 - `POST /api/options/runtime` — body: any subset (weights deep-merged) → persisted to `config/runtime_config.json`; returns `{success, config}`.
 
+## Profile (recommendation system) (`profile_bp`)
+
+- `GET /api/profile` → active profile `{exists, interests_paragraph, skills, job_titles, keyword_groups, resume_text, source_filename, ...}` (or `{exists:false}` + empty fields).
+- `POST /api/profile` — body: any of `interests_paragraph, skills, job_titles, keyword_groups, resume_text, source_filename, name` → `upsert_active_profile`; returns `{success, profile}`.
+- `POST /api/profile/upload` — multipart `file` (.pdf/.tex/.md/.markdown/.txt) → `{success, source_filename, resume_text, profile, llm_used, llm_error}`. Draft is **not** persisted.
+- `POST /api/profile/build` — body: `{resume_text}` → `{success, profile, llm_used}` (requires the LLM endpoint enabled).
+
 ## Shared Schema
 
 Job and related records are defined as SQLAlchemy models in `utils/backend/database/models.py`. See `docs/database.md` for the schema deep-dive.
