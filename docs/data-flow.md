@@ -1,0 +1,56 @@
+# Data Flow — Magnification
+
+How data enters, moves through, and reaches the UI. Source: `utils/backend/`, `app.py`.
+
+## Sources
+
+- **Job boards** via `python-jobspy` and a custom LinkedIn description scraper — the primary external data source.
+- **SQLite database** (`data/*.db`) — the durable store for scraped jobs and their tracker status.
+- **JSON config files** — `jobs_config.json` (search titles/filters) and `llm_config.json` (local-LLM settings); both gitignored.
+- **Local LLM** — `utils/LocalLLM` manages model files and a local llama server.
+
+## Scrape Pipeline (write path)
+
+```
+Find Jobs modal → POST /api/scrape/start
+      → scraping_service (orchestrator)
+          → task_generator → jobspy_wrapper / linkedin_scraper (concurrent_scraper)
+          → data_processor (dedupe, clean) → job_filter (apply config)
+      → database/operations (upsert) → SQLite
+Client polls GET /api/scrape/status/<job_id> for progress
+```
+
+## Read Path (job display)
+
+```
+SQLite → database/operations (query) → GET /api/jobs[/<id>]
+      → fetch() in client → renderers.js → New Jobs grid / Tracker / detail panel
+```
+
+## Status Updates
+
+```
+Drag/drop or action in handlers.js
+      → PATCH /api/jobs/<id>/status  (tracker status)
+      → PATCH /api/jobs/<id>/ignore  (hide)
+      → database/operations → SQLite
+```
+
+## LLM Flow
+
+```
+LLM config UI → /api/config, /api/config/directories → llm_config.json
+Model management → /api/models*, /api/models/manage → model files on disk
+Server control → /api/server/{start,stop,status} → utils/LocalLLM/server/manager (llama server)
+```
+
+## State Ownership
+
+- **Server-side / durable:** scraped jobs, tracker status, config files, model files. Owned by the backend; SQLite is the source of truth for jobs.
+- **Client-side / ephemeral:** active tab/view, open panels/modals, in-flight drag state, polling timers.
+- **Derived:** "new vs. tracked" and column grouping are computed client-side from job status fields.
+
+## Caching / Real-time
+
+- No dedicated cache layer; the client re-fetches on demand.
+- Scrape progress is surfaced by **polling** `/api/scrape/status/<job_id>` (no websockets).
