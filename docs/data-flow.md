@@ -15,10 +15,17 @@ How data enters, moves through, and reaches the UI. Source: `utils/backend/`, `a
 Find Jobs modal → POST /api/scrape/start
       → scraping_service (orchestrator)
           → task_generator → jobspy_wrapper / linkedin_scraper (concurrent_scraper)
+          → linkedin_scraper.fetch_descriptions_for_jobs (PARALLEL — ThreadPoolExecutor,
+              worker count + jittered delay from runtime_config.linkedin_workers/linkedin_delay)
           → data_processor (dedupe, clean) → job_filter (apply config)
       → database/operations (upsert) → SQLite
 Client polls GET /api/scrape/status/<job_id> for progress
 ```
+
+LinkedIn descriptions are fetched concurrently (previously sequential). Skill extraction
+(`recommend/skills.py`, a fast gazetteer over the description + the profile's skills, with an
+optional LLM extractor) and embedding/scoring run in the analysis stage (see Recommendation
+Analysis Flow).
 
 ## Read Path (job display)
 
