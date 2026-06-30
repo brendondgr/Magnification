@@ -6,7 +6,24 @@ Operational rules for working in this repository. Read alongside `docs/skills/gl
 
 - **Manager:** `uv` (Python ≥ 3.12). Do not use pip/conda in committed instructions.
 - **Virtualenv:** managed by `uv` (`.venv/`, gitignored).
-- **Config files:** `jobs_config.json`, `llm_config.json` are runtime config and are **gitignored**. There are no required environment variables today, so no `.env.example` is maintained. If env vars are introduced later, add `.env.example` and document them here.
+- **Config files:** `jobs_config.json`, `llm_config.json`, `llm_endpoint_config.json`, and `runtime_config.json` are runtime config and are **gitignored**. There are no required environment variables today, so no `.env.example` is maintained. If env vars are introduced later, add `.env.example` and document them here.
+
+### Recommendation dependencies (fastembed / BM25 / PDF)
+
+The RAG + LLM recommendation features add `fastembed` (ONNX, CPU embeddings for
+`BAAI/bge-small-en-v1.5`), `rank-bm25`, `pypdf`, and `requests` to `pyproject.toml`.
+
+The committed `uv.lock` is fragile (it pins `regex` to an sdist with no offline wheel), so
+`uv sync` / `uv add` can fail. Install these as **binary wheels** into the existing venv
+without touching the lock:
+
+```
+uv pip install --only-binary=:all: fastembed rank-bm25 pypdf requests
+```
+
+The bge embedding model (~130 MB) is downloaded from HuggingFace on **first embed** and cached
+under `~/.cache/`; that one call needs network. Tests that depend on the model skip when it is
+not cached, and all LLM-dependent tests run against a mocked endpoint (no network/keys needed).
 
 ## Commands
 

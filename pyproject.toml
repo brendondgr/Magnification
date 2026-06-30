@@ -12,6 +12,10 @@ dependencies = [
     "pandas",
     "loguru",
     "tqdm",
+    "requests",
+    "fastembed",
+    "rank-bm25",
+    "pypdf",
 ]
 
 [dependency-groups]
