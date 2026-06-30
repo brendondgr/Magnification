@@ -1,0 +1,23 @@
+[project]
+name = "magnification"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask",
+    "python-jobspy",
+    "ipykernel",
+    "sqlalchemy",
+    "pandas",
+    "loguru",
+    "tqdm",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.uv]
+package = false

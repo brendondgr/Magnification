@@ -1,0 +1,17 @@
+---
+description: Use when planning, scaffolding, restructuring, or documenting the web app: application mode, stack, routes, data flow, frontend/backend boundary, and the design-quality gate.
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# Website Architecture
+
+Read these files before acting:
+
+1. `docs/skills/global-project-rules/SKILL.md`
+2. `docs/skills/website-architecture/SKILL.md`
+3. `docs/architecture.md`
+4. `docs/routes.md`
+5. `docs/api-contract.md`
+6. `docs/data-flow.md`
+7. `docs/design-system.md`

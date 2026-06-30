@@ -1,0 +1,12 @@
+---
+name: accessibility-mobile
+description: Use when implementing, auditing, or documenting mobile-responsive, touch-friendly, and accessible web UI (viewport, tap targets, forms, media, Core Web Vitals).
+---
+
+# Accessibility Mobile
+
+Read these files before acting:
+
+1. `docs/skills/global-project-rules/SKILL.md`
+2. `docs/skills/accessibility-mobile/SKILL.md`
+3. `docs/design-system.md`
