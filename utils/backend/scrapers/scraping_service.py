@@ -133,7 +133,12 @@ def execute_full_scraping_workflow(
         logger.info(f"  Sites: {sites}")
         
         # Step 2: Execute concurrent scraping
-        update_progress('scraping', 10, {'message': f'Starting scrape for {len(search_terms)} terms...'})
+        _countries_txt = ', '.join(countries) if countries else DEFAULT_COUNTRY
+        _jt_txt = f' · {job_type}' if job_type else ''
+        update_progress('scraping', 10, {'message': (
+            f'Searching {len(search_terms)} term(s) on {len(sites)} site(s) · '
+            f'{_countries_txt}{_jt_txt}'
+        )})
         logger.info("Step 2: Executing concurrent scraping...")
         
         # Create a callback to bridge scraper progress to workflow progress (10% -> 80%)
@@ -178,7 +183,8 @@ def execute_full_scraping_workflow(
         update_progress('processing', 80, {'message': f'Processing {len(raw_jobs)} raw jobs...'})
         logger.info("Step 3: Processing and deduplicating data...")
         processed_jobs = process_scraped_jobs(raw_jobs)
-        
+        update_progress('processing', 82, {'message': f'Deduplicated {len(raw_jobs)} → {len(processed_jobs)} unique jobs'})
+
         results['steps']['processing'] = {
             'processed_count': len(processed_jobs),
             'statistics': get_job_statistics(processed_jobs)
@@ -240,6 +246,35 @@ def execute_full_scraping_workflow(
                     'fetched': 0
                 }
         
+        # Step 3.7: LLM compensation extraction — recover pay that is only written in the
+        # description prose (common on LinkedIn, which shows "Not specified" otherwise).
+        # Gated by the LLM endpoint being enabled + the runtime toggle; non-fatal.
+        try:
+            from ..recommend.runtime_config import get_runtime_config
+            comp_rc = get_runtime_config()
+            if comp_rc.get('enable_llm_compensation'):
+                from ..llm.config import load_llm_endpoint_config
+                if load_llm_endpoint_config().get('enabled'):
+                    from ..recommend.compensation import extract_compensation_llm, needs_compensation
+                    from ..llm.client import OpenAIClient
+                    pending = [j for j in processed_jobs if needs_compensation(j)]
+                    if pending:
+                        update_progress('extracting_compensation', 89, {
+                            'message': f'Extracting compensation from {len(pending)} description(s) via LLM...'
+                        })
+                        client = OpenAIClient.from_config()
+                        extracted = extract_compensation_llm(
+                            processed_jobs, client, max_workers=comp_rc.get('llm_workers', 4)
+                        )
+                        results['steps']['compensation'] = {'candidates': len(pending), 'extracted': extracted}
+                        update_progress('extracting_compensation', 90, {
+                            'message': f'Recovered compensation for {extracted} job(s)'
+                        })
+                        logger.info(f"  LLM compensation: extracted {extracted}/{len(pending)}")
+        except Exception as e:
+            logger.error(f"Compensation extraction failed (non-fatal): {e}")
+            results['errors'].append(f"Compensation error: {e}")
+
         # Step 4: Store in database
         job_ids = []
         if save_to_database:
@@ -276,6 +311,7 @@ def execute_full_scraping_workflow(
                 'job_ids': job_ids
             }
             
+            update_progress('saving', 93, {'message': f'Stored {stored_count} new · {skipped_count} duplicate(s) skipped'})
             logger.info(f"  Stored {stored_count} jobs, skipped {skipped_count} duplicates")
         else:
             logger.info("Step 4: Skipping database storage (disabled)")
@@ -288,6 +324,7 @@ def execute_full_scraping_workflow(
             # Mark jobs as ignored if they don't match criteria
             filter_results = filter_and_mark_jobs(job_ids)
             results['steps']['filtering'] = filter_results
+            update_progress('filtering', 96, {'message': f"Filtered: kept {filter_results['kept']} · ignored {filter_results['ignored']}"})
             logger.info(f"  Kept {filter_results['kept']}, ignored {filter_results['ignored']}")
         else:
             # Filter in-memory for non-database mode
@@ -312,6 +349,7 @@ def execute_full_scraping_workflow(
                     from ..recommend.service import analyze_jobs
                     analysis_result = analyze_jobs(job_ids=job_ids, runtime=runtime_cfg)
                     results['steps']['analysis'] = {'analyzed': analysis_result.get('analyzed', 0)}
+                    update_progress('analyzing', 99, {'message': f"Scored {analysis_result.get('analyzed', 0)} job(s) against your profile"})
                     logger.info(f"  Analyzed {analysis_result.get('analyzed', 0)} jobs against profile")
             except Exception as e:
                 logger.error(f"Analysis step failed (non-fatal): {e}")

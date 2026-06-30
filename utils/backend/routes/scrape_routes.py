@@ -26,12 +26,28 @@ def run_scraping_background(job_id: str, use_config: bool = True):
         scrape_jobs[job_id]['status'] = 'running'
         
         def progress_callback(status_update):
-            scrape_jobs[job_id]['progress'] = status_update
-            # If completed or failed, status is handled by return value usually, 
+            rec = scrape_jobs[job_id]
+            rec['progress'] = status_update
+            # Append a timestamped entry to an append-only event log so the UI can show a
+            # live, step-by-step activity feed. Consecutive identical messages are skipped,
+            # and the log is capped to bound memory.
+            details = status_update.get('details') or {}
+            msg = details.get('message') or ''
+            events = rec.setdefault('events', [])
+            if msg and (not events or events[-1].get('message') != msg):
+                events.append({
+                    't': round(time.time() - rec.get('start_time', time.time()), 1),
+                    'stage': status_update.get('stage'),
+                    'percent': status_update.get('percent'),
+                    'message': msg,
+                })
+                if len(events) > 200:
+                    del events[:len(events) - 200]
+            # If completed or failed, status is handled by return value usually,
             # but callback might be faster for real-time UI
             if status_update.get('stage') == 'failed':
-                scrape_jobs[job_id]['status'] = 'failed'
-                scrape_jobs[job_id]['error'] = status_update['details'].get('message', 'Unknown error')
+                rec['status'] = 'failed'
+                rec['error'] = details.get('message', 'Unknown error')
         
         # Execute workflow
         # Note: If use_config is True, we pass None for params so it loads from config
@@ -65,6 +81,7 @@ def start_scraping():
     scrape_jobs[job_id] = {
         'status': 'pending',
         'progress': {'stage': 'pending', 'percent': 0, 'details': {}},
+        'events': [],
         'results': None,
         'start_time': time.time()
     }

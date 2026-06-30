@@ -180,21 +180,25 @@
             <sc-for list="{{ gridJobs }}" as="job" hint-placeholder-count="6">
               <article style="{{ job.cardStyle }}">
                 <div style="display:flex;align-items:flex-start;gap:12px">
-                  <div style="{{ job.avatar }}">{{ job.initials }}</div>
                   <div style="flex:1;min-width:0">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                       <span style="{{ job.siteBadge }}">{{ job.site }}</span>
-                      <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
-                        <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
-                      </sc-if>
-                      <span style="font:400 11px/1 var(--font-mono);color:var(--muted)">{{ job.ago }}</span>
+                      <span style="font:400 11px/1 var(--font-mono);color:var(--muted)">{{ job.dateStr }}</span>
                     </div>
                     <h3 style="margin:8px 0 2px;font:600 16px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</h3>
                     <div style="font:400 13px/1.3 var(--font-body);color:var(--muted)">{{ job.company }}</div>
                   </div>
-                  <button onclick="{{ job.onIgnore }}" title="Ignore" style="{{ job.ignoreBtn }}">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22"></path></svg>
-                  </button>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:0 0 auto">
+                    <button onclick="{{ job.onIgnore }}" title="Ignore" style="{{ job.ignoreBtn }}">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22"></path></svg>
+                    </button>
+                    <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
+                        <button onclick="{{ job.onMatchInfo }}" title="Match breakdown" style="{{ job.matchInfoBtn }}">?</button>
+                      </div>
+                    </sc-if>
+                  </div>
                 </div>
 
                 <div style="display:flex;flex-wrap:wrap;gap:7px;margin:13px 0">
@@ -384,17 +388,28 @@
 
       <div style="flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:22px">
         <div>
-          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Résumé — PDF · LaTeX · Markdown</label>
-          <input type="file" accept=".pdf,.tex,.md,.markdown,.txt" onchange="{{ onResumeFile }}" style="width:100%;font:400 13px/1.4 var(--font-body);color:var(--text)">
-          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
-            <sc-if value="{{ hasResumeText }}" hint-placeholder-val="">
-              <button onclick="{{ rebuildProfile }}" style="display:flex;align-items:center;gap:7px;padding:8px 13px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
-                Rebuild from résumé (LLM)
-              </button>
-            </sc-if>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Résumé → Profile</label>
+          <div style="display:flex;gap:10px;align-items:stretch;flex-wrap:wrap">
+            <label ondragover="{{ onResumeDragOver }}" ondragleave="{{ onResumeDragLeave }}" ondrop="{{ onResumeDrop }}" style="{{ dropzoneStyle }}">
+              <input type="file" accept=".pdf,.tex,.md,.markdown,.txt" onchange="{{ onResumeFile }}" style="display:none">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              <div style="font:600 13px/1.4 var(--font-body);color:var(--text);text-align:center">Drag &amp; drop your résumé<br>or <span style="color:var(--accent2);text-decoration:underline">browse</span></div>
+              <div style="font:400 11px/1 var(--font-mono);color:var(--muted)">PDF · LaTeX · Markdown · TXT</div>
+              <sc-if value="{{ pfResumeName }}" hint-placeholder-val="">
+                <div style="font:600 11px/1.3 var(--font-body);color:var(--c-offer-text);text-align:center;word-break:break-all">✓ {{ pfResumeName }}</div>
+              </sc-if>
+            </label>
+            <button onclick="{{ buildProfile }}" style="{{ buildBtnStyle }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+              Build Profile (LLM)
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
             <sc-if value="{{ pfStatus }}" hint-placeholder-val="">
               <span style="font:400 12px/1.3 var(--font-body);color:var(--muted)">{{ pfStatus }}</span>
+            </sc-if>
+            <sc-if value="{{ buildHint }}" hint-placeholder-val="">
+              <span style="font:400 12px/1.3 var(--font-body);color:var(--accent-text)">{{ buildHint }}</span>
             </sc-if>
           </div>
         </div>
@@ -540,6 +555,10 @@
             <span style="{{ rtLlmSkillsChk }}"><sc-if value="{{ rtEnableLlmSkills }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
             <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM skill extraction</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Use the LLM (vs the fast gazetteer) to extract skills</div></div>
           </button>
+          <button onclick="{{ toggleRtLlmComp }}" style="{{ rtLlmCompRow }}">
+            <span style="{{ rtLlmCompChk }}"><sc-if value="{{ rtEnableLlmComp }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM compensation extraction</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Pull pay from the job description when the board lists none (e.g. LinkedIn)</div></div>
+          </button>
 
           <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">Parallelism</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -601,14 +620,45 @@
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-              <div>
-                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Location</label>
-                <input value="{{ location }}" oninput="{{ onLocation }}" placeholder="e.g. Remote" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Where — Countries</label>
+              <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                <sc-for list="{{ countrySelected }}" as="c" hint-placeholder-count="2">
+                  <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent);color:var(--accent-ink);border-radius:99px;font:600 12px/1 var(--font-body);animation:jf-pop .2s ease">
+                    {{ c.name }}
+                    <button onclick="{{ c.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                  </span>
+                </sc-for>
+                <input value="{{ countryQuery }}" oninput="{{ onCountryQuery }}" onkeydown="{{ onCountryKey }}" placeholder="type a country…" style="flex:1;min-width:140px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
               </div>
+              <sc-if value="{{ countryOptionsShown }}" hint-placeholder-val="">
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+                  <sc-for list="{{ countryOptions }}" as="o" hint-placeholder-count="3">
+                    <button onclick="{{ o.onAdd }}" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid var(--border2);background:var(--surface);color:var(--text)">+ {{ o.name }}</button>
+                  </sc-for>
+                  <sc-if value="{{ countryNoMatch }}" hint-placeholder-val="">
+                    <span style="font:400 12px/1.4 var(--font-body);color:var(--muted);padding:6px 4px">No matching country</span>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <div style="margin-top:12px">
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">City / Remote — optional</label>
+                <input value="{{ location }}" oninput="{{ onLocation }}" placeholder="e.g. Remote, New York…" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
               <div>
                 <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Max Results — {{ maxResults }}</label>
                 <input type="range" min="5" max="50" step="5" value="{{ maxResults }}" oninput="{{ onMax }}" style="{{ rangeStyle }}">
+              </div>
+              <div>
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
+                <div style="display:flex;flex-wrap:wrap;gap:7px">
+                  <sc-for list="{{ jobTypeList }}" as="jt" hint-placeholder-count="5">
+                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}">{{ jt.label }}</button>
+                  </sc-for>
+                </div>
               </div>
             </div>
 
@@ -630,25 +680,6 @@
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start">
-              <div>
-                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Countries (Indeed/Glassdoor)</label>
-                <div style="display:flex;flex-wrap:wrap;gap:7px">
-                  <sc-for list="{{ countryList }}" as="c" hint-placeholder-count="4">
-                    <button onclick="{{ c.onToggle }}" style="{{ c.style }}"><span style="{{ c.check }}"></span>{{ c.name }}</button>
-                  </sc-for>
-                </div>
-              </div>
-              <div>
-                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
-                <div style="display:flex;flex-wrap:wrap;gap:7px">
-                  <sc-for list="{{ jobTypeList }}" as="jt" hint-placeholder-count="5">
-                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}">{{ jt.label }}</button>
-                  </sc-for>
-                </div>
-              </div>
-            </div>
-
             <div>
               <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">
                 <span>Title / Description Keywords</span>
@@ -658,6 +689,9 @@
                 </button>
               </label>
               <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Tags inside a group use <b style="color:var(--text)">OR</b>; groups are joined with <b style="color:var(--text)">AND</b>.</p>
+              <sc-if value="{{ fromProfile }}" hint-placeholder-val="">
+                <p style="margin:-4px 0 10px;font:600 11px/1.4 var(--font-body);color:var(--c-offer-text)">★ Prefilled from your active profile — edit freely before searching.</p>
+              </sc-if>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <sc-for list="{{ keywordGroups }}" as="g" hint-placeholder-count="2">
                   <div>
@@ -730,6 +764,21 @@
               </sc-for>
             </div>
 
+            <sc-if value="{{ hasScrapeEvents }}" hint-placeholder-val="">
+              <div style="width:100%;margin-top:22px">
+                <div style="font:600 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Live Activity</div>
+                <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                  <sc-for list="{{ scrapeEvents }}" as="ev" hint-placeholder-count="4">
+                    <div style="display:flex;gap:10px;align-items:center">
+                      <span style="flex:0 0 auto;width:7px;height:7px;border-radius:99px;background:{{ ev.dot }}"></span>
+                      <span style="flex:0 0 auto;font:500 10px/1.4 var(--font-mono);color:var(--muted);min-width:40px">{{ ev.time }}</span>
+                      <span style="min-width:0;font:400 12px/1.4 var(--font-body);color:var(--text)">{{ ev.msg }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
             <sc-if value="{{ scrapeDone }}" hint-placeholder-val="">
               <button onclick="{{ viewNewJobs }}" style="margin-top:26px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;height:48px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);cursor:pointer;animation:jf-rise .35s ease">
                 View New Jobs
@@ -738,6 +787,46 @@
             </sc-if>
           </div>
         </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ MATCH BREAKDOWN POPUP ============ -->
+  <sc-if value="{{ matchPopup }}" hint-placeholder-val="">
+    <div onclick="{{ closeMatchPopup }}" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);animation:jf-fade .2s ease;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onclick="{{ stop }}" style="width:min(440px,100%);max-height:84vh;overflow-y:auto;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;animation:jf-pop .28s cubic-bezier(.16,1,.3,1)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+          <div style="min-width:0">
+            <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Profile Match</div>
+            <div style="margin-top:6px;font:600 15px/1.2 var(--font-body);color:var(--text)">{{ matchPopup.title }}</div>
+          </div>
+          <span style="font:700 22px/1 var(--font-head);color:{{ matchPopup.matchColor }};white-space:nowrap">{{ matchPopup.matchLabel }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <sc-for list="{{ matchPopup.scoreBars }}" as="b" hint-placeholder-count="4">
+            <div>
+              <div style="display:flex;justify-content:space-between;font:500 11px/1 var(--font-mono);color:var(--muted);margin-bottom:4px"><span>{{ b.label }}</span><span>{{ b.pct }}%</span></div>
+              <div style="height:6px;border-radius:99px;background:var(--border)"><div style="{{ b.bar }}"></div></div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ matchPopup.hasLlmRationale }}" hint-placeholder-val="">
+          <div style="margin-top:14px;font:400 13px/1.5 var(--font-body);color:var(--text)">{{ matchPopup.llmRationale }}</div>
+        </sc-if>
+        <sc-if value="{{ matchPopup.hasSkillMatched }}" hint-placeholder-val="">
+          <div style="margin-top:14px">
+            <div style="font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Your matching skills</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ matchPopup.skillMatched }}" as="sk" hint-placeholder-count="3">
+                <span style="padding:4px 9px;background:color-mix(in srgb,var(--c-offer) 18%,transparent);color:var(--c-offer-text);border-radius:99px;font:600 11px/1 var(--font-body)">{{ sk.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button onclick="{{ closeMatchPopup }}" style="flex:1;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Close</button>
+          <button onclick="{{ matchPopup.onOpenDetail }}" style="flex:1;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Full details</button>
+        </div>
       </div>
     </div>
   </sc-if>
@@ -773,7 +862,7 @@ class Component extends DCLogic {
     {key:'archived',label:'Archived',c:'--c-archive'}
   ];
   static SITES = ['Indeed','LinkedIn','Glassdoor','ZipRecruiter','Google'];
-  static COUNTRIES = ['USA','UK','Canada','Australia','India','Germany','France','Netherlands','Ireland','Singapore'];
+  static COUNTRIES = ['USA','UK','Canada','Australia','India','Germany','France','Netherlands','Ireland','Singapore','Spain','Italy','Sweden','Switzerland','Belgium','Austria','Denmark','Norway','Finland','Poland','Portugal','New Zealand','Japan','Hong Kong','Mexico','Brazil','Argentina','Chile','Colombia','South Africa','Nigeria','UAE','Saudi Arabia','Israel','Turkey','Greece','Czech Republic','Romania','Hungary','Ukraine','Philippines','Indonesia','Malaysia','Thailand','Vietnam','South Korea','China','Pakistan','Bangladesh','Egypt'];
   static JOB_TYPES = [['','Any'],['fulltime','Full-time'],['internship','Internship'],['contract','Contract'],['parttime','Part-time']];
   static SITE_COLORS = {LinkedIn:'#0A66C2',Indeed:'#2557A7',Glassdoor:'#0CAA41',ZipRecruiter:'#3A7D34',Google:'#EA4335'};
   // Map config-site keys (and DB site strings) <-> display labels used in the UI.
@@ -790,21 +879,21 @@ class Component extends DCLogic {
     this.state = {
       theme:'editorial', tab, sidebarOpen:true, search:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null,
-      sortByMatch:false, analyzing:false,
-      terms:['Software Engineer'], location:'Remote', ageIndex:0,
+      sortByMatch:false, analyzing:false, matchInfoId:null,
+      terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
-      groups:[], maxResults:25, useLLM:true,
+      groups:[], maxResults:25, useLLM:true, fromProfile:false,
       countries:{USA:true}, jobType:'', genBusy:false,
       termDraft:'', groupDrafts:{},
-      percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false,
+      percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false, scrapeEvents:[],
       // ---- Profile panel ----
-      profileOpen:false, pfBusy:false, pfStatus:'',
+      profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false,
       profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],resume_text:'',source_filename:'',exists:false},
       pfSkillDraft:'', pfTitleDraft:'', pfGroupDrafts:{},
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
-      runtime:{enable_analysis:true,enable_llm_rerank:false,enable_llm_skills:false,embed_workers:4,embed_batch_size:32,linkedin_workers:4,linkedin_delay:0.5,llm_workers:4,top_n_llm:10,weights:{semantic:0.5,bm25:0.2,keyword:0.15,skill:0.15}},
+      runtime:{enable_analysis:true,enable_llm_rerank:false,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:4,linkedin_delay:0.5,llm_workers:4,top_n_llm:10,weights:{semantic:0.5,bm25:0.2,keyword:0.15,skill:0.15}},
       jobs:[], loading:true
     };
     this.dragId=null;
@@ -856,7 +945,7 @@ class Component extends DCLogic {
       id:j.id, title:j.title||'', company:j.company||'', location:j.location||'',
       compensation:j.compensation||'Not specified', site:this.siteLabel(j.site),
       link:j.link||'', description:j.description||'', ignore:j.ignore?1:0,
-      daysAgo:this.daysAgoFrom(j.created_at),
+      daysAgo:this.daysAgoFrom(j.created_at), createdAt:j.created_at||null,
       analysis, match,
       statuses, applied:this.deriveApplied({statuses}), column:this.deriveColumn({statuses})
     };
@@ -864,6 +953,29 @@ class Component extends DCLogic {
 
   // ---------- helpers ----------
   ago(d){ if(d<=0)return'today'; if(d===1)return'yesterday'; if(d<7)return d+'d ago'; return Math.floor(d/7)+'w ago'; }
+  // Format a stored ISO timestamp as a plain YYYY-MM-DD date (local time).
+  fmtDate(iso){ if(!iso) return ''; const t=Date.parse(iso.endsWith('Z')||iso.includes('+')?iso:iso+'Z'); if(isNaN(t)) return ''; const d=new Date(t); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+  // Tiered color for a match percentage: green (strong) / amber (moderate) / red (weak).
+  matchColorFor(m){ return (m==null)?'var(--muted)':(m>=66?'var(--c-offer-text)':(m>=40?'var(--accent-text)':'#E5484D')); }
+  // Build the shared analysis breakdown (score bars + skills + rationale) used by both
+  // the detail panel and the card match-breakdown popup.
+  buildBreakdown(an, match){
+    const pct=(v)=>Math.round((v||0)*100); const sm=an.skill_match||{};
+    const kh=Object.keys(an.keyword_group_hits||{}).map(label=>({label,terms:(an.keyword_group_hits[label]||[]).join(', ')}));
+    return {
+      scoreBars:[
+        {label:'Semantic',pct:pct(an.semantic_score),bar:'height:6px;border-radius:99px;background:var(--accent);width:'+pct(an.semantic_score)+'%'},
+        {label:'Keyword',pct:pct(an.keyword_score),bar:'height:6px;border-radius:99px;background:var(--accent2);width:'+pct(an.keyword_score)+'%'},
+        {label:'BM25',pct:pct(an.bm25_score),bar:'height:6px;border-radius:99px;background:var(--c-applied);width:'+pct(an.bm25_score)+'%'},
+        {label:'Skills',pct:pct(an.skill_score),bar:'height:6px;border-radius:99px;background:var(--c-offer);width:'+pct(an.skill_score)+'%'},
+      ],
+      llmRationale:an.llm_rationale||'', hasLlmRationale:!!an.llm_rationale,
+      skillMatched:(sm.matched||[]).map(x=>({label:x})), hasSkillMatched:(sm.matched||[]).length>0,
+      skillMissing:(sm.missing||[]).map(x=>({label:x})), hasSkillMissing:(sm.missing||[]).length>0,
+      keywordHits:kh, hasKeywordHits:kh.length>0,
+      matchColor:this.matchColorFor(match)
+    };
+  }
   plain(t){ return (t||'').replace(/[#*]/g,'').replace(/^- /gm,'').replace(/\n+/g,'  ').replace(/\s+/g,' ').trim(); }
   matchSearch(j){ const q=this.state.search.trim().toLowerCase(); if(!q)return true; return (j.title+' '+j.company).toLowerCase().includes(q); }
   showToast(m){ clearTimeout(this._tt); this.setState({toast:m}); this._tt=setTimeout(()=>this.setState({toast:''}),2400); }
@@ -955,29 +1067,40 @@ class Component extends DCLogic {
   sitesToConfig(){ return Object.keys(this.state.sites).filter(k=>this.state.sites[k]).map(label=>Component.SITE_LABEL_TO_KEY[label]||label.toLowerCase()); }
   hoursToAgeIndex(hours){ let idx=0; Component.AGE_HOURS.forEach((h,i)=>{ if(h<=hours) idx=i; }); return idx; }
   async openFindAndLoad(){
-    this.setState({findOpen:true,findView:'config',scrapeDone:false});
-    try{
-      const res=await fetch('/api/config/load'); if(!res.ok) return; const c=await res.json();
-      this._loadedConfig=c||{};
-      const terms=(c.search_terms&&c.search_terms.length)?c.search_terms:(c.job_titles||[]);
-      let groups=[]; const dk=c.description_keywords;
-      if(Array.isArray(dk)){ groups = dk.length&&Array.isArray(dk[0]) ? dk.map(g=>g.slice()) : (dk.length?[dk.slice()]:[]); }
-      const sitesObj={}; Component.SITES.forEach(l=>{ sitesObj[l]=false; });
-      (c.sites||[]).forEach(k=>{ const l=Component.SITE_KEY_TO_LABEL[String(k).toLowerCase()]; if(l) sitesObj[l]=true; });
-      if(!(c.sites||[]).length){ Component.SITES.forEach(l=>{ sitesObj[l]=this.state.sites[l]; }); }
-      const countriesObj={};
-      if(Array.isArray(c.countries)&&c.countries.length){ c.countries.forEach(cn=>{ countriesObj[cn]=true; }); }
-      else { Object.assign(countriesObj, this.state.countries); }
-      this.setState({
-        terms:terms.slice(), groups,
-        location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
-        ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
-        countries:countriesObj, jobType:c.job_type||'',
-        useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
-      });
-    }catch(e){ console.error('config load failed', e); }
+    this.setState({findOpen:true,findView:'config',scrapeDone:false,countryQuery:''});
+    // Load saved config + the active profile in parallel; the profile's titles/keyword
+    // groups take precedence so Find Jobs always reflects the latest built profile.
+    let c={}, prof={};
+    try{ const res=await fetch('/api/config/load'); if(res.ok) c=(await res.json())||{}; }catch(e){ console.error('config load failed', e); }
+    try{ const pr=await fetch('/api/profile'); if(pr.ok) prof=(await pr.json())||{}; }catch(e){ console.error('profile load failed', e); }
+    this._loadedConfig=c;
+    const profTitles=Array.isArray(prof.job_titles)?prof.job_titles.filter(Boolean):[];
+    const profGroups=Array.isArray(prof.keyword_groups)
+      ? prof.keyword_groups.filter(g=>g&&Array.isArray(g.terms)&&g.terms.length).map(g=>g.terms.slice())
+      : [];
+    const terms = profTitles.length ? profTitles.slice()
+      : ((c.search_terms&&c.search_terms.length)?c.search_terms:(c.job_titles||[]));
+    let groups=[];
+    if(profGroups.length){ groups=profGroups; }
+    else { const dk=c.description_keywords; if(Array.isArray(dk)){ groups = dk.length&&Array.isArray(dk[0]) ? dk.map(g=>g.slice()) : (dk.length?[dk.slice()]:[]); } }
+    const fromProfile = profTitles.length>0 || profGroups.length>0;
+    const sitesObj={}; Component.SITES.forEach(l=>{ sitesObj[l]=false; });
+    (c.sites||[]).forEach(k=>{ const l=Component.SITE_KEY_TO_LABEL[String(k).toLowerCase()]; if(l) sitesObj[l]=true; });
+    if(!(c.sites||[]).length){ Component.SITES.forEach(l=>{ sitesObj[l]=this.state.sites[l]; }); }
+    const countriesObj={};
+    if(Array.isArray(c.countries)&&c.countries.length){ c.countries.forEach(cn=>{ countriesObj[cn]=true; }); }
+    else { Object.assign(countriesObj, this.state.countries); }
+    this.setState({
+      terms:terms.slice(), groups, fromProfile,
+      location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
+      ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
+      countries:countriesObj, jobType:c.job_type||'',
+      useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
+    });
   }
   countriesToConfig(){ return Object.keys(this.state.countries).filter(k=>this.state.countries[k]); }
+  addCountry(name){ this.setState(st=>({countries:Object.assign({},st.countries,{[name]:true}),countryQuery:''})); }
+  removeCountry(name){ this.setState(st=>{ const c=Object.assign({},st.countries); delete c[name]; return {countries:c}; }); }
   configToSave(){
     const s=this.state;
     return Object.assign({}, this._loadedConfig||{}, {
@@ -1012,7 +1135,7 @@ class Component extends DCLogic {
   }
   formatStage(stage){
     if(!stage) return 'Processing…';
-    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed'};
+    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',extracting_compensation:'Extracting Compensation',analyzing:'Scoring Matches',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed'};
     return m[stage]||(stage.charAt(0).toUpperCase()+stage.slice(1));
   }
 
@@ -1021,7 +1144,7 @@ class Component extends DCLogic {
     const sites=this.sitesToConfig();
     if(!sites.length){ this.showToast('Select at least one site'); return; }
     if(!this.state.terms.length){ this.showToast('Add at least one search term'); return; }
-    this.setState({findView:'progress',percent:0,found:0,saved:0,notHidden:0,stage:'Initializing',statusMsg:'Saving configuration…',scrapeDone:false});
+    this.setState({findView:'progress',percent:0,found:0,saved:0,notHidden:0,stage:'Initializing',statusMsg:'Saving configuration…',scrapeDone:false,scrapeEvents:[]});
     try{
       const saveRes=await fetch('/api/config/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.configToSave())});
       const saveData=await saveRes.json();
@@ -1046,6 +1169,7 @@ class Component extends DCLogic {
         const patch={percent:Math.round(prog.percent||0), stage:this.formatStage(prog.stage), statusMsg:details.message||''};
         if(details.jobs_found!==undefined) patch.found=details.jobs_found;
         if(details.jobs_kept!==undefined) patch.notHidden=details.jobs_kept;
+        if(Array.isArray(data.events)) patch.scrapeEvents=data.events;
         this.setState(patch);
         if(data.status==='completed'){
           clearInterval(this._poll);
@@ -1081,7 +1205,7 @@ class Component extends DCLogic {
   }
 
   // ---------- profile panel (real API) ----------
-  openProfile(){ this.setState({profileOpen:true,pfStatus:''}); this.loadProfile(); }
+  openProfile(){ this.setState({profileOpen:true,pfStatus:'',pfDragging:false}); this.loadProfile(); this.loadOptions(); }
   closeProfile(){ this.setState({profileOpen:false}); }
   async loadProfile(){
     try{
@@ -1094,8 +1218,13 @@ class Component extends DCLogic {
     }catch(e){ console.error('profile load failed', e); this.showToast('Could not load profile'); }
   }
   pfSet(patch){ this.setState(st=>({profile:Object.assign({},st.profile,patch)})); }
-  onResumeFile(e){
-    const file=e.target.files && e.target.files[0]; if(!file) return;
+  // Résumé dropzone handlers — drag highlight + drop-to-upload (mirrors the file input).
+  onResumeDragOver(e){ e.preventDefault(); if(!this.state.pfDragging) this.setState({pfDragging:true}); }
+  onResumeDragLeave(e){ e.preventDefault(); if(this.state.pfDragging) this.setState({pfDragging:false}); }
+  onResumeDrop(e){ e.preventDefault(); this.setState({pfDragging:false});
+    const file=e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if(file) this.uploadResume(file); }
+  onResumeFile(e){ const file=e.target.files && e.target.files[0]; if(file) this.uploadResume(file); }
+  uploadResume(file){
     const fd=new FormData(); fd.append('file',file);
     this.setState({pfBusy:true,pfStatus:'Reading résumé…'});
     fetch('/api/profile/upload',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
@@ -1123,6 +1252,12 @@ class Component extends DCLogic {
         const p=d.profile||{};
         this.setState(st=>({profile:Object.assign({},st.profile,{interests_paragraph:p.interests_paragraph,skills:p.skills,job_titles:p.job_titles,keyword_groups:p.keyword_groups}),pfBusy:false,pfStatus:'Rebuilt — review & save.'}));
       }).catch(e=>{ console.error(e); this.setState({pfBusy:false,pfStatus:'Rebuild failed'}); });
+  }
+  // Agentic "Build Profile" — guards the obvious blockers, then runs the LLM build.
+  buildProfile(){
+    if(!this.state.profile.resume_text){ this.setState({pfStatus:'Drag in or browse a résumé first.'}); this.showToast('Upload a résumé first'); return; }
+    if(!this.state.llm.enabled){ this.setState({pfStatus:'Enable the LLM endpoint in Options to build.'}); this.showToast('Enable the LLM in Options'); return; }
+    this.rebuildProfile();
   }
   saveProfile(){
     const p=this.state.profile;
@@ -1169,13 +1304,15 @@ class Component extends DCLogic {
     const sc=Component.SITE_COLORS[j.site]||'#888';
     const av=(sz)=>({width:sz+'px',height:sz+'px',flex:'0 0 auto',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:(sz>40?'12px':'9px'),background:'var(--surface2)',border:'var(--bw) solid var(--border)',font:'700 '+(sz>40?16:13)+'px/1 var(--font-head)',color:'var(--text)'});
     const stop=(e)=>{ e.stopPropagation(); };
-    const mc=(j.match==null)?'var(--muted)':(j.match>=66?'var(--c-offer-text)':(j.match>=40?'var(--accent-text)':'var(--c-archive)'));
+    const mc=this.matchColorFor(j.match);
     return Object.assign({},j,{
       hasMatch:j.match!=null,
       matchLabel:(j.match==null?'':j.match+'% match'),
       matchBadge:'font:700 11px/1 var(--font-mono);color:'+mc+';background:var(--bg);border:var(--bw) solid '+mc+';padding:5px 8px;border-radius:7px;white-space:nowrap',
+      matchInfoBtn:'display:flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 auto;border-radius:99px;cursor:pointer;font:700 11px/1 var(--font-mono);border:var(--bw) solid var(--border2);background:transparent;color:var(--muted);padding:0',
+      onMatchInfo:(e)=>{ stop(e); this.setState({matchInfoId:j.id}); },
       initials:(j.company||'?').slice(0,2).toUpperCase(),
-      ago:this.ago(j.daysAgo),
+      ago:this.ago(j.daysAgo), dateStr:this.fmtDate(j.createdAt),
       shortDesc:this.plain(j.description),
       avatar:Object.entries(av(40)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       avatarLg:Object.entries(av(52)).map(([k,v])=>this.css(k)+':'+v).join(';'),
@@ -1252,26 +1389,20 @@ class Component extends DCLogic {
       // recommendation breakdown
       const an=sj.analysis||null;
       d.hasAnalysis=!!an;
-      if(an){
-        const sm=an.skill_match||{};
-        d.skillMatched=(sm.matched||[]).map(x=>({label:x}));
-        d.skillMissing=(sm.missing||[]).map(x=>({label:x}));
-        d.hasSkillMatched=(sm.matched||[]).length>0;
-        d.hasSkillMissing=(sm.missing||[]).length>0;
-        d.keywordHits=Object.keys(an.keyword_group_hits||{}).map(label=>({label,terms:(an.keyword_group_hits[label]||[]).join(', ')}));
-        d.hasKeywordHits=d.keywordHits.length>0;
-        const pct=(v)=>Math.round((v||0)*100);
-        d.scoreBars=[
-          {label:'Semantic',pct:pct(an.semantic_score),bar:'height:6px;border-radius:99px;background:var(--accent);width:'+pct(an.semantic_score)+'%'},
-          {label:'Keyword',pct:pct(an.keyword_score),bar:'height:6px;border-radius:99px;background:var(--accent2);width:'+pct(an.keyword_score)+'%'},
-          {label:'BM25',pct:pct(an.bm25_score),bar:'height:6px;border-radius:99px;background:var(--c-applied);width:'+pct(an.bm25_score)+'%'},
-          {label:'Skills',pct:pct(an.skill_score),bar:'height:6px;border-radius:99px;background:var(--c-offer);width:'+pct(an.skill_score)+'%'},
-        ];
-        d.llmRationale=an.llm_rationale||'';
-        d.hasLlmRationale=!!an.llm_rationale;
-        d.matchColor=(d.match>=66?'var(--c-offer-text)':(d.match>=40?'var(--accent-text)':'var(--c-archive)'));
-      }
+      if(an){ Object.assign(d, this.buildBreakdown(an, d.match)); }
       selectedJob=d;
+    }
+
+    // match-breakdown popup (card "?" button) — reuses the analysis breakdown
+    let matchPopup=null;
+    if(s.matchInfoId!=null){
+      const mj=s.jobs.find(j=>j.id===s.matchInfoId);
+      if(mj && mj.analysis){
+        matchPopup=Object.assign({}, this.buildBreakdown(mj.analysis, mj.match), {
+          title:mj.title||mj.company||'', matchLabel:(mj.match==null?'':mj.match+'% match'),
+          onOpenDetail:()=>this.setState({matchInfoId:null,selectedId:mj.id})
+        });
+      }
     }
 
     // find modal config
@@ -1289,11 +1420,21 @@ class Component extends DCLogic {
       onKey:(e)=>{ const v=(s.groupDrafts[gi]||'').trim(); if(e.key==='Enter'&&v){ e.preventDefault(); this.setState(st=>({groups:st.groups.map((gr,k)=>k===gi?gr.concat(v):gr),groupDrafts:Object.assign({},st.groupDrafts,{[gi]:''})})); } },
       onRemove:()=>this.setState(st=>({groups:st.groups.filter((_,k)=>k!==gi)}))
     }));
-    const countryList=Component.COUNTRIES.map(name=>{ const on=!!s.countries[name];
-      return {name,onToggle:()=>this.setState(st=>({countries:Object.assign({},st.countries,{[name]:!st.countries[name]})})),
-        style:'display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent)':'var(--border)')+';background:'+(on?'color-mix(in srgb,var(--accent) 14%,transparent)':'var(--bg)')+';color:var(--text)',
-        check:'width:13px;height:13px;border-radius:4px;flex:0 0 auto;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent')};
-    });
+    // Unified country selector: chips for selected + searchable add-from-list.
+    const countrySelected=Object.keys(s.countries).filter(k=>s.countries[k]).map(name=>({name,onRemove:()=>this.removeCountry(name)}));
+    const cq=(s.countryQuery||'').trim().toLowerCase();
+    const countryOptions = cq ? Component.COUNTRIES.filter(n=>!s.countries[n] && n.toLowerCase().includes(cq)).slice(0,10).map(name=>({name,onAdd:()=>this.addCountry(name)})) : [];
+    const countryOptionsShown = !!cq;
+    const countryNoMatch = !!cq && countryOptions.length===0;
+    const onCountryQuery=(e)=>this.setState({countryQuery:e.target.value});
+    const onCountryKey=(e)=>{
+      if(e.key==='Enter'){ e.preventDefault(); const q=(s.countryQuery||'').trim(); if(!q) return; const lc=q.toLowerCase();
+        const pick=Component.COUNTRIES.find(n=>n.toLowerCase()===lc) || Component.COUNTRIES.find(n=>!s.countries[n] && n.toLowerCase().includes(lc));
+        if(pick) this.addCountry(pick);
+      } else if(e.key==='Backspace' && !s.countryQuery){
+        const keys=Object.keys(s.countries).filter(k=>s.countries[k]); if(keys.length) this.removeCountry(keys[keys.length-1]);
+      }
+    };
     const jobTypeList=Component.JOB_TYPES.map(([val,label])=>{ const on=s.jobType===val;
       return {val,label,onSelect:()=>this.setState({jobType:val}),
         style:'padding:7px 12px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent2)':'var(--border)')+';background:'+(on?'var(--accent2)':'var(--bg)')+';color:'+(on?'#fff':'var(--text)')};
@@ -1301,6 +1442,10 @@ class Component extends DCLogic {
     const rangeStyle='width:100%;height:6px;-webkit-appearance:none;appearance:none;border-radius:99px;background:var(--border2);outline:none;accent-color:var(--accent);cursor:pointer';
     const ringC=2*Math.PI*64;
     const scrapeStats=[{label:'Jobs Found',value:s.found,color:'var(--accent-text)'},{label:'Jobs Saved',value:s.saved,color:'var(--c-applied)'},{label:'Not Hidden',value:s.notHidden,color:'var(--c-offer-text)'}];
+    // live scraping activity feed (newest first)
+    const evColor=(stg)=>stg==='failed'?'#E5484D':((stg==='completed'||stg==='complete')?'var(--c-offer-text)':(stg==='analyzing'?'var(--c-applied)':'var(--accent)'));
+    const scrapeEvents=(s.scrapeEvents||[]).slice().reverse().map((e,i)=>({key:i,time:'+'+(e.t!=null?e.t:0)+'s',msg:e.message||'',dot:evColor(e.stage)}));
+    const hasScrapeEvents=scrapeEvents.length>0;
 
     // ---- profile panel ----
     const pf=s.profile;
@@ -1316,6 +1461,10 @@ class Component extends DCLogic {
       onKey:(e)=>{ const v=(s.pfGroupDrafts[gi]||'').trim(); if(e.key==='Enter'&&v){ e.preventDefault(); this.pfSet({keyword_groups:pf.keyword_groups.map((gr,k)=>k===gi?Object.assign({},gr,{terms:(gr.terms||[]).concat(v)}):gr)}); this.setState(st=>({pfGroupDrafts:Object.assign({},st.pfGroupDrafts,{[gi]:''})})); } },
       onRemove:()=>this.pfSet({keyword_groups:pf.keyword_groups.filter((_,k)=>k!==gi)})
     }));
+    const canBuild=!!pf.resume_text && !!s.llm.enabled;
+    const dropzoneStyle='flex:1;min-width:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:22px 16px;cursor:pointer;border-radius:var(--r-sm);transition:border-color .15s,background .15s;border:1.5px dashed '+(s.pfDragging?'var(--accent2)':'var(--border2)')+';background:'+(s.pfDragging?'color-mix(in srgb,var(--accent2) 12%,transparent)':'var(--bg)');
+    const buildBtnStyle='display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-width:130px;padding:0 16px;border-radius:var(--r-sm);font:600 13px/1.3 var(--font-body);text-align:center;cursor:'+(canBuild?'pointer':'default')+';background:'+(canBuild?'var(--accent2)':'var(--surface2)')+';color:'+(canBuild?'#fff':'var(--muted)')+';border:var(--bw) solid '+(canBuild?'var(--accent2)':'var(--border2)')+';opacity:'+(s.pfBusy?'.7':'1');
+    const buildHint=(!s.llm.enabled)?'Enable the LLM in Options to build automatically.':'';
 
     // ---- options panel ----
     const llm=s.llm; const rt=s.runtime; const w=rt.weights||{};
@@ -1352,6 +1501,7 @@ class Component extends DCLogic {
       pagerLabel:'Page '+(page+1)+' / '+totalPages,
 
       selectedJob, closeDetail:()=>this.setState({selectedId:null}),
+      matchPopup, closeMatchPopup:()=>this.setState({matchInfoId:null}),
 
       findOpen:s.findOpen, findConfig:s.findView==='config', findProgress:s.findView==='progress',
       closeFind:()=>this.closeFind(), stop:(e)=>e.stopPropagation(),
@@ -1360,7 +1510,9 @@ class Component extends DCLogic {
       maxResults:s.maxResults, onMax:(e)=>this.setState({maxResults:+e.target.value}),
       ageIndex:s.ageIndex, ageLabel:Component.AGES[s.ageIndex], onAge:(e)=>this.setState({ageIndex:+e.target.value}),
       siteList, keywordGroups, addGroup:()=>this.setState(st=>({groups:st.groups.concat([[]])})),
-      countryList, jobTypeList,
+      countrySelected, countryOptions, countryOptionsShown, countryNoMatch,
+      countryQuery:s.countryQuery, onCountryQuery, onCountryKey, jobTypeList,
+      fromProfile:s.fromProfile,
       genKeywords:()=>this.genKeywords(), genKeywordsLabel:s.genBusy?'Generating…':'Generate (LLM)',
       genKeywordsStyle:'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;cursor:'+(s.genBusy?'default':'pointer')+';font:600 11px/1 var(--font-body);border:var(--bw) solid var(--accent2);background:transparent;color:var(--accent2);text-transform:none;letter-spacing:0;opacity:'+(s.genBusy?'.6':'1'),
       useLLM:s.useLLM, toggleLLM:()=>this.setState(st=>({useLLM:!st.useLLM})),
@@ -1370,7 +1522,7 @@ class Component extends DCLogic {
 
       percent:s.percent, stage:s.stage, statusMsg:s.statusMsg,
       ringDash:(ringC*s.percent/100)+' '+ringC,
-      scrapeStats, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs(),
+      scrapeStats, scrapeEvents, hasScrapeEvents, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs(),
 
       // ---- header buttons ----
       openProfile:()=>this.openProfile(), profileBtnStyle:secBtn,
@@ -1380,7 +1532,10 @@ class Component extends DCLogic {
       profileOpen:s.profileOpen, closeProfile:()=>this.closeProfile(),
       pfBusy:s.pfBusy, pfStatus:s.pfStatus, profileExists:pf.exists,
       pfResumeName:pf.source_filename||'', hasResumeText:!!pf.resume_text,
-      onResumeFile:(e)=>this.onResumeFile(e), rebuildProfile:()=>this.rebuildProfile(), saveProfile:()=>this.saveProfile(),
+      onResumeFile:(e)=>this.onResumeFile(e),
+      onResumeDragOver:(e)=>this.onResumeDragOver(e), onResumeDragLeave:(e)=>this.onResumeDragLeave(e), onResumeDrop:(e)=>this.onResumeDrop(e),
+      dropzoneStyle, buildBtnStyle, buildHint, buildProfile:()=>this.buildProfile(),
+      rebuildProfile:()=>this.rebuildProfile(), saveProfile:()=>this.saveProfile(),
       pfInterests:pf.interests_paragraph||'', onPfInterests:(e)=>this.pfSet({interests_paragraph:e.target.value}),
       pfSkills, pfSkillDraft:s.pfSkillDraft, onPfSkillDraft:(e)=>this.setState({pfSkillDraft:e.target.value}),
       onPfSkillKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('skills','pfSkillDraft',s.pfSkillDraft); } },
@@ -1407,6 +1562,7 @@ class Component extends DCLogic {
       rtEnableAnalysis:rt.enable_analysis, toggleRtAnalysis:()=>this.rtSet({enable_analysis:!rt.enable_analysis}), rtAnalysisRow:toggleRow(rt.enable_analysis), rtAnalysisChk:toggleChk(rt.enable_analysis),
       rtEnableRerank:rt.enable_llm_rerank, toggleRtRerank:()=>this.rtSet({enable_llm_rerank:!rt.enable_llm_rerank}), rtRerankRow:toggleRow(rt.enable_llm_rerank), rtRerankChk:toggleChk(rt.enable_llm_rerank),
       rtEnableLlmSkills:rt.enable_llm_skills, toggleRtLlmSkills:()=>this.rtSet({enable_llm_skills:!rt.enable_llm_skills}), rtLlmSkillsRow:toggleRow(rt.enable_llm_skills), rtLlmSkillsChk:toggleChk(rt.enable_llm_skills),
+      rtEnableLlmComp:rt.enable_llm_compensation, toggleRtLlmComp:()=>this.rtSet({enable_llm_compensation:!rt.enable_llm_compensation}), rtLlmCompRow:toggleRow(rt.enable_llm_compensation), rtLlmCompChk:toggleChk(rt.enable_llm_compensation),
       rtEmbedWorkers:rt.embed_workers, onRtEmbedWorkers:(e)=>this.rtSet({embed_workers:+e.target.value}),
       rtLinkedinWorkers:rt.linkedin_workers, onRtLinkedinWorkers:(e)=>this.rtSet({linkedin_workers:+e.target.value}),
       rtLlmWorkers:rt.llm_workers, onRtLlmWorkers:(e)=>this.rtSet({llm_workers:+e.target.value}),

@@ -17,10 +17,17 @@ Find Jobs modal → POST /api/scrape/start
           → task_generator → jobspy_wrapper / linkedin_scraper (concurrent_scraper)
           → linkedin_scraper.fetch_descriptions_for_jobs (PARALLEL — ThreadPoolExecutor,
               worker count + jittered delay from runtime_config.linkedin_workers/linkedin_delay)
-          → data_processor (dedupe, clean) → job_filter (apply config)
+          → data_processor (dedupe, clean)
+          → recommend/compensation.extract_compensation_llm (OPTIONAL — when the LLM is enabled
+              and runtime.enable_llm_compensation; recovers pay from descriptions, parallel)
+          → job_filter (apply config)
       → database/operations (upsert) → SQLite
-Client polls GET /api/scrape/status/<job_id> for progress
+Client polls GET /api/scrape/status/<job_id> for progress + a live `events[]` activity feed
 ```
+
+Each pipeline step calls a progress callback; `scrape_routes` records the messages into an
+append-only, timestamped, de-duplicated `events` list on the job record (capped at 200), which
+the Find Jobs progress view renders as a live, step-by-step activity feed.
 
 LinkedIn descriptions are fetched concurrently (previously sequential). Skill extraction
 (`recommend/skills.py`, a fast gazetteer over the description + the profile's skills, with an

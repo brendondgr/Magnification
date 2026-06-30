@@ -53,6 +53,25 @@ Plan: `docs/plans/rag-llm-recommendation.md`. Delivered on branch `rag-llm-recom
 - [ ] **Live end-to-end with a real LLM endpoint** — not exercised (no endpoint configured in this env);
   all LLM paths are covered by mocked tests. Configure an endpoint in Options to use the LLM features.
 
+## UI/UX Refinements — Definition of Done
+
+Plan: `docs/plans/ui-recommendation-refinements.md`. Delivered on branch `ui-reco-refinements`
+(worktree), committed per phase, merged to `main`.
+
+- [x] (1/7) Worktree + plan doc
+- [x] (2/7) New Jobs cards: removed company icon, relocated match % with breakdown popover +
+  color tiers, YYYY-MM-DD dates (verified in-browser)
+- [x] (3/7) Résumé drag-and-drop zone + "Build Profile (LLM)" action (verified in-browser)
+- [x] (4/7) Unified searchable country selector + optional City/Remote (verified in-browser)
+- [x] (5/7) Find Jobs prefills Title/Description keywords from the active profile, refreshes on open
+  (verified in-browser)
+- [x] (6/7) Live step-by-step scraping activity feed (server event log + UI feed) + tests
+  (verified end-to-end against the real pipeline)
+- [x] (7/7) LLM compensation extraction (recovers pay from descriptions) + runtime toggle + tests + merge
+- [x] All tests green (`pytest`), `import app` clean; UI verified via preview tools
+- [ ] **LLM compensation live** — the extractor is covered by mocked-client tests; recovering real
+  pay requires an enabled LLM endpoint (toggle: Options → Runtime → "LLM compensation extraction").
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

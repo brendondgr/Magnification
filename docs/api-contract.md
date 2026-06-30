@@ -19,7 +19,7 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 ## Scrape
 
 - `POST /api/scrape/start` — body: scrape parameters derived from config → returns a `job_id` for the async run.
-- `GET /api/scrape/status/<job_id>` → run status/progress (e.g., state, counts) for polling.
+- `GET /api/scrape/status/<job_id>` → run status/progress for polling: `{status, progress:{stage,percent,details}, events:[{t,stage,percent,message},...], results, ...}`. `events` is an append-only, timestamped, de-duplicated log of every pipeline step, surfaced as the UI's live activity feed.
 
 ## Jobs
 
@@ -43,7 +43,7 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 - `GET /api/options/llm` → the OpenAI-compatible endpoint config: `{enabled, base_url, api_key, model, temperature, max_tokens, timeout}`. `base_url` is expected to include the `/v1` prefix.
 - `POST /api/options/llm` — body: any subset of those keys (unknown keys ignored) → merged + persisted to `config/llm_endpoint_config.json`; returns `{success, config}`.
 - `POST /api/options/llm/test` — body: optional config overrides → builds a client (ignoring `enabled`), sends a tiny chat probe, returns `{ok: true, model, sample}` (200) or `{ok: false, error}` (502/400).
-- `GET /api/options/runtime` → runtime knobs: `{enable_analysis, enable_llm_rerank, enable_llm_skills, embed_workers, embed_batch_size, linkedin_workers, linkedin_delay, llm_workers, top_n_llm, weights:{semantic,bm25,keyword,skill}}`.
+- `GET /api/options/runtime` → runtime knobs: `{enable_analysis, enable_llm_rerank, enable_llm_skills, enable_llm_compensation, embed_workers, embed_batch_size, linkedin_workers, linkedin_delay, llm_workers, top_n_llm, weights:{semantic,bm25,keyword,skill}}`. `enable_llm_compensation` (default true) lets the scrape pipeline LLM-extract pay from a job's description when the board lists none.
 - `POST /api/options/runtime` — body: any subset (weights deep-merged) → persisted to `config/runtime_config.json`; returns `{success, config}`.
 
 ## Profile (recommendation system) (`profile_bp`)

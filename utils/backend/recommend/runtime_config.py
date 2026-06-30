@@ -23,6 +23,7 @@ DEFAULT_RUNTIME_CONFIG: Dict[str, Any] = {
     "enable_analysis": True,        # run RAG analysis after a scrape
     "enable_llm_rerank": False,     # LLM verdict + rationale on the top-N
     "enable_llm_skills": False,     # use the LLM (vs gazetteer) for skill extraction
+    "enable_llm_compensation": True,  # LLM-extract pay from descriptions when not parsed
     # parallelism
     "embed_workers": _DEFAULT_WORKERS,
     "embed_batch_size": 32,
