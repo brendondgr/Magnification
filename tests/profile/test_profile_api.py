@@ -61,9 +61,19 @@ def test_save_and_get_profile_roundtrip(client):
     assert loaded["keyword_groups"][0]["terms"] == ["healthcare", "medicine"]
 
 
-def test_upload_resume_llm_disabled_returns_text_and_manual_draft(client, monkeypatch):
-    # Force the LLM-disabled fallback so the test is deterministic + offline.
-    monkeypatch.setattr(profile_routes, "load_llm_endpoint_config", lambda: {"enabled": False})
+def test_upload_resume_extracts_text_without_calling_llm(client, monkeypatch):
+    # Upload must be lightweight: extract text only, never invoke the LLM (which could
+    # block for the full read-timeout). Prove it by booby-trapping the client builder —
+    # even with an "enabled" endpoint, upload must not touch it.
+    monkeypatch.setattr(
+        profile_routes, "load_llm_endpoint_config",
+        lambda: {"enabled": True, "base_url": "http://x/v1"},
+    )
+
+    def _boom(*a, **k):
+        raise AssertionError("upload must not call the LLM")
+
+    monkeypatch.setattr(profile_routes.OpenAIClient, "from_config", staticmethod(_boom))
 
     md = b"# Jane\nInterested in ML for healthcare.\nSkills: Python, PyTorch.\n"
     resp = client.post(
@@ -74,9 +84,10 @@ def test_upload_resume_llm_disabled_returns_text_and_manual_draft(client, monkey
     assert resp.status_code == 200
     body = resp.get_json()
     assert body["success"] is True
-    assert body["llm_used"] is False
     assert "healthcare" in body["resume_text"]
-    assert body["profile"]["skills"] == []  # manual draft (user fills in)
+    assert body["source_filename"] == "resume.md"
+    # Upload no longer returns an LLM-built draft; that's the explicit /build step.
+    assert "profile" not in body and "llm_used" not in body
 
 
 def test_upload_rejects_unsupported_type(client):

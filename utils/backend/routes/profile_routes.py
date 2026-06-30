@@ -52,8 +52,13 @@ def save_profile():
 @profile_bp.route("/api/profile/upload", methods=["POST"])
 def upload_resume():
     """
-    Extract text from an uploaded resume and (if the LLM is enabled) build a draft
-    profile. Returns the draft + extracted text; does NOT persist.
+    Extract plain text from an uploaded resume and return it immediately.
+
+    This is intentionally **lightweight** — it only runs the local text extractor
+    (pypdf for PDF, light cleanup for tex/md) so the upload returns fast. The LLM
+    profile build is a separate, explicit step (`POST /api/profile/build`, triggered
+    by the "Build Profile (LLM)" button) so a slow model never blocks the upload.
+    Nothing is persisted.
     """
     file = request.files.get("file")
     if file is None or not file.filename:
@@ -71,14 +76,10 @@ def upload_resume():
         logger.error(f"Resume text extraction failed: {e}")
         return jsonify({"success": False, "message": f"Could not read resume: {e}"}), 400
 
-    draft, llm_used, llm_error = _build_draft(text)
     return jsonify({
         "success": True,
         "source_filename": name,
         "resume_text": text,
-        "profile": draft,
-        "llm_used": llm_used,
-        "llm_error": llm_error,
     })
 
 

@@ -1229,17 +1229,13 @@ class Component extends DCLogic {
     this.setState({pfBusy:true,pfStatus:'Reading résumé…'});
     fetch('/api/profile/upload',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
       if(!d.success){ this.setState({pfBusy:false,pfStatus:d.message||'Upload failed'}); return; }
-      const p=d.profile||{};
+      // Upload only extracts text (fast); the LLM build is the separate "Build Profile" step.
       this.setState(st=>({
-        profile:Object.assign({},st.profile,{
-          interests_paragraph:p.interests_paragraph||st.profile.interests_paragraph,
-          skills:(p.skills&&p.skills.length)?p.skills:st.profile.skills,
-          job_titles:(p.job_titles&&p.job_titles.length)?p.job_titles:st.profile.job_titles,
-          keyword_groups:(p.keyword_groups&&p.keyword_groups.length)?p.keyword_groups:st.profile.keyword_groups,
-          resume_text:d.resume_text||'', source_filename:d.source_filename||''
-        }),
+        profile:Object.assign({},st.profile,{resume_text:d.resume_text||'',source_filename:d.source_filename||''}),
         pfBusy:false,
-        pfStatus: d.llm_used ? 'Drafted from résumé — review & save.' : (d.llm_error? ('LLM off ('+d.llm_error+') — fill in manually.') : 'Résumé read — enable the LLM in Options to auto-draft.')
+        pfStatus: st.llm.enabled
+          ? 'Uploaded — click "Build Profile (LLM)" to generate your profile.'
+          : 'Uploaded — enable the LLM in Options to build, or fill in the fields manually.'
       }));
     }).catch(err=>{ console.error(err); this.setState({pfBusy:false,pfStatus:'Upload failed'}); });
   }
