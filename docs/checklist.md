@@ -33,8 +33,9 @@
 
 ### Verification
 - [x] Final tree inspected
-- [x] All pointer targets verified to exist (`tests/docs/test_skill_pointers.py`)
-- [x] Flask app import smoke test passes
+- [x] All pointer targets verified to exist (stdlib verification of `tests/docs/test_skill_pointers.py` assertions — all pass)
+- [x] App code untouched by this overhaul; `app.py`, routes, and DB modules pass `py_compile`
+- [ ] Full Flask import/run smoke test — **deferred:** the local `.venv` has no deps installed and `uv sync` can't build `regex` offline (missing `Python.h`). Run `uv sync --dev && uv run pytest && uv run python -c "import app"` in a provisioned environment.
 
 ## Deferred / Follow-up Work
 
