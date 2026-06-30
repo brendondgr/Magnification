@@ -4,11 +4,16 @@ SQLAlchemy ORM Model Definitions for Magnification Job Search Application.
 This module defines the database models:
 - Job: Stores job listing information
 - ApplicationStatus: Tracks application progression through interview stages
+- Profile: A user profile built from a resume (interests, skills, titles, keyword groups)
+- JobAnalysis: Per-job recommendation artifacts (embedding, skills, RAG/LLM scores)
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Index
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy import (
+    Column, Integer, String, DateTime, ForeignKey, Text, Index,
+    Float, JSON, LargeBinary,
+)
+from sqlalchemy.orm import relationship, declarative_base, backref
 
 Base = declarative_base()
 
@@ -100,6 +105,109 @@ class ApplicationStatus(Base):
     def is_checked(self) -> bool:
         """Check if this status milestone has been reached."""
         return self.checked == 1
-    
+
     def __repr__(self):
         return f"<ApplicationStatus(id={self.id}, job_id={self.job_id}, status='{self.status}', checked={self.checked})>"
+
+
+class Profile(Base):
+    """
+    A user profile built from a resume, used as the comparison target for the
+    RAG + LLM recommendation system.
+
+    Attributes:
+        id: Primary key
+        name: Human label (the shipped UI uses a single "default" profile)
+        is_active: 1 if this is the active profile used for scoring (only one at a time)
+        source_filename: Original resume filename (pdf/tex/md), if uploaded
+        resume_text: Extracted plain text of the resume
+        interests_paragraph: Open-body paragraph of research/job interests (LLM matching)
+        skills: JSON list of skill strings
+        job_titles: JSON list of search-query job titles
+        keyword_groups: JSON list of {label, terms:[...]} groups. Semantics are
+            AND across groups, OR within a group (matches utils/backend/scrapers/job_filter).
+        created_at / updated_at: Audit timestamps
+    """
+    __tablename__ = 'profiles'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(120), nullable=False, default='default')
+    is_active = Column(Integer, default=0)
+    source_filename = Column(String(512), nullable=True)
+    resume_text = Column(Text, nullable=True)
+    interests_paragraph = Column(Text, nullable=True)
+    skills = Column(JSON, nullable=True)            # list[str]
+    job_titles = Column(JSON, nullable=True)        # list[str]
+    keyword_groups = Column(JSON, nullable=True)    # list[{label, terms:[...]}]
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index('idx_profiles_active', 'is_active'),
+    )
+
+    def __repr__(self):
+        return f"<Profile(id={self.id}, name='{self.name}', is_active={self.is_active})>"
+
+
+class JobAnalysis(Base):
+    """
+    Per-job recommendation artifacts (1:1 with Job).
+
+    The embedding is profile-independent (the job description's vector) and is
+    computed once on retrieval; the scores are computed against ``profile_id`` and
+    are overwritten when a job is re-analyzed against a different active profile.
+
+    Attributes:
+        job_id: FK to jobs.id (unique -> 1:1)
+        profile_id: FK to profiles.id the scores were computed against
+        embedding: packed float32 bytes of the bge-small-en-v1.5 vector
+        embedding_dim: vector dimensionality (384 for bge-small-en-v1.5)
+        extracted_skills: JSON list of skills found in the job description
+        semantic_score / bm25_score / keyword_score / skill_score: component signals
+        rag_score: combined hybrid relevance (0..1)
+        keyword_group_hits: JSON {group_label: [matched terms]}
+        skill_match: JSON {matched:[...], missing:[...]}
+        llm_score: optional LLM verdict (0..100)
+        llm_rationale: optional LLM explanation
+        analyzed_at: last analysis timestamp
+    """
+    __tablename__ = 'job_analyses'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(Integer, ForeignKey('jobs.id', ondelete='CASCADE'), nullable=False)
+    profile_id = Column(Integer, ForeignKey('profiles.id', ondelete='SET NULL'), nullable=True)
+
+    embedding = Column(LargeBinary, nullable=True)
+    embedding_dim = Column(Integer, nullable=True)
+    extracted_skills = Column(JSON, nullable=True)
+
+    semantic_score = Column(Float, nullable=True)
+    bm25_score = Column(Float, nullable=True)
+    keyword_score = Column(Float, nullable=True)
+    skill_score = Column(Float, nullable=True)
+    rag_score = Column(Float, nullable=True)
+
+    keyword_group_hits = Column(JSON, nullable=True)
+    skill_match = Column(JSON, nullable=True)
+
+    llm_score = Column(Float, nullable=True)
+    llm_rationale = Column(Text, nullable=True)
+
+    analyzed_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 1:1 with Job; deleting a job removes its analysis (ORM-level cascade,
+    # mirroring how ApplicationStatus is cascaded).
+    job = relationship(
+        "Job",
+        backref=backref("analysis", uselist=False, cascade="all, delete-orphan"),
+    )
+
+    __table_args__ = (
+        Index('idx_job_analyses_job_id', 'job_id', unique=True),
+        Index('idx_job_analyses_profile_id', 'profile_id'),
+        Index('idx_job_analyses_rag_score', 'rag_score'),
+    )
+
+    def __repr__(self):
+        return f"<JobAnalysis(id={self.id}, job_id={self.job_id}, rag_score={self.rag_score})>"

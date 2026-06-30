@@ -48,7 +48,7 @@ Magnification/
 │   ├── backend/
 │   │   ├── routes/             # Flask blueprints: config, scrape, job, llm
 │   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
-│   │   └── database/           # SQLAlchemy models, init, CRUD operations, migrations
+│   │   └── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD
 │   ├── frontend/
 │   │   ├── templates/          # Jinja: index.html, parts/, primary/
 │   │   └── static/             # css/, js/ (components/, renderers, handlers, app)
@@ -57,6 +57,8 @@ Magnification/
 ├── tests/                      # Lightweight tests grouped by area
 │   ├── job_scraper.py
 │   ├── test_config_loading.py
+│   ├── test_frontend_wiring.py # dc-runtime page + job/config API contract
+│   ├── database/               # Profile + JobAnalysis CRUD round-trip
 │   └── docs/                   # Doc/skill-pointer verification tests
 │
 └── data/                       # SQLite database + local data (gitignored)
