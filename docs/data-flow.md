@@ -44,6 +44,21 @@ Model management → /api/models*, /api/models/manage → model files on disk
 Server control → /api/server/{start,stop,status} → utils/LocalLLM/server/manager (llama server)
 ```
 
+## Recommendation Config & LLM Endpoint Flow
+
+```
+Options panel (LLM tab)      → /api/options/llm[/test] → config/llm_endpoint_config.json
+Options panel (Runtime tab)  → /api/options/runtime    → config/runtime_config.json
+
+All AI features (profile build, skill extraction, recommendation, keyword gen)
+  → utils/backend/llm/OpenAIClient.from_config()  →  POST {base_url}/chat/completions
+    (the endpoint may be a remote API or the bundled local llama-server)
+```
+
+The endpoint config (Options) is **separate** from `llm_config.json` (the bundled
+llama-server model manager): Options only describes *which* OpenAI-compatible endpoint
+to call, while `utils/LocalLLM` manages *running* a local one.
+
 ## State Ownership
 
 - **Server-side / durable:** scraped jobs, tracker status, config files, model files. Owned by the backend; SQLite is the source of truth for jobs.

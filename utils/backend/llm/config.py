@@ -1,0 +1,60 @@
+"""
+Load / save the OpenAI-compatible endpoint configuration.
+
+Stored at ``config/llm_endpoint_config.json`` (gitignored). This is intentionally
+separate from ``utils/LocalLLM/llm_config.json`` (the bundled llama-server model
+manager): this file only describes *which endpoint to talk to*, so it can point at
+a remote API or the local server interchangeably.
+"""
+
+import json
+import os
+from typing import Any, Dict
+
+from loguru import logger
+
+CONFIG_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../../config/llm_endpoint_config.json")
+)
+
+DEFAULT_LLM_ENDPOINT: Dict[str, Any] = {
+    "enabled": False,
+    # base_url should include the OpenAI version prefix, e.g. ".../v1".
+    "base_url": "http://127.0.0.1:8080/v1",
+    "api_key": "",
+    "model": "",
+    "temperature": 0.2,
+    "max_tokens": 1024,
+    "timeout": 60,
+}
+
+# Keys the API is allowed to persist (ignore anything else a client posts).
+_ALLOWED_KEYS = tuple(DEFAULT_LLM_ENDPOINT.keys())
+
+
+def load_llm_endpoint_config() -> Dict[str, Any]:
+    """Return the saved endpoint config merged over defaults."""
+    config = dict(DEFAULT_LLM_ENDPOINT)
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r") as f:
+                saved = json.load(f)
+            if isinstance(saved, dict):
+                config.update({k: saved[k] for k in _ALLOWED_KEYS if k in saved})
+        except Exception as e:  # pragma: no cover - corrupt file fallback
+            logger.error(f"Error loading LLM endpoint config: {e}")
+    return config
+
+
+def save_llm_endpoint_config(data: Dict[str, Any]) -> bool:
+    """Persist the endpoint config (only known keys), merged over the current values."""
+    try:
+        config = load_llm_endpoint_config()
+        config.update({k: data[k] for k in _ALLOWED_KEYS if k in data})
+        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+        with open(CONFIG_PATH, "w") as f:
+            json.dump(config, f, indent=4)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving LLM endpoint config: {e}")
+        return False

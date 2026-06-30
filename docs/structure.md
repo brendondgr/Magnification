@@ -46,8 +46,10 @@ Magnification/
 │
 ├── utils/                      # All application Python + frontend assets
 │   ├── backend/
-│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm
+│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm, options
 │   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
+│   │   ├── llm/                # OpenAI-compatible client + endpoint config (recommendation system)
+│   │   ├── recommend/          # RAG/LLM recommendation: runtime config (+ embedder/bm25/ranker/profile, added later)
 │   │   └── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD
 │   ├── frontend/
 │   │   ├── templates/          # Jinja: index.html, parts/, primary/

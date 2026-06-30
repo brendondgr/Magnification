@@ -7,12 +7,14 @@ from utils.backend.routes.config_routes import config_bp
 from utils.backend.routes.scrape_routes import scrape_bp
 from utils.backend.routes.job_routes import job_bp
 from utils.backend.routes.llm_routes import llm_bp
+from utils.backend.routes.options_routes import options_bp
 
 application = Flask(__name__, static_folder='utils/frontend/static', template_folder='utils/frontend/templates')
 application.register_blueprint(config_bp)
 application.register_blueprint(scrape_bp)
 application.register_blueprint(job_bp)
 application.register_blueprint(llm_bp)
+application.register_blueprint(options_bp)
 
 # Initialize database tables
 init_database()

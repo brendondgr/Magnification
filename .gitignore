@@ -1,6 +1,8 @@
 jobs_config.json
 magnificiation.db
 llm_config.json
+llm_endpoint_config.json
+runtime_config.json
 llama-dlls/
 
 # Byte-compiled / optimized / DLL files
