@@ -66,6 +66,22 @@ The endpoint config (Options) is **separate** from `llm_config.json` (the bundle
 llama-server model manager): Options only describes *which* OpenAI-compatible endpoint
 to call, while `utils/LocalLLM` manages *running* a local one.
 
+## Recommendation Analysis Flow
+
+```
+Scrape completes (or POST /api/recommend/analyze)
+   → recommend.service.analyze_jobs(job_ids)
+       → embed missing job descriptions (fastembed, parallel)   [embed-on-retrieve]
+       → extract skills (gazetteer, or LLM batch if enabled)
+       → ranker.rank_batch (semantic + bm25 + keyword-group + skill → rag_score)
+       → save_job_analysis → JobAnalysis table
+Read: GET /api/jobs?with_analysis=1  /  GET /api/recommend/report  → match badges + detail breakdown
+```
+
+See `docs/recommendation.md`. Stored embeddings are reused on re-analysis; analysis in the
+scrape pipeline is gated by `runtime_config.enable_analysis` + an active profile and is
+non-fatal (a scrape still succeeds if the embedding model is unavailable).
+
 ## State Ownership
 
 - **Server-side / durable:** scraped jobs, tracker status, config files, model files. Owned by the backend; SQLite is the source of truth for jobs.

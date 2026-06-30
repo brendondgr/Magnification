@@ -52,6 +52,16 @@ Every view must design: **loading, empty, partial-data, error, success,** and **
 - Single-column card flow on mobile; multi-column grid / kanban on wider viewports.
 - Tap targets ≥ 44×44px; the job-detail slide-over and modals must not trap focus or hide the active input behind the mobile keyboard.
 
+## Recommendation Match Surfaces
+
+- **Match badge** (New Jobs cards): `NN% match`, color-graded — vivid teal/offer (≥66%),
+  coral accent (≥40%), muted gray (<40%). Shown only when a job has been analyzed.
+- **Profile Match panel** (job detail): the score, per-signal bars (semantic/keyword/BM25/skill),
+  matched skills (offer-tinted chips) vs missing skills (muted chips), matched keyword groups,
+  and the LLM rationale when present.
+- States: **not-analyzed** (no badge; "Analyze matches" CTA), **analyzing** (toast + disabled
+  button), **analyzed** (badges + sortable by match), **no-profile** (analyze prompts to create one).
+
 ## Anti-Generic Checklist
 
 - Show real job data (title, company, comp, location, source) prominently — not placeholder marketing.

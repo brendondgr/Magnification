@@ -16,6 +16,7 @@ from utils.backend.routes.job_routes import job_bp
 from utils.backend.routes.llm_routes import llm_bp
 from utils.backend.routes.options_routes import options_bp
 from utils.backend.routes.profile_routes import profile_bp
+from utils.backend.routes.recommend_routes import recommend_bp
 
 application = Flask(__name__, static_folder='utils/frontend/static', template_folder='utils/frontend/templates')
 application.register_blueprint(config_bp)
@@ -24,6 +25,7 @@ application.register_blueprint(job_bp)
 application.register_blueprint(llm_bp)
 application.register_blueprint(options_bp)
 application.register_blueprint(profile_bp)
+application.register_blueprint(recommend_bp)
 
 # Initialize database tables
 init_database()

@@ -53,6 +53,12 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 - `POST /api/profile/upload` — multipart `file` (.pdf/.tex/.md/.markdown/.txt) → `{success, source_filename, resume_text, profile, llm_used, llm_error}`. Draft is **not** persisted.
 - `POST /api/profile/build` — body: `{resume_text}` → `{success, profile, llm_used}` (requires the LLM endpoint enabled).
 
+## Recommend (recommendation system) (`recommend_bp`)
+
+- `POST /api/recommend/analyze` — body: optional `{job_ids:[int,...]}` (omit to analyze all) → `{success, analyzed, profile_id, top:[...]}`. 400 if no active profile.
+- `GET /api/recommend/report` — query `limit` (default 50), `include_ignored` → `{success, count, jobs:[{...job, analysis:{...}}]}` sorted by `rag_score` desc.
+- `GET /api/jobs?with_analysis=1` → each job dict gains `analysis: {rag_score, semantic_score, bm25_score, keyword_score, skill_score, keyword_group_hits, skill_match:{matched,missing}, extracted_skills, llm_score, llm_rationale, ...}` (or `null`).
+
 ## Shared Schema
 
 Job and related records are defined as SQLAlchemy models in `utils/backend/database/models.py`. See `docs/database.md` for the schema deep-dive.

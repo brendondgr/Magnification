@@ -89,7 +89,7 @@ def match_profile_skills(job_skills: List[str],
     return {"matched": matched, "missing": missing, "score": round(score, 4)}
 
 
-_LLM_SKILLS_PROMPT = (
+LLM_SKILLS_PROMPT = (
     "Extract the concrete technical/professional skills explicitly required or mentioned "
     "in the job description below. Respond with ONLY a JSON array of short skill strings "
     "(no prose, no code fences)."
@@ -103,7 +103,7 @@ def extract_skills_llm(text: str, client) -> List[str]:
     caller can fall back to the gazetteer.
     """
     messages = [
-        {"role": "system", "content": _LLM_SKILLS_PROMPT},
+        {"role": "system", "content": LLM_SKILLS_PROMPT},
         {"role": "user", "content": text},
     ]
     raw = client.chat_json(messages)

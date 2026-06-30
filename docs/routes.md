@@ -73,6 +73,17 @@ Builds/edits the active recommendation profile (see `docs/profile.md`).
 | `/api/profile/upload` | POST | Upload a résumé (PDF/.tex/.md), extract text, return an LLM-drafted (or empty) profile — not persisted |
 | `/api/profile/build` | POST | Rebuild a draft from stored `resume_text` (requires the LLM) |
 
+## Recommend API (`recommend_bp`)
+
+RAG scoring of jobs against the active profile (see `docs/recommendation.md`).
+
+| Path | Method | Purpose |
+| --- | --- | --- |
+| `/api/recommend/analyze` | POST | Embed + score jobs against the active profile (body: optional `{job_ids}`); persists `JobAnalysis` |
+| `/api/recommend/report` | GET | Jobs ranked by `rag_score` (query: `limit`, `include_ignored`) |
+
+`GET /api/jobs?with_analysis=1` attaches each job's analysis under an `analysis` key.
+
 ## UI States (per view)
 
 - **New Jobs grid:** loading (scrape in progress), empty (no jobs / all ignored), populated, error (API failure).
