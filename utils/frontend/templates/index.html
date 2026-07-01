@@ -1343,7 +1343,20 @@ class Component extends DCLogic {
       .then(r=>r.json()).then(d=>{
         if(!d.success){ this.setState({pfBusy:false,pfStatus:d.message||'Rebuild failed — is the LLM enabled?'}); return; }
         const p=d.profile||{};
-        this.setState(st=>({profile:Object.assign({},st.profile,{interests_paragraph:p.interests_paragraph,skills:p.skills,job_titles:p.job_titles,keyword_groups:p.keyword_groups}),pfBusy:false,pfStatus:'Rebuilt — review & save.'}));
+        this.setState(st=>{
+          // Regenerated fields replace; blocked_companies is UNIONED so a rebuild never wipes
+          // companies the user blocked via the card button (the LLM only adds ones the user
+          // explicitly named in their instructions).
+          const exist=st.profile.blocked_companies||[];
+          const gen=Array.isArray(p.blocked_companies)?p.blocked_companies:[];
+          const mergedBlocked=exist.concat(gen.filter(c=>!exist.some(e=>String(e).trim().toLowerCase()===String(c).trim().toLowerCase())));
+          return {profile:Object.assign({},st.profile,{
+            interests_paragraph:p.interests_paragraph,skills:p.skills,job_titles:p.job_titles,
+            keyword_groups:p.keyword_groups,
+            title_blocklist:Array.isArray(p.title_blocklist)?p.title_blocklist:[],
+            blocked_companies:mergedBlocked
+          }),pfBusy:false,pfStatus:'Rebuilt — review & save.'};
+        });
       }).catch(e=>{ console.error(e); this.setState({pfBusy:false,pfStatus:'Rebuild failed'}); });
   }
   // Agentic "Build Profile" — guards the obvious blockers, then runs the LLM build.
