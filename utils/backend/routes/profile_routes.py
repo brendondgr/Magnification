@@ -111,6 +111,31 @@ def block_company():
     })
 
 
+@profile_bp.route("/api/profile/add-skill", methods=["POST"])
+def add_skill():
+    """
+    Add a skill to the active profile's skills list.
+
+    Body: {"skill": "<name>"}. Creates a default active profile if none exists. De-dupes
+    case-insensitively (mirrors block_company). Lets a user promote a job's "skills you lack"
+    tag into their profile with one click; because the skill is now already present, a later
+    LLM rebuild unions it in rather than dropping it (see rebuildProfile in index.html).
+    """
+    data = request.json or {}
+    skill = (data.get("skill") or "").strip()
+    if not skill:
+        return jsonify({"success": False, "message": "skill is required"}), 400
+
+    profile = db_ops.get_active_profile()
+    skills = list((profile or {}).get("skills") or [])
+    if not any(skill.lower() == str(s).strip().lower() for s in skills):
+        skills.append(skill)
+
+    profile_id = db_ops.upsert_active_profile({"skills": skills})
+    saved = db_ops.get_profile_by_id(profile_id)
+    return jsonify({"success": True, "skills": saved.get("skills", [])})
+
+
 @profile_bp.route("/api/profile/upload", methods=["POST"])
 def upload_resume():
     """
