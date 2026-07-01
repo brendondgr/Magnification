@@ -7,6 +7,13 @@ Operational rules for working in this repository. Read alongside `docs/skills/gl
 - **Manager:** `uv` (Python ≥ 3.12). Do not use pip/conda in committed instructions.
 - **Virtualenv:** managed by `uv` (`.venv/`, gitignored).
 - **Config files:** `jobs_config.json`, `llm_config.json`, `llm_endpoint_config.json`, and `runtime_config.json` are runtime config and are **gitignored**. There are no required environment variables today, so no `.env.example` is maintained. If env vars are introduced later, add `.env.example` and document them here.
+- **Shared data root across worktrees:** the SQLite database (`data/magnificiation.db`) and every
+  gitignored `config/*.json` file resolve through `utils/backend/paths.get_project_root()`, which
+  uses `git rev-parse --git-common-dir` to find the **one** project root shared by the main checkout
+  and every git worktree (falling back to a `__file__`-relative computation when `git` is
+  unavailable). Do not reintroduce a bare `Path(__file__).resolve().parents[N]` for a gitignored
+  runtime path — git worktrees do not share untracked files, so that pattern silently gives each
+  worktree its own empty, disconnected database/config. See `docs/plans/shared-data-root.md`.
 
 ### Recommendation dependencies (fastembed / BM25 / PDF)
 
@@ -44,6 +51,11 @@ not cached, and all LLM-dependent tests run against a mocked endpoint (no networ
 - After backend changes: confirm `app.py` imports and the app starts.
 - After UI changes: validate the responsive/accessibility checklist in `docs/skills/accessibility-mobile/SKILL.md`.
 - Doc/skill integrity is checked by `tests/docs/test_skill_pointers.py`.
+- **Every worktree now shares the real `data/magnificiation.db`** (see the shared-root note above).
+  Tests that exercise `utils/backend/database/operations.py` must either run against an isolated
+  in-memory engine (patch `init_db.SessionLocal`, e.g. `tests/database/test_clear_jobs.py`) or
+  snapshot/restore the pre-existing active profile (e.g. `tests/profile/test_profile_api.py`).
+  Never mutate real rows without one of these two guards.
 
 ## Documentation Maintenance
 
