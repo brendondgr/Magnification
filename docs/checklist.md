@@ -89,6 +89,21 @@ Plan: `docs/plans/reco-pipeline-scoring.md`. Delivered on branch `reco-pipeline-
 - [ ] **LLM verdict live** — the fold + rationale are covered by mocked-client tests; real verdicts
   need an enabled endpoint (Options → LLM Endpoint) + "LLM re-rank" on.
 
+## Clear Database — Scoped Options — Definition of Done
+
+Plan: `docs/plans/clear-db-options.md`. Delivered on branch `clear-db-options`
+(worktree), committed per phase, merged to `main`.
+
+- [x] (1/3) `clear_jobs_database()` op (deletes analyses+statuses+jobs, keeps
+  profiles) + `scope`-aware `/api/database/clear` (`full` default, `jobs`) +
+  isolated in-memory test (`tests/database/test_clear_jobs.py`)
+- [x] (2/3) Sidebar "Clear Database" slides down to two scoped buttons —
+  "Full Database (Jobs + Profile)" and "Jobs Database" — with scope-specific
+  confirm + toast (verified in-browser: options slide down, `jobs` keeps the
+  profile, `full` wipes it, bad scope → 400)
+- [x] (3/3) Docs (`api-contract.md`, this checklist, plan doc) + merge
+- [x] All tests green (offline subset), `import app` clean; UI verified via preview
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
