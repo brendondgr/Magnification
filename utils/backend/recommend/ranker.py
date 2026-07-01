@@ -6,11 +6,11 @@ Combines up to five signals into a single ``rag_score`` (0..1):
   * bm25     — normalized lexical overlap of the profile query vs the job corpus
   * keyword  — fraction of the profile's keyword groups the job satisfies (AND/OR)
   * skill    — fraction of the job's skills the profile covers
-  * llm      — the LLM fit verdict (0..1), added by the service layer for the top candidates
+  * llm      — the LLM fit verdict (0..1), added by the service layer for the analyzed jobs
 
 The combine step **renormalizes over whichever signals are present**, so a job with no LLM
-verdict (offline, or outside the top-N sent to the LLM) is scored over the remaining weights
-— e.g. with ``llm`` weighted 0.40, such a job's score is computed out of the other 0.60.
+verdict (offline, or excluded by an optional ``top_n_llm`` cap) is scored over the remaining
+weights — e.g. with ``llm`` weighted 0.40, such a job's score is computed out of the other 0.60.
 
 The service layer (``service.py``) supplies embeddings + extracted skills + the LLM verdict;
 this module is deliberately free of I/O so it can be unit-tested with fake vectors.
@@ -88,7 +88,7 @@ def combined_score(signals: Dict[str, float], weights: Optional[Dict[str, float]
 
     ``signals`` maps signal name -> value (0..1); omit a signal (e.g. ``llm``) to have its
     weight excluded and the remaining weights renormalized. Used by the service layer to fold
-    the LLM verdict into ``rag_score`` after the top-N verdicts come back.
+    the LLM verdict into ``rag_score`` after the verdicts come back.
     """
     return _combine(signals, weights or DEFAULT_WEIGHTS)
 

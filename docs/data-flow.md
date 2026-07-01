@@ -38,8 +38,9 @@ steps specifically so those expensive calls only ever touch jobs that are both n
 the keyword filter — not the full scraped batch. LinkedIn descriptions are fetched
 **serially** (one at a time) to avoid rate-limiting. The analysis stage runs over **only the
 keyword-filtered remainder** (non-ignored jobs): embed → rank by semantic+bm25 → LLM fit
-verdict on the top-N (default 30) → fold the `llm` signal into `rag_score` (renormalized when
-no verdict). See `docs/recommendation.md`.
+verdict on **all** of them by default (optional `top_n_llm` cap: `0` = all, `N>0` = top-N) →
+fold the `llm` signal into `rag_score` (renormalized when no verdict). See
+`docs/recommendation.md`.
 
 ## Read Path (job display)
 

@@ -61,11 +61,11 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     analyses = ranker.rank_batch(profile, profile_vec, rjobs, weights=weights)
 
     if runtime.get("enable_llm_rerank"):
-        _report(progress_callback, "llm", 90, "LLM fit verdict on top matches…")
+        _report(progress_callback, "llm", 90, "LLM fit verdict on all matches…")
         _llm_rerank(jobs, analyses, profile, runtime)
 
-    # Fold the LLM verdict into rag_score. Jobs with no verdict (offline, or outside the
-    # top-N) renormalize over the remaining signals (combined_score handles this).
+    # Fold the LLM verdict into rag_score. Jobs with no verdict (offline, or excluded by an
+    # optional top_n_llm cap) renormalize over the remaining signals (combined_score handles it).
     for an in analyses:
         signals = {
             "semantic": an["semantic_score"], "bm25": an["bm25_score"],
@@ -184,21 +184,26 @@ _LLM_VERDICT_PROMPT = (
 
 def _llm_rerank(jobs, analyses, profile, runtime) -> None:
     """
-    Add llm_score + llm_rationale (in place) to the top-N candidates.
+    Add llm_score + llm_rationale (in place) to the analyzed jobs.
 
-    Candidates are the top-N by **semantic + bm25** (the lexical/vector relevance), matching
-    the intended pipeline: filter by keywords, embed the remainder, rank by semantic+bm25,
-    then send the best N to the LLM for a fit verdict.
+    By default **every** analyzed job gets an LLM fit verdict. ``top_n_llm`` is an optional
+    cost cap: ``0`` (or missing/negative) means no cap → all jobs; a positive value limits the
+    verdict to that many top candidates by **semantic + bm25** (the lexical/vector relevance).
     """
     cfg = load_llm_endpoint_config()
     if not cfg.get("enabled"):
         return
-    top_n = int(runtime.get("top_n_llm", 30))
-    order = sorted(
-        range(len(analyses)),
-        key=lambda i: (analyses[i].get("semantic_score") or 0.0) + (analyses[i].get("bm25_score") or 0.0),
-        reverse=True,
-    )[:top_n]
+    if not analyses:
+        return
+    top_n = int(runtime.get("top_n_llm", 0) or 0)
+    if top_n > 0:
+        order = sorted(
+            range(len(analyses)),
+            key=lambda i: (analyses[i].get("semantic_score") or 0.0) + (analyses[i].get("bm25_score") or 0.0),
+            reverse=True,
+        )[:top_n]
+    else:
+        order = list(range(len(analyses)))
     if not order:
         return
     profile_summary = ranker.build_profile_query(profile)[:2000]

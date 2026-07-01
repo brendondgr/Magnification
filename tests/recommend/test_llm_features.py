@@ -64,7 +64,26 @@ def test_llm_rerank_sets_score_on_top(monkeypatch):
     service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"}, {"top_n_llm": 1, "llm_workers": 2})
     assert analyses[0]["llm_score"] == 88.0
     assert analyses[0]["llm_rationale"] == "great fit"
-    assert "llm_score" not in analyses[1]  # below top-N, untouched
+    assert "llm_score" not in analyses[1]  # below the positive top_n_llm cap, untouched
+
+
+def test_llm_rerank_covers_all_jobs_by_default(monkeypatch):
+    """With no top_n_llm cap (0/absent), EVERY analyzed job gets an LLM fit verdict."""
+    monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": True, "base_url": "x"})
+    monkeypatch.setattr(service.OpenAIClient, "from_config",
+                        classmethod(lambda cls, cfg, **kw: FakeClient(
+                            many_result=[{"score": 70, "rationale": "a"}, {"score": 40, "rationale": "b"}])))
+    jobs = [{"id": 1, "title": "ML Eng", "description": "ml"}, {"id": 2, "title": "Sales", "description": "x"}]
+    analyses = [{"job_id": 1, "rag_score": 0.9, "semantic_score": 0.1, "bm25_score": 0.1},
+                {"job_id": 2, "rag_score": 0.2, "semantic_score": 0.9, "bm25_score": 0.9}]
+    # No top_n_llm key → uncapped → all jobs scored (not just the single top-ranked one).
+    service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"}, {"llm_workers": 2})
+    assert analyses[0]["llm_score"] == 70.0
+    assert analyses[1]["llm_score"] == 40.0
+    # top_n_llm: 0 is equivalent to absent (explicit "all jobs").
+    analyses2 = [{"job_id": 1, "rag_score": 0.9}, {"job_id": 2, "rag_score": 0.2}]
+    service._llm_rerank(jobs, analyses2, {"interests_paragraph": "ml"}, {"top_n_llm": 0})
+    assert "llm_score" in analyses2[0] and "llm_score" in analyses2[1]
 
 
 def test_llm_rerank_disabled_is_noop(monkeypatch):
