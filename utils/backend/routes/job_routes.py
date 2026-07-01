@@ -89,10 +89,23 @@ def update_status(job_id):
 
 @job_bp.route('/api/database/clear', methods=['POST'])
 def clear_database():
-    """Clear and reset the database."""
+    """
+    Clear the database at the requested scope.
+
+    Body: {"scope": "full" | "jobs"} (defaults to "full" for backward compat).
+      - "full": drop and recreate every table (jobs + profiles + everything).
+      - "jobs": delete jobs, application statuses, and analyses; keep profiles.
+    """
+    data = request.json or {}
+    scope = (data.get('scope') or 'full').lower()
     try:
-        reset_database()
-        return jsonify({'success': True})
+        if scope == 'full':
+            reset_database()
+        elif scope == 'jobs':
+            db_ops.clear_jobs_database()
+        else:
+            return jsonify({'error': f'Unknown scope: {scope}'}), 400
+        return jsonify({'success': True, 'scope': scope})
     except Exception as e:
-        logger.error(f"Error clearing database: {e}")
+        logger.error(f"Error clearing database (scope={scope}): {e}")
         return jsonify({'error': str(e)}), 500
