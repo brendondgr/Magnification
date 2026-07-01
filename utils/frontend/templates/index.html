@@ -164,21 +164,21 @@
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <sc-if value="{{ anyMatches }}" hint-placeholder-val="">
-                <button onclick="{{ toggleSort }}" style="{{ sortStyle }}">{{ sortLabel }}</button>
+                <button onclick="{{ toggleSort }}" style="{{ sortStyle }}" style-hover="background:var(--surface2)">{{ sortLabel }}</button>
               </sc-if>
-              <button onclick="{{ analyzeJobs }}" style="{{ analyzeStyle }}">
+              <button onclick="{{ analyzeJobs }}" style="{{ analyzeStyle }}" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
                 {{ analyzeLabel }}
               </button>
               <sc-if value="{{ hasIgnored }}" hint-placeholder-val="">
-                <button onclick="{{ toggleShowIgnored }}" style="{{ showIgnoredStyle }}">{{ showIgnoredLabel }}</button>
+                <button onclick="{{ toggleShowIgnored }}" style="{{ showIgnoredStyle }}" style-hover="background:var(--surface2)">{{ showIgnoredLabel }}</button>
               </sc-if>
             </div>
           </div>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px">
             <sc-for list="{{ gridJobs }}" as="job" hint-placeholder-count="6">
-              <article style="{{ job.cardStyle }}">
+              <article style="{{ job.cardStyle }}" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
                 <div style="display:flex;align-items:flex-start;gap:12px">
                   <div style="flex:1;min-width:0">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -189,13 +189,13 @@
                     <div style="font:400 13px/1.3 var(--font-body);color:var(--muted)">{{ job.company }}</div>
                   </div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:0 0 auto">
-                    <button onclick="{{ job.onIgnore }}" title="Ignore" style="{{ job.ignoreBtn }}">
+                    <button onclick="{{ job.onIgnore }}" title="Ignore" style="{{ job.ignoreBtn }}" style-hover="background:var(--surface2);border-color:var(--border)" style-active="transform:scale(.9)">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22"></path></svg>
                     </button>
                     <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
                       <div style="display:flex;align-items:center;gap:6px">
                         <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
-                        <button onclick="{{ job.onMatchInfo }}" title="Match breakdown" style="{{ job.matchInfoBtn }}">?</button>
+                        <button onclick="{{ job.onMatchInfo }}" title="Match breakdown" style="{{ job.matchInfoBtn }}" style-hover="background:var(--surface2);border-color:var(--accent);color:var(--accent-text)" style-active="transform:scale(.9)">?</button>
                       </div>
                     </sc-if>
                   </div>
@@ -212,12 +212,12 @@
                 <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
 
                 <div style="display:flex;gap:8px;margin-top:auto">
-                  <button onclick="{{ job.onApply }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">
+                  <button onclick="{{ job.onApply }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     Applied
                   </button>
-                  <button onclick="{{ job.onOpen }}" style="height:38px;padding:0 14px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Details</button>
-                  <button onclick="{{ job.onLink }}" title="Open posting" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);cursor:pointer">
+                  <button onclick="{{ job.onOpen }}" style="height:38px;padding:0 14px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Details</button>
+                  <button onclick="{{ job.onLink }}" title="Open posting" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                   </button>
                 </div>
@@ -229,15 +229,15 @@
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:70px 20px;color:var(--muted)">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
               <div style="font:500 15px/1 var(--font-body)">No new jobs to show</div>
-              <button onclick="{{ openFind }}" style="margin-top:4px;padding:0 18px;height:40px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Find Jobs</button>
+              <button onclick="{{ openFind }}" style="margin-top:4px;padding:0 18px;height:40px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Find Jobs</button>
             </div>
           </sc-if>
 
           <sc-if value="{{ showPager }}" hint-placeholder-val="">
             <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:26px">
-              <button onclick="{{ prevPage }}" style="padding:0 14px;height:38px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer">Prev</button>
+              <button onclick="{{ prevPage }}" style="padding:0 14px;height:38px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Prev</button>
               <span style="font:500 13px/1 var(--font-mono);color:var(--muted)">{{ pagerLabel }}</span>
-              <button onclick="{{ nextPage }}" style="padding:0 14px;height:38px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer">Next</button>
+              <button onclick="{{ nextPage }}" style="padding:0 14px;height:38px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Next</button>
             </div>
           </sc-if>
         </section>
@@ -1321,7 +1321,7 @@ class Component extends DCLogic {
       hasMatch:j.match!=null,
       matchLabel:(j.match==null?'':j.match+'% match'),
       matchBadge:'font:700 11px/1 var(--font-mono);color:'+mc+';background:var(--bg);border:var(--bw) solid '+mc+';padding:5px 8px;border-radius:7px;white-space:nowrap',
-      matchInfoBtn:'display:flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 auto;border-radius:99px;cursor:pointer;font:700 11px/1 var(--font-mono);border:var(--bw) solid var(--border2);background:transparent;color:var(--muted);padding:0',
+      matchInfoBtn:'display:flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 auto;border-radius:99px;cursor:pointer;font:700 11px/1 var(--font-mono);border:var(--bw) solid var(--border2);background:transparent;color:var(--muted);padding:0;transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .15s ease',
       onMatchInfo:(e)=>{ stop(e); this.setState({matchInfoId:j.id}); },
       initials:(j.company||'?').slice(0,2).toUpperCase(),
       ago:this.ago(j.daysAgo), dateStr:this.fmtDate(j.createdAt),
@@ -1335,8 +1335,8 @@ class Component extends DCLogic {
       onIgnore:(e)=>{ stop(e); this.toggleIgnore(j.id); },
       onApply:(e)=>{ stop(e); this.markApplied(j.id); },
       onLink:(e)=>{ stop(e); const url=j.link||('https://www.google.com/search?q='+encodeURIComponent(j.title+' '+j.company)); window.open(url,'_blank'); },
-      ignoreBtn:'display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);cursor:pointer;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border2)')+';background:'+(j.ignore?'rgba(229,72,77,.12)':'transparent')+';color:'+(j.ignore?'#E5484D':'var(--muted)'),
-      cardStyle:'display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius);padding:18px;animation:jf-rise .35s ease;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border)')+';opacity:'+(j.ignore?'.62':'1')
+      ignoreBtn:'display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .15s ease;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border2)')+';background:'+(j.ignore?'rgba(229,72,77,.12)':'transparent')+';color:'+(j.ignore?'#E5484D':'var(--muted)'),
+      cardStyle:'display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius);padding:18px;animation:jf-rise .35s ease;transition:transform .15s,box-shadow .15s;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border)')+';opacity:'+(j.ignore?'.62':'1')
     });
   }
   css(k){ return k.replace(/[A-Z]/g,m=>'-'+m.toLowerCase()); }
@@ -1503,14 +1503,14 @@ class Component extends DCLogic {
       gridCountLabel:visible.length+' job'+(visible.length===1?'':'s')+' · sourced from '+Object.keys(s.sites).filter(k=>s.sites[k]).length+' boards',
       hasIgnored, showIgnoredLabel:s.showIgnored?'Hide Ignored':'Show Ignored ('+all.filter(j=>j.ignore).length+')',
       toggleShowIgnored:()=>this.setState(st=>({showIgnored:!st.showIgnored})),
-      showIgnoredStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.showIgnored?'var(--surface2)':'transparent'),
+      showIgnoredStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease;border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.showIgnored?'var(--surface2)':'transparent'),
       analyzeJobs:()=>this.analyzeJobs(),
       analyzeLabel:s.analyzing?'Analyzing…':'Analyze matches',
-      analyzeStyle:'display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--r-sm);cursor:'+(s.analyzing?'default':'pointer')+';font:600 13px/1 var(--font-body);border:none;color:var(--accent-ink);background:var(--accent);opacity:'+(s.analyzing?'.6':'1'),
+      analyzeStyle:'display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--r-sm);cursor:'+(s.analyzing?'default':'pointer')+';font:600 13px/1 var(--font-body);border:none;color:var(--accent-ink);background:var(--accent);transition:transform .15s ease,filter .15s ease;opacity:'+(s.analyzing?'.6':'1'),
       anyMatches, sortByMatch:s.sortByMatch,
       toggleSort:()=>this.setState(st=>({sortByMatch:!st.sortByMatch,page:0})),
       sortLabel:s.sortByMatch?'Sort: Match':'Sort: Newest',
-      sortStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.sortByMatch?'var(--surface2)':'transparent'),
+      sortStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease;border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.sortByMatch?'var(--surface2)':'transparent'),
       showPager:visible.length>PAGE, prevPage:()=>this.setState(st=>({page:Math.max(0,st.page-1)})), nextPage:()=>this.setState(st=>({page:Math.min(totalPages-1,st.page+1)})),
       pagerLabel:'Page '+(page+1)+' / '+totalPages,
 
