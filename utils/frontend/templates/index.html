@@ -410,6 +410,11 @@
 
       <div style="flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:22px">
         <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Model Instructions</label>
+          <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Optional. Tell the model what you're looking for — it steers the generated job titles, search queries, skills, and interests below when you <b style="color:var(--text)">Build Profile</b>, instead of relying on the résumé alone.</p>
+          <textarea value="{{ pfLlmInstructions }}" oninput="{{ onPfLlmInstructions }}" placeholder="e.g. Only research roles in NLP; emphasize Python/PyTorch; avoid management or sales titles." style="width:100%;min-height:80px;padding:12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1.5 var(--font-body);outline:none;resize:vertical"></textarea>
+        </div>
+        <div>
           <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Résumé → Profile</label>
           <div style="display:flex;gap:10px;align-items:stretch;flex-wrap:wrap">
             <label ondragover="{{ onResumeDragOver }}" ondragleave="{{ onResumeDragLeave }}" ondrop="{{ onResumeDrop }}" style="{{ dropzoneStyle }}" style-hover="border-color:var(--accent2)">
@@ -950,7 +955,7 @@ class Component extends DCLogic {
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false, scrapeEvents:[],
       // ---- Profile panel ----
       profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false,
-      profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],blocked_companies:[],title_blocklist:[],resume_text:'',source_filename:'',exists:false},
+      profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],blocked_companies:[],title_blocklist:[],llm_instructions:'',resume_text:'',source_filename:'',exists:false},
       pfSkillDraft:'', pfTitleDraft:'', pfGroupDrafts:{}, pfBlockedDraft:'', pfTitleBlockDraft:'',
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
@@ -1304,6 +1309,7 @@ class Component extends DCLogic {
         keyword_groups:Array.isArray(d.keyword_groups)?d.keyword_groups:[],
         blocked_companies:Array.isArray(d.blocked_companies)?d.blocked_companies:[],
         title_blocklist:Array.isArray(d.title_blocklist)?d.title_blocklist:[],
+        llm_instructions:d.llm_instructions||'',
         resume_text:d.resume_text||'', source_filename:d.source_filename||'', exists:!!d.exists
       }});
     }catch(e){ console.error('profile load failed', e); this.showToast('Could not load profile'); }
@@ -1333,7 +1339,7 @@ class Component extends DCLogic {
   rebuildProfile(){
     const text=this.state.profile.resume_text; if(!text){ this.showToast('Upload a résumé first'); return; }
     this.setState({pfBusy:true,pfStatus:'Rebuilding from résumé…'});
-    fetch('/api/profile/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resume_text:text})})
+    fetch('/api/profile/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resume_text:text,instructions:this.state.profile.llm_instructions||''})})
       .then(r=>r.json()).then(d=>{
         if(!d.success){ this.setState({pfBusy:false,pfStatus:d.message||'Rebuild failed — is the LLM enabled?'}); return; }
         const p=d.profile||{};
@@ -1348,7 +1354,7 @@ class Component extends DCLogic {
   }
   saveProfile(){
     const p=this.state.profile;
-    const body={interests_paragraph:p.interests_paragraph||'',skills:p.skills||[],job_titles:p.job_titles||[],keyword_groups:p.keyword_groups||[],blocked_companies:p.blocked_companies||[],title_blocklist:p.title_blocklist||[],resume_text:p.resume_text||'',source_filename:p.source_filename||''};
+    const body={interests_paragraph:p.interests_paragraph||'',skills:p.skills||[],job_titles:p.job_titles||[],keyword_groups:p.keyword_groups||[],blocked_companies:p.blocked_companies||[],title_blocklist:p.title_blocklist||[],llm_instructions:p.llm_instructions||'',resume_text:p.resume_text||'',source_filename:p.source_filename||''};
     this.setState({pfBusy:true});
     fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(r=>r.json()).then(d=>{
@@ -1652,6 +1658,7 @@ class Component extends DCLogic {
       onResumeDragOver:(e)=>this.onResumeDragOver(e), onResumeDragLeave:(e)=>this.onResumeDragLeave(e), onResumeDrop:(e)=>this.onResumeDrop(e),
       dropzoneStyle, buildBtnStyle, buildHint, buildProfile:()=>this.buildProfile(),
       rebuildProfile:()=>this.rebuildProfile(), saveProfile:()=>this.saveProfile(),
+      pfLlmInstructions:pf.llm_instructions||'', onPfLlmInstructions:(e)=>this.pfSet({llm_instructions:e.target.value}),
       pfInterests:pf.interests_paragraph||'', onPfInterests:(e)=>this.pfSet({interests_paragraph:e.target.value}),
       pfSkills, pfSkillDraft:s.pfSkillDraft, onPfSkillDraft:(e)=>this.setState({pfSkillDraft:e.target.value}),
       onPfSkillKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('skills','pfSkillDraft',s.pfSkillDraft); } },

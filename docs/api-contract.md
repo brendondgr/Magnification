@@ -51,11 +51,11 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 
 ## Profile (recommendation system) (`profile_bp`)
 
-- `GET /api/profile` → active profile `{exists, interests_paragraph, skills, job_titles, keyword_groups, blocked_companies, title_blocklist, resume_text, source_filename, ...}` (or `{exists:false}` + empty fields). Each `keyword_groups` entry is `{label, terms:[...], scopes:[...]}` where `scopes` ⊆ `{"title","description"}` (defaults to both).
-- `POST /api/profile` — body: any of `interests_paragraph, skills, job_titles, keyword_groups, blocked_companies, title_blocklist, resume_text, source_filename, name` → `upsert_active_profile`, then re-applies the profile block rules to the existing feed (one-directional hide). Returns `{success, profile, hidden}` (`hidden` = jobs newly ignored).
+- `GET /api/profile` → active profile `{exists, interests_paragraph, skills, job_titles, keyword_groups, blocked_companies, title_blocklist, llm_instructions, resume_text, source_filename, ...}` (or `{exists:false}` + empty fields). Each `keyword_groups` entry is `{label, terms:[...], scopes:[...]}` where `scopes` ⊆ `{"title","description"}` (defaults to both).
+- `POST /api/profile` — body: any of `interests_paragraph, skills, job_titles, keyword_groups, blocked_companies, title_blocklist, llm_instructions, resume_text, source_filename, name` → `upsert_active_profile`, then re-applies the profile block rules to the existing feed (one-directional hide). Returns `{success, profile, hidden}` (`hidden` = jobs newly ignored).
 - `POST /api/profile/block-company` — body: `{company}` → adds the company to `blocked_companies` (case-insensitive de-dupe, creates a default profile if none) and hides its jobs. Returns `{success, blocked_companies:[...], hidden}`. Empty company → `400`.
 - `POST /api/profile/upload` — multipart `file` (.pdf/.tex/.md/.markdown/.txt) → `{success, source_filename, resume_text, profile, llm_used, llm_error}`. Draft is **not** persisted.
-- `POST /api/profile/build` — body: `{resume_text}` → `{success, profile, llm_used}` (requires the LLM endpoint enabled).
+- `POST /api/profile/build` — body: `{resume_text, instructions?}` → `{success, profile, llm_used}` (requires the LLM endpoint enabled). `instructions` steers the build; when omitted it falls back to the saved profile's `llm_instructions`.
 
 ## Recommend (recommendation system) (`recommend_bp`)
 

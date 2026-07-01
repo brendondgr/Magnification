@@ -30,7 +30,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 | --- | --- | --- |
 | Jobs / Tracker | `jobs, tab, selectedId, search, page, dragOverCol` | `loadJobs`, `mapDbJob`, `toggleIgnore`, `blockCompany`, `markApplied`, `moveTo`, `toggleStatus` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, useLLM` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
-| **Profile** | `profileOpen, profile{interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy` | `openProfile`, `loadProfile`, `saveProfile`, `blockCompany`, `onResumeFile`, `rebuildProfile`, `pfSet` |
+| **Profile** | `profileOpen, profile{llm_instructions,interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy` | `openProfile`, `loadProfile`, `saveProfile`, `blockCompany`, `onResumeFile`, `rebuildProfile`, `pfSet` |
 | **Options** | `optionsOpen, optionsTab, llm{...}, runtime{...}, llmTest` | `openOptions`, `loadOptions`, `saveLlmOptions`, `testLlmOptions`, `saveRuntimeOptions`, `llmSet`/`rtSet`/`rtWeightSet` |
 
 Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options** (Profile left of Find
