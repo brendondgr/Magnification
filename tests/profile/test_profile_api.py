@@ -34,7 +34,7 @@ def _restore_active_profile():
                 k: prior[k] for k in (
                     "name", "source_filename", "resume_text", "interests_paragraph",
                     "skills", "job_titles", "keyword_groups",
-                    "blocked_companies", "title_blocklist",
+                    "blocked_companies", "title_blocklist", "llm_instructions",
                 )
             })
 

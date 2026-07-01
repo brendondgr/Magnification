@@ -65,7 +65,7 @@ def save_profile():
         k: data[k]
         for k in ("name", "source_filename", "resume_text", "interests_paragraph",
                   "skills", "job_titles", "keyword_groups",
-                  "blocked_companies", "title_blocklist")
+                  "blocked_companies", "title_blocklist", "llm_instructions")
         if k in data
     }
     _clean_block_fields(fields)
@@ -147,25 +147,34 @@ def upload_resume():
 
 @profile_bp.route("/api/profile/build", methods=["POST"])
 def build_profile():
-    """(Re)build a draft profile from already-extracted resume text (requires LLM)."""
+    """
+    (Re)build a draft profile from already-extracted resume text (requires LLM).
+
+    Optional ``instructions`` free-text steers the build (job titles, queries, skills, interests);
+    when omitted it falls back to the saved profile's ``llm_instructions``.
+    """
     data = request.json or {}
     text = (data.get("resume_text") or "").strip()
     if not text:
         return jsonify({"success": False, "message": "resume_text is required"}), 400
-    draft, llm_used, llm_error = _build_draft(text)
+    instructions = data.get("instructions")
+    if instructions is None:
+        active = db_ops.get_active_profile()
+        instructions = (active or {}).get("llm_instructions", "")
+    draft, llm_used, llm_error = _build_draft(text, instructions)
     if not llm_used:
         return jsonify({"success": False, "message": llm_error or "LLM is not enabled"}), 400
     return jsonify({"success": True, "profile": draft, "llm_used": True})
 
 
-def _build_draft(text):
+def _build_draft(text, instructions=""):
     """Try to build a profile draft via the LLM; fall back to an empty manual draft."""
     config = load_llm_endpoint_config()
     if not config.get("enabled"):
         return dict(EMPTY_PROFILE), False, "LLM endpoint disabled"
     try:
         client = OpenAIClient.from_config(config)
-        return build_profile_from_text(text, client), True, None
+        return build_profile_from_text(text, client, instructions), True, None
     except Exception as e:
         logger.error(f"LLM profile build failed: {e}")
         return dict(EMPTY_PROFILE), False, str(e)

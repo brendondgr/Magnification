@@ -8,6 +8,7 @@ Find Jobs).
 
 | Field | Purpose |
 | --- | --- |
+| `llm_instructions` | Optional free-text guidance the user types to steer the LLM profile build (which job titles/queries/skills to emphasize, how to frame interests). Injected ahead of the résumé as a prioritized instruction; edited in the Profile panel above the résumé section. |
 | `interests_paragraph` | Open-body paragraph of research/job interests — used by the **LLM** matching pass. |
 | `skills` | List of skills — matched against skills extracted from each job description. |
 | `job_titles` | List of search-query titles — seed the Find Jobs search. |
@@ -42,8 +43,10 @@ already-hidden jobs (a re-scrape re-evaluates from scratch).
    (`pypdf` for PDF; light comment-stripping for LaTeX; raw for Markdown).
 2. **Draft** — if the LLM endpoint is enabled (Options), `build_profile_from_text` asks the
    model for a structured profile (`interests_paragraph`, `skills`, `job_titles`,
-   `keyword_groups`) and `normalize_profile` coerces it into the canonical shape. If the LLM
-   is disabled, an empty draft is returned for manual entry. **Nothing is persisted yet.**
+   `keyword_groups`) and `normalize_profile` coerces it into the canonical shape. When the
+   profile has **`llm_instructions`**, they are injected ahead of the résumé as a prioritized
+   instruction so the generated sections follow the user's intent, not just the résumé. If the
+   LLM is disabled, an empty draft is returned for manual entry. **Nothing is persisted yet.**
 3. **Edit** — the user reviews/edits every field in the Profile panel.
 4. **Save** (`POST /api/profile`) — `upsert_active_profile` writes the active profile.
 5. **Rebuild** (`POST /api/profile/build`) — regenerate fields from the stored `resume_text`

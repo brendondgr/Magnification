@@ -141,6 +141,19 @@ Plan: `docs/plans/profile-blocklists.md`. Delivered on branch `profile-blocklist
   hides jobs missing a title-scoped group's term)
 - [x] All tests green (`pytest`), `import app` clean; UI verified via preview tools
 
+## Profile Model Instructions — Definition of Done
+
+Plan: `docs/plans/profile-llm-instructions.md`. Delivered on branch `profile-llm-instructions`
+(worktree), committed per phase, merged to `main`.
+
+- [x] (1/2) `Profile.llm_instructions` Text column + idempotent migration; build-prompt
+  injection (`build_profile_from_text(..., instructions)`); `/api/profile/build` accepts
+  `instructions` (falls back to the saved value); save whitelist + serialization + tests
+- [x] (2/2) Profile panel **Model Instructions** textarea above the résumé section; state /
+  load / save / rebuild wiring; docs + merge (verified in-browser: renders above the résumé
+  section, round-trips through save/load, and is sent to the build endpoint)
+- [x] All tests green (`pytest`), `import app` clean; UI verified via preview tools
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

@@ -32,12 +32,16 @@ EMPTY_PROFILE: Dict[str, Any] = {
     "keyword_groups": [],
     "blocked_companies": [],
     "title_blocklist": [],
+    "llm_instructions": "",
 }
 
 _BUILD_SYSTEM_PROMPT = (
     "You are a careful resume analyst. Given the plain text of a resume, extract a "
-    "structured job-search profile. Respond with ONLY a JSON object, no prose, no code "
-    "fences. The JSON must have exactly these keys:\n"
+    "structured job-search profile. If the user provides explicit instructions about what "
+    "they are looking for, treat those instructions as the highest priority and let them "
+    "override or refine what the resume alone would suggest (e.g. which job titles, search "
+    "queries, skills to emphasize, and how to frame the interests). Respond with ONLY a JSON "
+    "object, no prose, no code fences. The JSON must have exactly these keys:\n"
     '  "interests_paragraph": a single cohesive paragraph (3-6 sentences) describing the '
     "candidate's research/job interests, background, and what kind of work they want;\n"
     '  "skills": an array of concise skill strings (tools, languages, methods, domains);\n'
@@ -91,17 +95,25 @@ def _clean_latex(text: str) -> str:
     return cleaned.strip()
 
 
-def build_profile_from_text(text: str, client) -> Dict[str, Any]:
+def build_profile_from_text(text: str, client, instructions: str = "") -> Dict[str, Any]:
     """
     Ask the LLM to turn resume text into a structured profile dict.
 
     ``client`` is any object with a ``chat_json(messages, **kw)`` method (the real
-    ``OpenAIClient`` or a test fake). Raises if the LLM call/parse fails; callers
-    decide whether to fall back to a manual empty draft.
+    ``OpenAIClient`` or a test fake). ``instructions`` is optional free-text guidance from the
+    user (what roles/skills to emphasize, what to avoid); when present it is injected ahead of
+    the resume as a high-priority instruction so the generated sections reflect the user's
+    intent, not just the resume. Raises if the LLM call/parse fails; callers decide whether to
+    fall back to a manual empty draft.
     """
+    guidance = (instructions or "").strip()
+    user_content = (
+        f"User instructions (prioritize these):\n{guidance}\n\nResume text:\n\n{text}"
+        if guidance else f"Resume text:\n\n{text}"
+    )
     messages = [
         {"role": "system", "content": _BUILD_SYSTEM_PROMPT},
-        {"role": "user", "content": f"Resume text:\n\n{text}"},
+        {"role": "user", "content": user_content},
     ]
     raw = client.chat_json(messages)
     return normalize_profile(raw)
