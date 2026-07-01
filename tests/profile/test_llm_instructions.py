@@ -16,19 +16,59 @@ from app import application
 from utils.backend.database import init_db
 from utils.backend.database import operations as db_ops
 from utils.backend.database.models import Base
-from utils.backend.recommend.profile_builder import build_profile_from_text
+from utils.backend.recommend.profile_builder import (
+    build_profile_from_text, _BUILD_SYSTEM_PROMPT,
+)
 from utils.backend.routes import profile_routes
 
 
 class _FakeClient:
     """Captures the messages passed to chat_json and returns a fixed profile draft."""
-    def __init__(self):
+    def __init__(self, reply=None):
         self.messages = None
+        self._reply = reply or {"interests_paragraph": "x", "skills": ["python"],
+                                "job_titles": ["ML Engineer"], "keyword_groups": []}
 
     def chat_json(self, messages, **kw):
         self.messages = messages
-        return {"interests_paragraph": "x", "skills": ["python"], "job_titles": ["ML Engineer"],
-                "keyword_groups": []}
+        return self._reply
+
+
+def test_build_prompt_requests_new_fields():
+    # The build prompt must ask the model for scopes, title_blocklist, and blocked_companies.
+    for key in ('"scopes"', '"title_blocklist"', '"blocked_companies"'):
+        assert key in _BUILD_SYSTEM_PROMPT
+    # blocked_companies must be gated on explicit user request.
+    assert "EXPLICITLY" in _BUILD_SYSTEM_PROMPT
+
+
+def test_build_output_carries_scopes_blocklists():
+    # A model reply with scopes/title_blocklist/blocked_companies flows through normalization.
+    fake = _FakeClient({
+        "interests_paragraph": "NLP research.",
+        "skills": ["python"],
+        "job_titles": ["Research Scientist"],
+        "keyword_groups": [
+            {"label": "Role", "terms": ["intern"], "scopes": ["title"]},
+            {"label": "Domain", "terms": ["nlp"]},  # no scopes -> defaults to both
+        ],
+        "title_blocklist": ["Senior", "Manager"],
+        "blocked_companies": ["Evil Corp"],
+    })
+    out = build_profile_from_text("resume", fake, instructions="avoid senior roles; block Evil Corp")
+    assert out["keyword_groups"][0]["scopes"] == ["title"]
+    assert out["keyword_groups"][1]["scopes"] == ["title", "description"]
+    assert out["title_blocklist"] == ["Senior", "Manager"]
+    assert out["blocked_companies"] == ["Evil Corp"]
+
+
+def test_build_output_empty_blocklists_by_default():
+    # When the model returns no companies (nothing requested), the profile has none.
+    fake = _FakeClient({"interests_paragraph": "x", "skills": [], "job_titles": [],
+                        "keyword_groups": [], "title_blocklist": [], "blocked_companies": []})
+    out = build_profile_from_text("resume", fake)
+    assert out["blocked_companies"] == []
+    assert out["title_blocklist"] == []
 
 
 def test_build_injects_instructions():

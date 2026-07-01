@@ -46,12 +46,23 @@ _BUILD_SYSTEM_PROMPT = (
     "candidate's research/job interests, background, and what kind of work they want;\n"
     '  "skills": an array of concise skill strings (tools, languages, methods, domains);\n'
     '  "job_titles": an array of 4-10 realistic job titles to search for;\n'
-    '  "keyword_groups": an array of objects, each {"label": str, "terms": [str, ...]}, '
-    "grouping the candidate's must-have themes. Treat groups as AND (every group should "
-    "match) and terms within a group as OR (any term satisfies the group). For example a "
-    'candidate wanting AI work only in healthcare yields two groups: {"label":"AI/ML","terms":'
-    '["machine learning","ai","deep learning"]} and {"label":"Domain","terms":["healthcare",'
-    '"medicine","clinical"]}.'
+    '  "keyword_groups": an array of objects, each {"label": str, "terms": [str, ...], '
+    '"scopes": [str, ...]}, grouping the candidate\'s must-have themes. Treat groups as AND '
+    "(every group should match) and terms within a group as OR (any term satisfies the group). "
+    '"scopes" is a subset of ["title","description"] saying WHERE the group\'s terms must appear: '
+    'use ["title"] for role/seniority words that belong in the job title itself (e.g. a group '
+    'requiring "intern" or "research" in the title), and ["title","description"] (the default '
+    "when unsure) for domain/skill themes that may appear anywhere. For example a candidate "
+    'wanting AI work only in healthcare yields {"label":"AI/ML","terms":["machine learning",'
+    '"ai","deep learning"],"scopes":["title","description"]} and {"label":"Domain","terms":'
+    '["healthcare","medicine","clinical"],"scopes":["title","description"]};\n'
+    '  "title_blocklist": an array of lowercase words that, if present in a job TITLE, should '
+    "exclude that job. Populate this from the user's instructions about roles to avoid (e.g. "
+    '"no senior or management roles" -> ["senior","staff","principal","manager","director",'
+    '"lead"]). Use an empty array [] when nothing should be excluded;\n'
+    '  "blocked_companies": an array of company names to always hide. ONLY include a company '
+    "when the user's instructions EXPLICITLY name companies to block or avoid; otherwise return "
+    "an empty array []. Never guess, infer, or invent company names."
 )
 
 

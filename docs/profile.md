@@ -43,14 +43,20 @@ already-hidden jobs (a re-scrape re-evaluates from scratch).
    (`pypdf` for PDF; light comment-stripping for LaTeX; raw for Markdown).
 2. **Draft** — if the LLM endpoint is enabled (Options), `build_profile_from_text` asks the
    model for a structured profile (`interests_paragraph`, `skills`, `job_titles`,
-   `keyword_groups`) and `normalize_profile` coerces it into the canonical shape. When the
-   profile has **`llm_instructions`**, they are injected ahead of the résumé as a prioritized
-   instruction so the generated sections follow the user's intent, not just the résumé. If the
-   LLM is disabled, an empty draft is returned for manual entry. **Nothing is persisted yet.**
+   `keyword_groups` **with per-group `scopes`**, `title_blocklist`, and `blocked_companies`)
+   and `normalize_profile` coerces it into the canonical shape. The model chooses each group's
+   `scopes` (Title-only for role/seniority words, both otherwise) and fills `title_blocklist`
+   from the user's stated exclusions; it only returns `blocked_companies` when the user's
+   instructions **explicitly name** companies to block (never invented). When the profile has
+   **`llm_instructions`**, they are injected ahead of the résumé as a prioritized instruction so
+   the generated sections follow the user's intent, not just the résumé. If the LLM is disabled,
+   an empty draft is returned for manual entry. **Nothing is persisted yet.**
 3. **Edit** — the user reviews/edits every field in the Profile panel.
 4. **Save** (`POST /api/profile`) — `upsert_active_profile` writes the active profile.
 5. **Rebuild** (`POST /api/profile/build`) — regenerate fields from the stored `resume_text`
-   without re-uploading (requires the LLM).
+   without re-uploading (requires the LLM). Regenerated fields replace their prior values, except
+   **`blocked_companies`, which is unioned** so a rebuild never drops companies the user blocked
+   via the card button.
 
 ## API
 
