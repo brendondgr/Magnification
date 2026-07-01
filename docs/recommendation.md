@@ -13,9 +13,13 @@ Computed per job by `utils/backend/recommend/ranker.py` and combined into `rag_s
 | **bm25** | `bm25.BM25Index` over the job corpus | Lexical overlap of the profile query vs descriptions, normalized 0..1. |
 | **keyword** | `ranker.keyword_group_score` | Fraction of the profile's keyword groups satisfied — **AND across groups, OR within**. |
 | **skill** | `skills.match_profile_skills` | Fraction of the job's extracted skills the profile covers. |
+| **llm** | `service._llm_rerank` verdict | The LLM's 0-100 fit score (÷100), computed only for the top-N candidates (see Flow). Absent when offline or outside the top-N. |
 
-Weights are configurable in **Options → Runtime** (`runtime_config.weights`); default
-`semantic 0.5 / bm25 0.2 / keyword 0.15 / skill 0.15`.
+Weights are configurable in **Options → Runtime** (`runtime_config.weights`) as sliders that
+must total exactly **1.00**; default `semantic 0.30 / bm25 0.15 / keyword 0.10 / skill 0.05 /
+llm 0.40`. `ranker.combined_score` **renormalizes over the signals actually present**, so a job
+with no LLM verdict is scored over the remaining `0.60` (i.e. the LLM's `0.40` is dropped and
+the rest rescaled) — exactly as if the LLM weren't configured.
 
 ## Modules (`utils/backend/recommend/`)
 
@@ -35,9 +39,12 @@ Weights are configurable in **Options → Runtime** (`runtime_config.weights`); 
 ```
 Scrape completes → scraping_service (if runtime.enable_analysis and an active profile exists)
     → recommend.service.analyze_jobs(new_job_ids)
-        → embed missing job descriptions (parallel, fastembed)   [embed-on-retrieve]
+        → keep only the keyword-filtered remainder (non-ignored jobs)  [Title/Description keywords]
+        → embed missing job descriptions (parallel, fastembed)         [embed-on-retrieve]
         → extract skills (gazetteer, or LLM batch if enabled)
-        → ranker.rank_batch(profile, profile_vec, jobs, weights)
+        → ranker.rank_batch → semantic/bm25/keyword/skill scores
+        → take the top-N (default 30) by (semantic + bm25) → LLM fit verdict (2-3 sentences,
+          weighs what the company wants) → fold `llm` into rag_score (renormalized when absent)
         → save_job_analysis per job (JobAnalysis table)
 
 Manual: POST /api/recommend/analyze  (re-score on demand, e.g. after editing the profile)
@@ -58,6 +65,7 @@ re-rank is enabled) the LLM rationale. See `docs/component-map.md`.
 ## Performance / parallelism
 
 - Embedding: fastembed batch with `parallel=embed_workers`.
-- LinkedIn description fetch: parallelized (see `docs/data-flow.md`).
+- LinkedIn description fetch: **serial (1 at a time)** to avoid the guest endpoint's rate-limiting
+  (see `docs/data-flow.md`).
 - LLM skill extraction / verdicts: `OpenAIClient.chat_many` with `llm_workers`.
 - Stored embeddings are reused across re-analysis (only missing ones are recomputed).

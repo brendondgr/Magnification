@@ -58,4 +58,8 @@ These existing references remain canonical for their subsystems:
   "Build Profile (LLM)" action, a unified searchable country selector, Find Jobs prefilled from
   the active profile, a live step-by-step scraping activity feed, and LLM compensation extraction
   that recovers pay from job descriptions (e.g. LinkedIn).
+- **Pipeline + scoring refinements complete:** LinkedIn description fetch is serial (rate-limit
+  safe); analysis scores only the keyword-filtered remainder, ranks by semantic+bm25, sends the
+  top 30 to the LLM for a 2–3 sentence fit verdict, and folds that verdict into the score (LLM
+  weight 0.40, renormalized when unavailable); score weights are sliders that must total 1.0.
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.
