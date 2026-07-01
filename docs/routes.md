@@ -69,9 +69,10 @@ Builds/edits the active recommendation profile (see `docs/profile.md`).
 | Path | Method | Purpose |
 | --- | --- | --- |
 | `/api/profile` | GET | Load the active profile (or an empty skeleton with `exists:false`) |
-| `/api/profile` | POST | Upsert the active profile from edited fields |
+| `/api/profile` | POST | Upsert the active profile from edited fields (incl. `blocked_companies`, `title_blocklist`, scoped `keyword_groups`); re-applies block rules to the current feed |
 | `/api/profile/upload` | POST | Upload a résumé (PDF/.tex/.md), extract text, return an LLM-drafted (or empty) profile — not persisted |
 | `/api/profile/build` | POST | Rebuild a draft from stored `resume_text` (requires the LLM) |
+| `/api/profile/block-company` | POST | Add a company to the profile blocklist and immediately hide its jobs (body `{company}`) |
 
 ## Recommend API (`recommend_bp`)
 
