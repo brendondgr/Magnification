@@ -130,6 +130,7 @@ class Profile(Base):
             are matched (defaults to both). An unsatisfied group hard-blocks a job.
         blocked_companies: JSON list of company names to hide entirely (case-insensitive).
         title_blocklist: JSON list of substrings; any job whose title contains one is hidden.
+        llm_instructions: free-text guidance the user supplies to steer the LLM profile build.
         created_at / updated_at: Audit timestamps
     """
     __tablename__ = 'profiles'
@@ -145,6 +146,7 @@ class Profile(Base):
     keyword_groups = Column(JSON, nullable=True)    # list[{label, terms:[...], scopes:[...]}]
     blocked_companies = Column(JSON, nullable=True) # list[str]
     title_blocklist = Column(JSON, nullable=True)   # list[str]
+    llm_instructions = Column(Text, nullable=True)  # free-text guidance for the LLM profile build
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
