@@ -11,11 +11,29 @@ Find Jobs).
 | `interests_paragraph` | Open-body paragraph of research/job interests — used by the **LLM** matching pass. |
 | `skills` | List of skills — matched against skills extracted from each job description. |
 | `job_titles` | List of search-query titles — seed the Find Jobs search. |
-| `keyword_groups` | `[{label, terms:[...]}]` — **AND across groups, OR within a group** (same convention as `utils/backend/scrapers/job_filter`). E.g. an "AI/ML" group AND a "Healthcare" group. |
+| `keyword_groups` | `[{label, terms:[...], scopes:[...]}]` — **AND across groups, OR within a group**, applied as a **hard filter**: a job is hidden unless *every* group matches. `scopes` ⊆ `{"title","description"}` (defaults to both) picks where each group's terms must appear — e.g. an "intern" group scoped to Title-only requires "intern" in the title, not just the description. |
+| `blocked_companies` | List of company names (case-insensitive, exact) whose jobs are always hidden. Added via the per-card **Block** button or edited in the Profile panel. |
+| `title_blocklist` | List of substrings; any job whose **title** contains one is hidden (e.g. "Senior"). |
 | `resume_text`, `source_filename` | The extracted résumé text + original filename (kept so the profile can be rebuilt). |
 
 Profiles live in the `profiles` table (see `docs/database.md`); exactly one is `is_active`.
 The shipped UI manages a single "default" profile.
+
+## Blocking (blocklists & scoped keyword groups)
+
+The active profile is the single source of truth for user-defined blocking. Three rules, any of
+which hides a job (sets `ignore=1`): `blocked_companies`, `title_blocklist`, and an unsatisfied
+scoped `keyword_groups` entry. The pure predicates live in
+`utils/backend/scrapers/profile_filter.py` and are applied:
+
+- **at scrape time** — `job_filter.filter_and_mark_jobs` consults the active profile alongside the
+  per-search `jobs_config` keyword filter;
+- **retroactively / on demand** — `job_filter.apply_profile_filters(job_ids=None)` re-hides
+  matching jobs when a company is blocked (`POST /api/profile/block-company`) or the profile is
+  saved (`POST /api/profile`).
+
+Blocking is **one-directional**: applying rules only hides jobs; removing a rule does not un-hide
+already-hidden jobs (a re-scrape re-evaluates from scratch).
 
 ## Building from a résumé
 

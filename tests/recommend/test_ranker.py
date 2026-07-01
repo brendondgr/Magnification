@@ -21,16 +21,28 @@ def test_build_profile_query_includes_all_parts():
 
 
 def test_keyword_group_and_or_semantics():
-    # Both groups satisfied -> 1.0
-    s, hits = ranker.keyword_group_score("machine learning role in healthcare", PROFILE["keyword_groups"])
+    # Both groups satisfied (default scope = title+description) -> 1.0
+    s, hits = ranker.keyword_group_score("", "machine learning role in healthcare", PROFILE["keyword_groups"])
     assert s == 1.0
     assert set(hits.keys()) == {"AI/ML", "Domain"}
     # Only one group satisfied -> 0.5
-    s2, hits2 = ranker.keyword_group_score("machine learning role in finance", PROFILE["keyword_groups"])
+    s2, hits2 = ranker.keyword_group_score("", "machine learning role in finance", PROFILE["keyword_groups"])
     assert s2 == 0.5
     assert list(hits2.keys()) == ["AI/ML"]
     # No groups -> neutral 1.0
-    assert ranker.keyword_group_score("anything", [])[0] == 1.0
+    assert ranker.keyword_group_score("", "anything", [])[0] == 1.0
+
+
+def test_keyword_group_scope_restricts_location():
+    # A title-scoped group is satisfied only by a term in the title, not the description.
+    groups = [{"label": "Role", "terms": ["intern"], "scopes": ["title"]}]
+    # "intern" only in the description -> group NOT satisfied
+    s_desc, _ = ranker.keyword_group_score("ML Engineer", "you will train interns", groups)
+    assert s_desc == 0.0
+    # "intern" in the title -> satisfied
+    s_title, hits = ranker.keyword_group_score("Software Intern", "no keyword here", groups)
+    assert s_title == 1.0
+    assert hits["Role"] == ["intern"]
 
 
 def test_rank_batch_orders_relevant_job_first():

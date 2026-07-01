@@ -39,23 +39,35 @@ def build_profile_query(profile: Dict[str, Any]) -> str:
     return " ".join(p for p in parts if p)
 
 
-def keyword_group_score(text: str, keyword_groups: Optional[List[Dict[str, Any]]]):
+_KW_SCOPES = ("title", "description")
+
+
+def keyword_group_score(title: str, description: str,
+                        keyword_groups: Optional[List[Dict[str, Any]]]):
     """
     Score keyword-group preferences: AND across groups, OR within a group.
 
-    Returns (score, hits) where score is the fraction of groups with at least one matching
-    term (1.0 when there are no groups — no preference), and hits maps group label -> matched
-    terms.
+    Each group carries a ``scopes`` subset of {"title","description"} (defaults to both);
+    a term matches only within that group's selected locations, so a title-scoped group is
+    satisfied only by a term in the title. Returns (score, hits) where score is the fraction of
+    groups with at least one matching term (1.0 when there are no groups — no preference), and
+    hits maps group label -> matched terms.
     """
     if not keyword_groups:
         return 1.0, {}
-    t = (text or "").lower()
+    title_l = (title or "").lower()
+    desc_l = (description or "").lower()
     hits: Dict[str, List[str]] = {}
     satisfied = 0
     for idx, group in enumerate(keyword_groups):
         label = group.get("label") or f"Group {idx + 1}"
         terms = group.get("terms") or []
-        matched = [term for term in terms if term and term.lower() in t]
+        scopes = group.get("scopes")
+        selected = [s for s in _KW_SCOPES if not scopes or s in scopes]
+        scope_text = " ".join(
+            (title_l if s == "title" else desc_l) for s in selected
+        )
+        matched = [term for term in terms if term and term.lower() in scope_text]
         if matched:
             satisfied += 1
             hits[label] = matched
@@ -106,7 +118,8 @@ def rank_batch(profile: Dict[str, Any],
         job_vec = job.get("embedding") or []
         semantic = max(0.0, cosine(profile_vector, job_vec)) if (profile_vector and job_vec) else 0.0
         bm = bm25_norm[i] if i < len(bm25_norm) else 0.0
-        kw_score, kw_hits = keyword_group_score(job.get("description") or "", keyword_groups)
+        kw_score, kw_hits = keyword_group_score(
+            job.get("title") or "", job.get("description") or "", keyword_groups)
         skill = match_profile_skills(job.get("extracted_skills") or [], profile_skills)
 
         signals = {

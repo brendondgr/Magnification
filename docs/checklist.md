@@ -121,6 +121,26 @@ Plan: `docs/plans/ui-hover-animations.md`. Delivered on branch `ui-hover-animati
   (screenshot tooling was unavailable in this environment, so verification used DOM/stylesheet
   inspection instead of visual screenshots)
 
+## Profile Blocklists & Scoped Keyword Groups — Definition of Done
+
+Plan: `docs/plans/profile-blocklists.md`. Delivered on branch `profile-blocklists`
+(worktree), committed per phase, merged to `main`.
+
+- [x] (1/6) Worktree + plan doc
+- [x] (2/6) `Profile.blocked_companies` + `title_blocklist` columns + scoped `keyword_groups`
+  (`scopes` ⊆ title/description) + idempotent migration + CRUD/normalizer tests
+- [x] (3/6) `profile_filter.py` pure block predicates + `job_filter.apply_profile_filters`
+  (retroactive, one-directional) + scope-aware `ranker.keyword_group_score` + tests
+- [x] (4/6) `POST /api/profile` accepts blocklists + re-applies filters on save;
+  `POST /api/profile/block-company` (retroactive hide); isolated in-memory API tests + docs
+- [x] (5/6) Per-card + detail-panel **Block** button (left of ignore) with instant hide
+  (verified in-browser: blocking a company hid its cards + persisted + set ignore=1)
+- [x] (6/6) Profile panel: **Blocked Companies** + **Keyword Title Blocklist** tag-lists +
+  per-group **Title/Description** scope toggles; docs + merge (verified in-browser: scope
+  toggle persists `scopes:["title"]`, saving a title-block hid the matching job, hard-filter
+  hides jobs missing a title-scoped group's term)
+- [x] All tests green (`pytest`), `import app` clean; UI verified via preview tools
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
