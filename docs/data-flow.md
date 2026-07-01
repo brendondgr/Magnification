@@ -15,8 +15,8 @@ How data enters, moves through, and reaches the UI. Source: `utils/backend/`, `a
 Find Jobs modal → POST /api/scrape/start
       → scraping_service (orchestrator)
           → task_generator → jobspy_wrapper / linkedin_scraper (concurrent_scraper)
-          → linkedin_scraper.fetch_descriptions_for_jobs (PARALLEL — ThreadPoolExecutor,
-              worker count + jittered delay from runtime_config.linkedin_workers/linkedin_delay)
+          → linkedin_scraper.fetch_descriptions_for_jobs (SERIAL — one request at a time,
+              with a jittered delay, to avoid the guest endpoint's rate-limiting)
           → data_processor (dedupe, clean)
           → recommend/compensation.extract_compensation_llm (OPTIONAL — when the LLM is enabled
               and runtime.enable_llm_compensation; recovers pay from descriptions, parallel)
@@ -29,10 +29,10 @@ Each pipeline step calls a progress callback; `scrape_routes` records the messag
 append-only, timestamped, de-duplicated `events` list on the job record (capped at 200), which
 the Find Jobs progress view renders as a live, step-by-step activity feed.
 
-LinkedIn descriptions are fetched concurrently (previously sequential). Skill extraction
-(`recommend/skills.py`, a fast gazetteer over the description + the profile's skills, with an
-optional LLM extractor) and embedding/scoring run in the analysis stage (see Recommendation
-Analysis Flow).
+LinkedIn descriptions are fetched **serially** (one at a time) to avoid rate-limiting. The
+analysis stage then runs over **only the keyword-filtered remainder** (non-ignored jobs): embed
+→ rank by semantic+bm25 → LLM fit verdict on the top-N (default 30) → fold the `llm` signal into
+`rag_score` (renormalized when no verdict). See `docs/recommendation.md`.
 
 ## Read Path (job display)
 

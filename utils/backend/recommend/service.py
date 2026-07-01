@@ -31,9 +31,14 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     runtime = runtime or get_runtime_config()
 
     jobs = (db_ops.get_jobs_by_ids(job_ids) if job_ids
-            else db_ops.get_all_jobs(include_ignored=True))
+            else db_ops.get_all_jobs(include_ignored=False))
+    # Only the keyword-filtered remainder is analyzed: ignored jobs (dropped by the
+    # Title/Description keyword filter) are skipped, so we never embed or score them.
+    jobs = [j for j in jobs if not j.get("ignore")]
     if not jobs:
         return {"success": True, "analyzed": 0, "profile_id": profile["id"], "top": []}
+
+    weights = runtime.get("weights") or ranker.DEFAULT_WEIGHTS
 
     _report(progress_callback, "embedding", 10, f"Embedding {len(jobs)} jobs…")
     job_vecs = _ensure_embeddings(jobs, runtime)
@@ -51,11 +56,23 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
         "embedding": job_vecs.get(j["id"], []),
         "extracted_skills": skills_map.get(j["id"], []),
     } for j in jobs]
-    analyses = ranker.rank_batch(profile, profile_vec, rjobs, weights=runtime.get("weights"))
+    # Preliminary scores from semantic/bm25/keyword/skill (llm folded in below).
+    analyses = ranker.rank_batch(profile, profile_vec, rjobs, weights=weights)
 
     if runtime.get("enable_llm_rerank"):
-        _report(progress_callback, "llm", 90, "LLM verdict on top matches…")
+        _report(progress_callback, "llm", 90, "LLM fit verdict on top matches…")
         _llm_rerank(jobs, analyses, profile, runtime)
+
+    # Fold the LLM verdict into rag_score. Jobs with no verdict (offline, or outside the
+    # top-N) renormalize over the remaining signals (combined_score handles this).
+    for an in analyses:
+        signals = {
+            "semantic": an["semantic_score"], "bm25": an["bm25_score"],
+            "keyword": an["keyword_score"], "skill": an["skill_score"],
+        }
+        if an.get("llm_score") is not None:
+            signals["llm"] = max(0.0, min(1.0, an["llm_score"] / 100.0))
+        an["rag_score"] = round(ranker.combined_score(signals, weights), 4)
 
     for j, an in zip(jobs, analyses):
         vec = job_vecs.get(j["id"], [])
@@ -81,7 +98,7 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
         "success": True,
         "analyzed": len(analyses),
         "profile_id": profile["id"],
-        "top": ranked[:10],
+        "top": ranked[:30],
     }
 
 
@@ -155,20 +172,32 @@ def _extract_skills_for_jobs(jobs, profile, runtime) -> Dict[int, List[str]]:
 
 
 _LLM_VERDICT_PROMPT = (
-    "You are a job-fit evaluator for a specific candidate. Given the candidate profile and a "
-    "job, return ONLY a JSON object {\"score\": <integer 0-100>, \"rationale\": \"<1-2 "
-    "sentences>\"} rating how well the job fits the candidate. No prose, no code fences."
+    "You are a job-fit evaluator for a specific candidate. Carefully weigh what THIS job and "
+    "company are specifically looking for (required skills, seniority, domain, responsibilities) "
+    "against the candidate's background, and judge whether the candidate would be interested in "
+    "and qualified for the role. Return ONLY a JSON object "
+    "{\"score\": <integer 0-100>, \"rationale\": \"<2-3 sentences>\"} where score is the overall "
+    "fit and rationale is 2-3 sentences explaining why or why not. No prose, no code fences."
 )
 
 
 def _llm_rerank(jobs, analyses, profile, runtime) -> None:
-    """Add llm_score + llm_rationale (in place) to the top-N analyses by rag_score."""
+    """
+    Add llm_score + llm_rationale (in place) to the top-N candidates.
+
+    Candidates are the top-N by **semantic + bm25** (the lexical/vector relevance), matching
+    the intended pipeline: filter by keywords, embed the remainder, rank by semantic+bm25,
+    then send the best N to the LLM for a fit verdict.
+    """
     cfg = load_llm_endpoint_config()
     if not cfg.get("enabled"):
         return
-    top_n = int(runtime.get("top_n_llm", 10))
-    order = sorted(range(len(analyses)), key=lambda i: analyses[i].get("rag_score") or 0.0,
-                   reverse=True)[:top_n]
+    top_n = int(runtime.get("top_n_llm", 30))
+    order = sorted(
+        range(len(analyses)),
+        key=lambda i: (analyses[i].get("semantic_score") or 0.0) + (analyses[i].get("bm25_score") or 0.0),
+        reverse=True,
+    )[:top_n]
     if not order:
         return
     profile_summary = ranker.build_profile_query(profile)[:2000]

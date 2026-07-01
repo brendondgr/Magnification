@@ -568,14 +568,23 @@
             <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LLM top-N</label><input type="number" min="1" value="{{ rtTopN }}" oninput="{{ onRtTopN }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
           </div>
 
-          <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">Score weights</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Semantic</label><input type="number" step="0.05" min="0" max="1" value="{{ wSemantic }}" oninput="{{ onWSemantic }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
-            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">BM25</label><input type="number" step="0.05" min="0" max="1" value="{{ wBm25 }}" oninput="{{ onWBm25 }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
-            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Keyword</label><input type="number" step="0.05" min="0" max="1" value="{{ wKeyword }}" oninput="{{ onWKeyword }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
-            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Skill</label><input type="number" step="0.05" min="0" max="1" value="{{ wSkill }}" oninput="{{ onWSkill }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none"></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px">
+            <span style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Score weights</span>
+            <span style="font:700 12px/1 var(--font-mono);color:{{ wTotalColor }}">Total {{ wTotalLabel }}</span>
           </div>
-          <button onclick="{{ saveRuntimeOptions }}" style="display:flex;align-items:center;justify-content:center;gap:7px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;margin-top:4px">Save Runtime Settings</button>
+          <div style="font:400 11px/1.4 var(--font-body);color:var(--muted);margin:-4px 0 2px">Must sum to exactly <b style="color:var(--text)">1.00</b>. The LLM share is renormalized out for jobs with no LLM verdict.</div>
+          <div style="display:flex;flex-direction:column;gap:13px">
+            <sc-for list="{{ weightSliders }}" as="wt" hint-placeholder-count="5">
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <span style="font:600 12px/1 var(--font-body);color:var(--text)">{{ wt.label }}</span>
+                  <span style="font:700 12px/1 var(--font-mono);color:var(--accent-text)">{{ wt.pct }}</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value="{{ wt.value }}" oninput="{{ wt.onInput }}" style="{{ rangeStyle }}">
+              </div>
+            </sc-for>
+          </div>
+          <button onclick="{{ saveRuntimeOptions }}" style="{{ saveRuntimeStyle }}">Save Runtime Settings</button>
         </sc-if>
 
         <sc-if value="{{ optStatus }}" hint-placeholder-val="">
@@ -893,7 +902,7 @@ class Component extends DCLogic {
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
-      runtime:{enable_analysis:true,enable_llm_rerank:false,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:4,linkedin_delay:0.5,llm_workers:4,top_n_llm:10,weights:{semantic:0.5,bm25:0.2,keyword:0.15,skill:0.15}},
+      runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,top_n_llm:30,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
       jobs:[], loading:true
     };
     this.dragId=null;
@@ -962,13 +971,17 @@ class Component extends DCLogic {
   buildBreakdown(an, match){
     const pct=(v)=>Math.round((v||0)*100); const sm=an.skill_match||{};
     const kh=Object.keys(an.keyword_group_hits||{}).map(label=>({label,terms:(an.keyword_group_hits[label]||[]).join(', ')}));
+    const bars=[
+      {label:'Semantic',pct:pct(an.semantic_score),bar:'height:6px;border-radius:99px;background:var(--accent);width:'+pct(an.semantic_score)+'%'},
+      {label:'Keyword',pct:pct(an.keyword_score),bar:'height:6px;border-radius:99px;background:var(--accent2);width:'+pct(an.keyword_score)+'%'},
+      {label:'BM25',pct:pct(an.bm25_score),bar:'height:6px;border-radius:99px;background:var(--c-applied);width:'+pct(an.bm25_score)+'%'},
+      {label:'Skills',pct:pct(an.skill_score),bar:'height:6px;border-radius:99px;background:var(--c-offer);width:'+pct(an.skill_score)+'%'},
+    ];
+    // llm_score is stored 0-100; show it as its own bar when the LLM weighed in.
+    if(an.llm_score!=null){ const lp=Math.round(an.llm_score);
+      bars.push({label:'LLM fit',pct:lp,bar:'height:6px;border-radius:99px;background:var(--c-interview);width:'+lp+'%'}); }
     return {
-      scoreBars:[
-        {label:'Semantic',pct:pct(an.semantic_score),bar:'height:6px;border-radius:99px;background:var(--accent);width:'+pct(an.semantic_score)+'%'},
-        {label:'Keyword',pct:pct(an.keyword_score),bar:'height:6px;border-radius:99px;background:var(--accent2);width:'+pct(an.keyword_score)+'%'},
-        {label:'BM25',pct:pct(an.bm25_score),bar:'height:6px;border-radius:99px;background:var(--c-applied);width:'+pct(an.bm25_score)+'%'},
-        {label:'Skills',pct:pct(an.skill_score),bar:'height:6px;border-radius:99px;background:var(--c-offer);width:'+pct(an.skill_score)+'%'},
-      ],
+      scoreBars:bars,
       llmRationale:an.llm_rationale||'', hasLlmRationale:!!an.llm_rationale,
       skillMatched:(sm.matched||[]).map(x=>({label:x})), hasSkillMatched:(sm.matched||[]).length>0,
       skillMissing:(sm.missing||[]).map(x=>({label:x})), hasSkillMissing:(sm.missing||[]).length>0,
@@ -1289,7 +1302,10 @@ class Component extends DCLogic {
       .then(r=>r.json()).then(d=>{ this.setState({optBusy:false,llmTest:d,optStatus:d.ok?'Connection OK.':('Failed: '+(d.error||'unknown'))}); })
       .catch(e=>{ console.error(e); this.setState({optBusy:false,llmTest:{ok:false,error:String(e)},optStatus:'Test failed'}); });
   }
+  weightTotal(){ const w=this.state.runtime.weights||{}; return ['semantic','bm25','keyword','skill','llm'].reduce((s,k)=>s+(+(w[k]||0)),0); }
   saveRuntimeOptions(){
+    const total=this.weightTotal();
+    if(Math.abs(total-1)>0.001){ this.showToast('Score weights must sum to 1.00 (now '+total.toFixed(2)+')'); return; }
     this.setState({optBusy:true});
     fetch('/api/options/runtime',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.state.runtime)})
       .then(r=>r.json()).then(()=>{ this.setState({optBusy:false,optStatus:'Runtime settings saved.'}); this.showToast('Runtime settings saved'); })
@@ -1464,6 +1480,8 @@ class Component extends DCLogic {
 
     // ---- options panel ----
     const llm=s.llm; const rt=s.runtime; const w=rt.weights||{};
+    const wTotal=['semantic','bm25','keyword','skill','llm'].reduce((sum,k)=>sum+(+(w[k]||0)),0);
+    const wTotalOk=Math.abs(wTotal-1)<0.001;
     const secBtn='display:flex;align-items:center;gap:8px;padding:0 16px;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer';
     const tabStyle=(on)=>'flex:1;padding:11px 0;border:none;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);background:'+(on?'var(--surface2)':'transparent')+';color:'+(on?'var(--text)':'var(--muted)');
     const toggleRow=(on)=>'display:flex;align-items:center;gap:11px;width:100%;padding:13px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;border:var(--bw) solid '+(on?'var(--accent)':'var(--border)');
@@ -1563,10 +1581,9 @@ class Component extends DCLogic {
       rtLinkedinWorkers:rt.linkedin_workers, onRtLinkedinWorkers:(e)=>this.rtSet({linkedin_workers:+e.target.value}),
       rtLlmWorkers:rt.llm_workers, onRtLlmWorkers:(e)=>this.rtSet({llm_workers:+e.target.value}),
       rtTopN:rt.top_n_llm, onRtTopN:(e)=>this.rtSet({top_n_llm:+e.target.value}),
-      wSemantic:w.semantic, onWSemantic:(e)=>this.rtWeightSet('semantic',+e.target.value),
-      wBm25:w.bm25, onWBm25:(e)=>this.rtWeightSet('bm25',+e.target.value),
-      wKeyword:w.keyword, onWKeyword:(e)=>this.rtWeightSet('keyword',+e.target.value),
-      wSkill:w.skill, onWSkill:(e)=>this.rtWeightSet('skill',+e.target.value),
+      weightSliders:[['semantic','Semantic'],['bm25','BM25'],['keyword','Keyword'],['skill','Skill'],['llm','LLM fit']].map(([key,label])=>{ const v=(w[key]!=null?w[key]:0); return {key,label,value:v,pct:Math.round(v*100)+'%',onInput:(e)=>this.rtWeightSet(key,+e.target.value)}; }),
+      wTotalLabel:(wTotal.toFixed(2)+(wTotalOk?' ✓':' — must equal 1.00')), wTotalColor:(wTotalOk?'var(--c-offer-text)':'#E5484D'),
+      saveRuntimeStyle:'display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;margin-top:4px;color:var(--accent-ink);background:'+(wTotalOk?'var(--accent)':'var(--border2)')+';opacity:'+(wTotalOk?'1':'.7'),
       saveRuntimeOptions:()=>this.saveRuntimeOptions()
     };
   }

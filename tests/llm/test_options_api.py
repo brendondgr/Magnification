@@ -83,4 +83,4 @@ def test_runtime_options_roundtrip(client):
     assert loaded["top_n_llm"] == 5
     assert loaded["weights"]["semantic"] == 0.7
     # Unspecified weights keep their defaults (deep-merge).
-    assert loaded["weights"]["bm25"] == 0.2
+    assert loaded["weights"]["bm25"] == 0.15

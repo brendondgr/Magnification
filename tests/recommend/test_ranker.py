@@ -52,6 +52,18 @@ def test_rank_batch_orders_relevant_job_first():
     assert by_id[1]["skill_match"]["missing"] == ["aws"]
 
 
+def test_combined_score_renormalizes_without_llm():
+    w = {"semantic": 0.30, "bm25": 0.15, "keyword": 0.10, "skill": 0.05, "llm": 0.40}
+    # No llm signal → renormalized over the other 0.60; all-1.0 signals still yield 1.0.
+    assert ranker.combined_score({"semantic": 1, "bm25": 1, "keyword": 1, "skill": 1}, w) == 1.0
+    # llm present and 0 → the 0.40 llm weight drags the score to 0.60.
+    assert abs(ranker.combined_score(
+        {"semantic": 1, "bm25": 1, "keyword": 1, "skill": 1, "llm": 0.0}, w) - 0.60) < 1e-9
+    # llm alone at 1.0 (others 0) → 0.40.
+    assert abs(ranker.combined_score(
+        {"semantic": 0, "bm25": 0, "keyword": 0, "skill": 0, "llm": 1.0}, w) - 0.40) < 1e-9
+
+
 def test_weights_shift_ranking():
     pvec = [1.0, 0.0]
     jobs = [

@@ -72,6 +72,23 @@ Plan: `docs/plans/ui-recommendation-refinements.md`. Delivered on branch `ui-rec
 - [ ] **LLM compensation live** — the extractor is covered by mocked-client tests; recovering real
   pay requires an enabled LLM endpoint (toggle: Options → Runtime → "LLM compensation extraction").
 
+## Pipeline Reorder + LLM-Weighted Scoring — Definition of Done
+
+Plan: `docs/plans/reco-pipeline-scoring.md`. Delivered on branch `reco-pipeline-scoring`
+(worktree), committed per phase, merged to `main`.
+
+- [x] (1/5) Worktree + plan doc
+- [x] (2/5) LinkedIn description fetch forced **serial** (1 at a time) to stop rate-limiting + test
+- [x] (3/5) Analysis reorder: keyword-filtered remainder → embed → semantic+bm25 top-30 → LLM
+  verdict folded into `rag_score` (`llm` weight 0.40, renormalized when absent); 2-3 sentence
+  company-aware rationale; `top_n_llm=30`, `enable_llm_rerank` default on + tests
+- [x] (4/5) Score-weight sliders (5, incl. LLM) with a live total that must equal exactly 1.00;
+  Save blocked otherwise; LLM-fit bar in the breakdown (verified in-browser)
+- [x] (5/5) Docs + merge
+- [x] All tests green (`pytest`, offline subset), `import app` clean; weights UI verified via preview
+- [ ] **LLM verdict live** — the fold + rationale are covered by mocked-client tests; real verdicts
+  need an enabled endpoint (Options → LLM Endpoint) + "LLM re-rank" on.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

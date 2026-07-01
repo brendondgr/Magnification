@@ -30,20 +30,22 @@ from .scraper_config import (
 
 
 def _resolve_fetch_settings(max_workers, delay):
-    """Resolve (max_workers, delay) from args, else runtime_config, else scraper_config."""
-    if max_workers is None or delay is None:
+    """
+    Resolve the per-request delay; the worker count is always **1**.
+
+    LinkedIn description fetching is intentionally **serial** (one request at a time) because
+    the guest endpoint rate-limits aggressively (HTTP 429). We therefore ignore the
+    ``max_workers`` argument and the ``linkedin_workers`` config here and always return 1,
+    while still honoring the jittered ``delay`` between requests.
+    """
+    if delay is None:
         try:
             from utils.backend.recommend.runtime_config import get_runtime_config
-            rc = get_runtime_config()
-            if max_workers is None:
-                max_workers = rc.get("linkedin_workers")
-            if delay is None:
-                delay = rc.get("linkedin_delay")
+            delay = get_runtime_config().get("linkedin_delay")
         except Exception:  # pragma: no cover - config optional
             pass
-    max_workers = max(1, int(max_workers if max_workers else LINKEDIN_DEFAULT_WORKERS))
     delay = float(delay if delay is not None else LINKEDIN_FETCH_DELAY)
-    return max_workers, delay
+    return 1, delay
 
 logger = logging.getLogger(__name__)
 
