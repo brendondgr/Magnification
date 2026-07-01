@@ -13,15 +13,19 @@ How data enters, moves through, and reaches the UI. Source: `utils/backend/`, `a
 
 ```
 Find Jobs modal → POST /api/scrape/start
-      → scraping_service (orchestrator)
-          → task_generator → jobspy_wrapper / linkedin_scraper (concurrent_scraper)
+      → scraping_service.execute_full_scraping_workflow (orchestrator)
+          → task_generator → jobspy_wrapper (concurrent_scraper)
+          → data_processor.deduplicate_jobs (in-batch, within/across job sites, by Title+Company)
+          → database/operations.get_existing_job_keys (drop jobs already tracked, same
+              Title+Company match — before spending any LinkedIn/LLM calls on them)
           → linkedin_scraper.fetch_descriptions_for_jobs (SERIAL — one request at a time,
               with a jittered delay, to avoid the guest endpoint's rate-limiting)
-          → data_processor (dedupe, clean)
+      → database/operations.add_job (save new jobs) → SQLite
+      → job_filter (apply config; mark ignore=1 for non-matching jobs)
           → recommend/compensation.extract_compensation_llm (OPTIONAL — when the LLM is enabled
-              and runtime.enable_llm_compensation; recovers pay from descriptions, parallel)
-          → job_filter (apply config)
-      → database/operations (upsert) → SQLite
+              and runtime.enable_llm_compensation; recovers pay from descriptions, parallel) +
+              recommend/service.analyze_jobs (OPTIONAL — gated by runtime.enable_analysis and an
+              active profile), run together on every job that survived filtering
 Client polls GET /api/scrape/status/<job_id> for progress + a live `events[]` activity feed
 ```
 
@@ -29,10 +33,13 @@ Each pipeline step calls a progress callback; `scrape_routes` records the messag
 append-only, timestamped, de-duplicated `events` list on the job record (capped at 200), which
 the Find Jobs progress view renders as a live, step-by-step activity feed.
 
-LinkedIn descriptions are fetched **serially** (one at a time) to avoid rate-limiting. The
-analysis stage then runs over **only the keyword-filtered remainder** (non-ignored jobs): embed
-→ rank by semantic+bm25 → LLM fit verdict on the top-N (default 30) → fold the `llm` signal into
-`rag_score` (renormalized when no verdict). See `docs/recommendation.md`.
+The dedup/database-check/filter steps run *before* the LinkedIn fetch and LLM compensation
+steps specifically so those expensive calls only ever touch jobs that are both new and pass
+the keyword filter — not the full scraped batch. LinkedIn descriptions are fetched
+**serially** (one at a time) to avoid rate-limiting. The analysis stage runs over **only the
+keyword-filtered remainder** (non-ignored jobs): embed → rank by semantic+bm25 → LLM fit
+verdict on the top-N (default 30) → fold the `llm` signal into `rag_score` (renormalized when
+no verdict). See `docs/recommendation.md`.
 
 ## Read Path (job display)
 
