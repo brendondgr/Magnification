@@ -438,7 +438,7 @@
             <sc-for list="{{ pfTitles }}" as="ti" hint-placeholder-count="2">
               <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent2);color:#fff;border-radius:99px;font:600 12px/1 var(--font-body)">
                 {{ ti.label }}
-                <button onclick="{{ ti.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                <button onclick="{{ ti.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
               </span>
             </sc-for>
             <input value="{{ pfTitleDraft }}" oninput="{{ onPfTitleDraft }}" onkeydown="{{ onPfTitleKey }}" placeholder="add job title…" style="flex:1;min-width:120px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
@@ -459,7 +459,7 @@
                   <sc-for list="{{ g.tags }}" as="tg" hint-placeholder-count="2">
                     <span style="display:flex;align-items:center;gap:5px;padding:5px 9px;background:var(--accent2);color:#fff;border-radius:99px;font:600 11px/1 var(--font-body)">
                       {{ tg.label }}
-                      <button onclick="{{ tg.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                      <button onclick="{{ tg.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
                     </span>
                   </sc-for>
                   <input value="{{ g.draft }}" oninput="{{ g.onDraft }}" onkeydown="{{ g.onKey }}" placeholder="add term…" style="flex:1;min-width:100px;height:26px;background:transparent;border:none;outline:none;color:var(--text);font:400 12px/1 var(--font-body)">
@@ -607,7 +607,7 @@
             <h2 style="margin:0;font:600 18px/1 var(--font-head)">Find Jobs</h2>
             <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Configure a scrape across job boards</div>
           </div>
-          <button onclick="{{ closeFind }}" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer">
+          <button onclick="{{ closeFind }}" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color .15s ease,transform .15s ease" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
           </button>
         </div>
@@ -622,7 +622,7 @@
                 <sc-for list="{{ terms }}" as="tm" hint-placeholder-count="2">
                   <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent);color:var(--accent-ink);border-radius:99px;font:600 12px/1 var(--font-body);animation:jf-pop .2s ease">
                     {{ tm.label }}
-                    <button onclick="{{ tm.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                    <button onclick="{{ tm.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
                   </span>
                 </sc-for>
                 <input value="{{ termDraft }}" oninput="{{ onTermDraft }}" onkeydown="{{ onTermKey }}" placeholder="Type and press Enter…" style="flex:1;min-width:140px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
@@ -635,7 +635,7 @@
                 <sc-for list="{{ countrySelected }}" as="c" hint-placeholder-count="2">
                   <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent);color:var(--accent-ink);border-radius:99px;font:600 12px/1 var(--font-body);animation:jf-pop .2s ease">
                     {{ c.name }}
-                    <button onclick="{{ c.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                    <button onclick="{{ c.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
                   </span>
                 </sc-for>
                 <input value="{{ countryQuery }}" oninput="{{ onCountryQuery }}" onkeydown="{{ onCountryKey }}" placeholder="type a country…" style="flex:1;min-width:140px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
@@ -643,7 +643,7 @@
               <sc-if value="{{ countryOptionsShown }}" hint-placeholder-val="">
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
                   <sc-for list="{{ countryOptions }}" as="o" hint-placeholder-count="3">
-                    <button onclick="{{ o.onAdd }}" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid var(--border2);background:var(--surface);color:var(--text)">+ {{ o.name }}</button>
+                    <button onclick="{{ o.onAdd }}" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease;border:var(--bw) solid var(--border2);background:var(--surface);color:var(--text)" style-hover="background:var(--surface2);border-color:var(--accent)">+ {{ o.name }}</button>
                   </sc-for>
                   <sc-if value="{{ countryNoMatch }}" hint-placeholder-val="">
                     <span style="font:400 12px/1.4 var(--font-body);color:var(--muted);padding:6px 4px">No matching country</span>
@@ -659,13 +659,13 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
               <div>
                 <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Max Results — {{ maxResults }}</label>
-                <input type="range" min="5" max="50" step="5" value="{{ maxResults }}" oninput="{{ onMax }}" style="{{ rangeStyle }}">
+                <input type="range" min="5" max="50" step="5" value="{{ maxResults }}" oninput="{{ onMax }}" style="{{ rangeStyle }}" style-hover="filter:brightness(1.1)">
               </div>
               <div>
                 <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
                 <div style="display:flex;flex-wrap:wrap;gap:7px">
                   <sc-for list="{{ jobTypeList }}" as="jt" hint-placeholder-count="5">
-                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}">{{ jt.label }}</button>
+                    <button onclick="{{ jt.onSelect }}" style="{{ jt.style }}" style-hover="border-color:var(--accent2)">{{ jt.label }}</button>
                   </sc-for>
                 </div>
               </div>
@@ -675,14 +675,14 @@
               <label style="display:flex;align-items:center;justify-content:space-between;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
                 <span>Job Posting Age</span><span style="color:var(--accent-text)">{{ ageLabel }}</span>
               </label>
-              <input type="range" min="0" max="5" step="1" value="{{ ageIndex }}" oninput="{{ onAge }}" style="{{ rangeStyle }}">
+              <input type="range" min="0" max="5" step="1" value="{{ ageIndex }}" oninput="{{ onAge }}" style="{{ rangeStyle }}" style-hover="filter:brightness(1.1)">
             </div>
 
             <div>
               <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Sites</label>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
                 <sc-for list="{{ siteList }}" as="s" hint-placeholder-count="5">
-                  <button onclick="{{ s.onToggle }}" style="{{ s.style }}">
+                  <button onclick="{{ s.onToggle }}" style="{{ s.style }}" style-hover="border-color:var(--accent)">
                     <span style="{{ s.check }}"></span>{{ s.name }}
                   </button>
                 </sc-for>
@@ -692,7 +692,7 @@
             <div>
               <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">
                 <span>Title / Description Keywords</span>
-                <button onclick="{{ genKeywords }}" style="{{ genKeywordsStyle }}">
+                <button onclick="{{ genKeywords }}" style="{{ genKeywordsStyle }}" style-hover="background:color-mix(in srgb,var(--accent2) 14%,transparent)">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
                   {{ genKeywordsLabel }}
                 </button>
@@ -709,23 +709,23 @@
                         <sc-for list="{{ g.tags }}" as="tg" hint-placeholder-count="2">
                           <span style="display:flex;align-items:center;gap:5px;padding:5px 9px;background:var(--accent2);color:#fff;border-radius:99px;font:600 11px/1 var(--font-body)">
                             {{ tg.label }}
-                            <button onclick="{{ tg.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                            <button onclick="{{ tg.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
                           </span>
                         </sc-for>
                         <input value="{{ g.draft }}" oninput="{{ g.onDraft }}" onkeydown="{{ g.onKey }}" placeholder="add keyword…" style="flex:1;min-width:110px;height:26px;background:transparent;border:none;outline:none;color:var(--text);font:400 12px/1 var(--font-body)">
                       </div>
-                      <button onclick="{{ g.onRemove }}" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--muted);cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg></button>
+                      <button onclick="{{ g.onRemove }}" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--muted);cursor:pointer;transition:background-color .15s ease,color .15s ease" style-hover="background:var(--surface2);color:#E5484D"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg></button>
                     </div>
                   </div>
                 </sc-for>
-                <button onclick="{{ addGroup }}" style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:8px 13px;background:transparent;border:1.5px dashed var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer">
+                <button onclick="{{ addGroup }}" style="align-self:flex-start;display:flex;align-items:center;gap:7px;padding:8px 13px;background:transparent;border:1.5px dashed var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer;transition:border-color .15s ease,color .15s ease" style-hover="border-color:var(--accent);color:var(--accent-text)">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                   Add AND group
                 </button>
               </div>
             </div>
 
-            <button onclick="{{ toggleLLM }}" style="{{ llmRow }}">
+            <button onclick="{{ toggleLLM }}" style="{{ llmRow }}" style-hover="border-color:var(--accent)">
               <span style="{{ llmCheck }}">
                 <sc-if value="{{ useLLM }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if>
               </span>
@@ -737,8 +737,8 @@
           </div>
 
           <div style="display:flex;gap:10px;padding:18px 24px;border-top:var(--bw) solid var(--border)">
-            <button onclick="{{ closeFind }}" style="height:46px;padding:0 20px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer">Cancel</button>
-            <button onclick="{{ startScrape }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;height:46px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow)">
+            <button onclick="{{ closeFind }}" style="height:46px;padding:0 20px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Cancel</button>
+            <button onclick="{{ startScrape }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;height:46px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow);transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               Start Search
             </button>
@@ -789,7 +789,7 @@
             </sc-if>
 
             <sc-if value="{{ scrapeDone }}" hint-placeholder-val="">
-              <button onclick="{{ viewNewJobs }}" style="margin-top:26px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;height:48px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);cursor:pointer;animation:jf-rise .35s ease">
+              <button onclick="{{ viewNewJobs }}" style="margin-top:26px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;height:48px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);cursor:pointer;animation:jf-rise .35s ease;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
                 View New Jobs
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </button>
@@ -833,8 +833,8 @@
           </div>
         </sc-if>
         <div style="display:flex;gap:10px;margin-top:18px">
-          <button onclick="{{ closeMatchPopup }}" style="flex:1;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Close</button>
-          <button onclick="{{ matchPopup.onOpenDetail }}" style="flex:1;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer">Full details</button>
+          <button onclick="{{ closeMatchPopup }}" style="flex:1;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Close</button>
+          <button onclick="{{ matchPopup.onOpenDetail }}" style="flex:1;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Full details</button>
         </div>
       </div>
     </div>
@@ -1422,7 +1422,7 @@ class Component extends DCLogic {
     const onTermKey=(e)=>{ if(e.key==='Enter'&&s.termDraft.trim()){ e.preventDefault(); this.setState(st=>({terms:st.terms.concat(st.termDraft.trim()),termDraft:''})); } else if(e.key==='Backspace'&&!s.termDraft&&s.terms.length){ this.setState(st=>({terms:st.terms.slice(0,-1)})); } };
     const siteList=Component.SITES.map(name=>{ const on=!!s.sites[name];
       return {name,onToggle:()=>this.setState(st=>({sites:Object.assign({},st.sites,{[name]:!st.sites[name]})})),
-        style:'display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:99px;cursor:pointer;font:600 13px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent)':'var(--border)')+';background:'+(on?'color-mix(in srgb,var(--accent) 14%,transparent)':'var(--bg)')+';color:var(--text)',
+        style:'display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:99px;cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease,transform .15s ease;border:var(--bw) solid '+(on?'var(--accent)':'var(--border)')+';background:'+(on?'color-mix(in srgb,var(--accent) 14%,transparent)':'var(--bg)')+';color:var(--text)',
         check:'width:15px;height:15px;border-radius:5px;flex:0 0 auto;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent')};
     });
     const keywordGroups=s.groups.map((g,gi)=>({
@@ -1449,9 +1449,9 @@ class Component extends DCLogic {
     };
     const jobTypeList=Component.JOB_TYPES.map(([val,label])=>{ const on=s.jobType===val;
       return {val,label,onSelect:()=>this.setState({jobType:val}),
-        style:'padding:7px 12px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);border:var(--bw) solid '+(on?'var(--accent2)':'var(--border)')+';background:'+(on?'var(--accent2)':'var(--bg)')+';color:'+(on?'#fff':'var(--text)')};
+        style:'padding:7px 12px;border-radius:99px;cursor:pointer;font:600 12px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease,transform .15s ease;border:var(--bw) solid '+(on?'var(--accent2)':'var(--border)')+';background:'+(on?'var(--accent2)':'var(--bg)')+';color:'+(on?'#fff':'var(--text)')};
     });
-    const rangeStyle='width:100%;height:6px;-webkit-appearance:none;appearance:none;border-radius:99px;background:var(--border2);outline:none;accent-color:var(--accent);cursor:pointer';
+    const rangeStyle='width:100%;height:6px;-webkit-appearance:none;appearance:none;border-radius:99px;background:var(--border2);outline:none;accent-color:var(--accent);cursor:pointer;transition:filter .15s ease';
     const ringC=2*Math.PI*64;
     const scrapeStats=[{label:'Jobs Found',value:s.found,color:'var(--accent-text)'},{label:'Jobs Saved',value:s.saved,color:'var(--c-applied)'},{label:'Not Hidden',value:s.notHidden,color:'var(--c-offer-text)'}];
     // live scraping activity feed (newest first)
@@ -1528,9 +1528,9 @@ class Component extends DCLogic {
       countryQuery:s.countryQuery, onCountryQuery, onCountryKey, jobTypeList,
       fromProfile:s.fromProfile,
       genKeywords:()=>this.genKeywords(), genKeywordsLabel:s.genBusy?'Generating…':'Generate (LLM)',
-      genKeywordsStyle:'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;cursor:'+(s.genBusy?'default':'pointer')+';font:600 11px/1 var(--font-body);border:var(--bw) solid var(--accent2);background:transparent;color:var(--accent2);text-transform:none;letter-spacing:0;opacity:'+(s.genBusy?'.6':'1'),
+      genKeywordsStyle:'display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;cursor:'+(s.genBusy?'default':'pointer')+';font:600 11px/1 var(--font-body);transition:background-color .15s ease;border:var(--bw) solid var(--accent2);background:transparent;color:var(--accent2);text-transform:none;letter-spacing:0;opacity:'+(s.genBusy?'.6':'1'),
       useLLM:s.useLLM, toggleLLM:()=>this.setState(st=>({useLLM:!st.useLLM})),
-      llmRow:'display:flex;align-items:flex-start;gap:13px;padding:15px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;border:var(--bw) solid '+(s.useLLM?'var(--accent)':'var(--border)'),
+      llmRow:'display:flex;align-items:flex-start;gap:13px;padding:15px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;transition:border-color .15s ease;border:var(--bw) solid '+(s.useLLM?'var(--accent)':'var(--border)'),
       llmCheck:'width:22px;height:22px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-top:1px;border:2px solid '+(s.useLLM?'var(--accent)':'var(--border2)')+';background:'+(s.useLLM?'var(--accent)':'transparent'),
       rangeStyle, startScrape:()=>this.startScrape(),
 
