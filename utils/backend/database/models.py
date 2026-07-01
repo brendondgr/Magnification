@@ -124,8 +124,12 @@ class Profile(Base):
         interests_paragraph: Open-body paragraph of research/job interests (LLM matching)
         skills: JSON list of skill strings
         job_titles: JSON list of search-query job titles
-        keyword_groups: JSON list of {label, terms:[...]} groups. Semantics are
-            AND across groups, OR within a group (matches utils/backend/scrapers/job_filter).
+        keyword_groups: JSON list of {label, terms:[...], scopes:[...]} groups. Semantics
+            are AND across groups, OR within a group (matches utils/backend/scrapers/job_filter).
+            ``scopes`` is a subset of {"title","description"} controlling where a group's terms
+            are matched (defaults to both). An unsatisfied group hard-blocks a job.
+        blocked_companies: JSON list of company names to hide entirely (case-insensitive).
+        title_blocklist: JSON list of substrings; any job whose title contains one is hidden.
         created_at / updated_at: Audit timestamps
     """
     __tablename__ = 'profiles'
@@ -138,7 +142,9 @@ class Profile(Base):
     interests_paragraph = Column(Text, nullable=True)
     skills = Column(JSON, nullable=True)            # list[str]
     job_titles = Column(JSON, nullable=True)        # list[str]
-    keyword_groups = Column(JSON, nullable=True)    # list[{label, terms:[...]}]
+    keyword_groups = Column(JSON, nullable=True)    # list[{label, terms:[...], scopes:[...]}]
+    blocked_companies = Column(JSON, nullable=True) # list[str]
+    title_blocklist = Column(JSON, nullable=True)   # list[str]
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

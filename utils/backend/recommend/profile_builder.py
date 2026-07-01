@@ -20,12 +20,18 @@ from typing import Any, Dict, List
 
 from loguru import logger
 
+# Valid keyword-group scopes and the default (both) applied when a group omits them.
+VALID_SCOPES = ("title", "description")
+DEFAULT_SCOPES = list(VALID_SCOPES)
+
 # Empty profile skeleton (used as the manual-entry fallback / normalization base).
 EMPTY_PROFILE: Dict[str, Any] = {
     "interests_paragraph": "",
     "skills": [],
     "job_titles": [],
     "keyword_groups": [],
+    "blocked_companies": [],
+    "title_blocklist": [],
 }
 
 _BUILD_SYSTEM_PROMPT = (
@@ -112,7 +118,23 @@ def normalize_profile(raw: Any) -> Dict[str, Any]:
     profile["skills"] = _as_str_list(raw.get("skills"))
     profile["job_titles"] = _as_str_list(raw.get("job_titles") or raw.get("titles"))
     profile["keyword_groups"] = _normalize_keyword_groups(raw.get("keyword_groups"))
+    profile["blocked_companies"] = _as_str_list(raw.get("blocked_companies"))
+    profile["title_blocklist"] = _as_str_list(raw.get("title_blocklist"))
     return profile
+
+
+def _normalize_scopes(value: Any) -> List[str]:
+    """Coerce a group's scopes into an ordered subset of {'title','description'}.
+
+    Missing/empty/invalid input defaults to both scopes so an under-specified group never
+    silently blocks everything.
+    """
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        return list(DEFAULT_SCOPES)
+    out = [s for s in VALID_SCOPES if s in {str(v).strip().lower() for v in value}]
+    return out or list(DEFAULT_SCOPES)
 
 
 def _as_str_list(value: Any) -> List[str]:
@@ -136,11 +158,13 @@ def _normalize_keyword_groups(value: Any) -> List[Dict[str, Any]]:
         if isinstance(group, dict):
             label = str(group.get("label") or f"Group {idx + 1}").strip()
             terms = _as_str_list(group.get("terms") or group.get("keywords"))
+            scopes = _normalize_scopes(group.get("scopes"))
         elif isinstance(group, list):  # tolerate a bare list of terms
             label = f"Group {idx + 1}"
             terms = _as_str_list(group)
+            scopes = list(DEFAULT_SCOPES)
         else:
             continue
         if terms:
-            groups.append({"label": label, "terms": terms})
+            groups.append({"label": label, "terms": terms, "scopes": scopes})
     return groups

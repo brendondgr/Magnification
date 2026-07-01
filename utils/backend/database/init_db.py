@@ -25,11 +25,19 @@ SessionLocal = sessionmaker(bind=engine, **SESSION_OPTIONS)
 def init_database():
     """
     Initialize the database by creating all tables.
-    
+
     This function should be called once at application startup.
-    Tables are only created if they don't already exist.
+    Tables are only created if they don't already exist. Lightweight, idempotent
+    column migrations for pre-existing databases run afterwards.
     """
     Base.metadata.create_all(bind=engine)
+    _run_migrations()
+
+
+def _run_migrations():
+    """Run idempotent additive migrations for databases created before newer columns."""
+    from .migrate_profile_blocklists import migrate as migrate_profile_blocklists
+    migrate_profile_blocklists()
 
 
 def get_db_session() -> Session:
