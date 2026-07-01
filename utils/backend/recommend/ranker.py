@@ -1,14 +1,19 @@
 """
 Hybrid relevance scoring (pure functions — no model or DB access).
 
-Combines four signals into a single ``rag_score`` (0..1):
+Combines up to five signals into a single ``rag_score`` (0..1):
   * semantic — cosine(profile vector, job vector)
   * bm25     — normalized lexical overlap of the profile query vs the job corpus
   * keyword  — fraction of the profile's keyword groups the job satisfies (AND/OR)
   * skill    — fraction of the job's skills the profile covers
+  * llm      — the LLM fit verdict (0..1), added by the service layer for the top candidates
 
-The service layer (``service.py``) supplies embeddings + extracted skills; this module is
-deliberately free of I/O so it can be unit-tested with fake vectors.
+The combine step **renormalizes over whichever signals are present**, so a job with no LLM
+verdict (offline, or outside the top-N sent to the LLM) is scored over the remaining weights
+— e.g. with ``llm`` weighted 0.40, such a job's score is computed out of the other 0.60.
+
+The service layer (``service.py``) supplies embeddings + extracted skills + the LLM verdict;
+this module is deliberately free of I/O so it can be unit-tested with fake vectors.
 """
 
 from typing import Any, Dict, List, Optional, Sequence
@@ -17,7 +22,9 @@ from .embedder import cosine
 from .bm25 import BM25Index
 from .skills import match_profile_skills
 
-DEFAULT_WEIGHTS = {"semantic": 0.5, "bm25": 0.2, "keyword": 0.15, "skill": 0.15}
+# Weights sum to 1.0. The LLM verdict carries the largest share; when it is absent the
+# combine step renormalizes over the remaining signals (see module docstring).
+DEFAULT_WEIGHTS = {"semantic": 0.30, "bm25": 0.15, "keyword": 0.10, "skill": 0.05, "llm": 0.40}
 
 
 def build_profile_query(profile: Dict[str, Any]) -> str:
@@ -61,6 +68,17 @@ def _combine(signals: Dict[str, float], weights: Dict[str, float]) -> float:
     if total <= 0:
         return 0.0
     return sum(signals[k] * weights.get(k, 0.0) for k in signals) / total
+
+
+def combined_score(signals: Dict[str, float], weights: Optional[Dict[str, float]] = None) -> float:
+    """
+    Public weighted combine that renormalizes over the signals actually present.
+
+    ``signals`` maps signal name -> value (0..1); omit a signal (e.g. ``llm``) to have its
+    weight excluded and the remaining weights renormalized. Used by the service layer to fold
+    the LLM verdict into ``rag_score`` after the top-N verdicts come back.
+    """
+    return _combine(signals, weights or DEFAULT_WEIGHTS)
 
 
 def rank_batch(profile: Dict[str, Any],

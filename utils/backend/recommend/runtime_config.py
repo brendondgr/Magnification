@@ -21,22 +21,23 @@ _DEFAULT_WORKERS = max(1, _CPU - 2)
 DEFAULT_RUNTIME_CONFIG: Dict[str, Any] = {
     # analysis toggles
     "enable_analysis": True,        # run RAG analysis after a scrape
-    "enable_llm_rerank": False,     # LLM verdict + rationale on the top-N
+    "enable_llm_rerank": True,      # LLM fit verdict on the top-N (no-ops without an endpoint)
     "enable_llm_skills": False,     # use the LLM (vs gazetteer) for skill extraction
     "enable_llm_compensation": True,  # LLM-extract pay from descriptions when not parsed
     # parallelism
     "embed_workers": _DEFAULT_WORKERS,
     "embed_batch_size": 32,
-    "linkedin_workers": _DEFAULT_WORKERS,
-    "linkedin_delay": 0.5,          # seconds between requests per worker (rate-limit)
+    "linkedin_workers": 1,          # LinkedIn desc fetch is forced serial (rate-limit); kept for reference
+    "linkedin_delay": 0.5,          # seconds between requests (jittered) — eases rate-limiting
     "llm_workers": 4,
     # ranking
-    "top_n_llm": 10,                # how many top RAG candidates get an LLM verdict
-    "weights": {
-        "semantic": 0.5,
-        "bm25": 0.2,
-        "keyword": 0.15,
-        "skill": 0.15,
+    "top_n_llm": 30,                # how many top (semantic+bm25) candidates get an LLM verdict
+    "weights": {                    # must sum to 1.0; `llm` renormalized out when absent
+        "semantic": 0.30,
+        "bm25": 0.15,
+        "keyword": 0.10,
+        "skill": 0.05,
+        "llm": 0.40,
     },
 }
 

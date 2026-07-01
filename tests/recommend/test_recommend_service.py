@@ -9,7 +9,7 @@ import pytest
 from app import application
 from utils.backend.database.init_db import init_database
 from utils.backend.database import operations as db_ops
-from utils.backend.recommend import embedder, service
+from utils.backend.recommend import embedder, service, ranker
 
 # Tiny vocabulary -> count-vector "embedding" so cosine reflects keyword overlap.
 _VOCAB = ["python", "ml", "healthcare", "sales", "finance", "rust"]
@@ -25,6 +25,9 @@ def _fake_embedder(monkeypatch):
     init_database()
     monkeypatch.setattr(embedder, "embed_texts", lambda texts, **kw: [_fake_vec(t) for t in texts])
     monkeypatch.setattr(embedder, "embed_text", lambda t: _fake_vec(t))
+    # LLM rerank now defaults on; force the endpoint "disabled" so tests never hit the network
+    # (individual tests re-enable it with a mocked client).
+    monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": False})
 
 
 @pytest.fixture
@@ -70,6 +73,31 @@ def test_analyze_persists_and_ranks(profile_and_jobs):
     assert good_a["has_embedding"] is True
     assert "python" in [s.lower() for s in good_a["extracted_skills"]]
     assert good_a["keyword_group_hits"].get("Domain") == ["healthcare"]
+
+
+def test_llm_verdict_folds_into_rag(profile_and_jobs, monkeypatch):
+    # Re-enable the LLM with a mocked client (no network) and confirm the verdict is
+    # persisted and folded into rag_score.
+    monkeypatch.setattr(service, "load_llm_endpoint_config",
+                        lambda: {"enabled": True, "base_url": "http://x/v1"})
+
+    class FakeClient:
+        def chat_many(self, message_lists, max_workers=4, as_json=False, **kw):
+            return [{"score": 90, "rationale": "Strong healthcare ML fit."} for _ in message_lists]
+
+    monkeypatch.setattr(service.OpenAIClient, "from_config",
+                        classmethod(lambda cls, *a, **k: FakeClient()))
+
+    ids = [profile_and_jobs["good"], profile_and_jobs["bad"]]
+    runtime = {"enable_llm_rerank": True, "top_n_llm": 30, "embed_batch_size": 32,
+               "embed_workers": 2, "llm_workers": 2, "weights": ranker.DEFAULT_WEIGHTS}
+    service.analyze_jobs(job_ids=ids, runtime=runtime)
+
+    good_a = db_ops.get_analysis_for_job(profile_and_jobs["good"])
+    assert good_a["llm_score"] == 90
+    assert good_a["llm_rationale"] == "Strong healthcare ML fit."
+    # rag_score now blends the llm signal (0.9) with the rest → stays a valid 0..1 score.
+    assert 0.0 < good_a["rag_score"] <= 1.0
 
 
 def test_analyze_api_and_report(client, profile_and_jobs):
