@@ -469,13 +469,16 @@
 
         <div>
           <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Keyword Group Preferences</label>
-          <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Terms within a group are <b style="color:var(--text)">OR</b>; groups are joined with <b style="color:var(--text)">AND</b> (e.g. AI/ML <i>and</i> Healthcare).</p>
+          <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Terms within a group are <b style="color:var(--text)">OR</b>; groups are joined with <b style="color:var(--text)">AND</b>. A job is hidden unless <i>every</i> group matches. Toggle <b style="color:var(--text)">Title</b>/<b style="color:var(--text)">Description</b> to choose where each group's terms must appear.</p>
           <div style="display:flex;flex-direction:column;gap:12px">
             <sc-for list="{{ pfGroups }}" as="g" hint-placeholder-count="2">
               <div style="padding:10px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                  <input value="{{ g.label }}" oninput="{{ g.onLabel }}" placeholder="group label (e.g. Domain)" style="flex:1;height:32px;padding:0 10px;background:var(--surface);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);outline:none">
-                  <button onclick="{{ g.onRemove }}" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--muted);cursor:pointer;transition:background-color .15s ease,color .15s ease" style-hover="background:var(--surface2);color:#E5484D"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg></button>
+                  <input value="{{ g.label }}" oninput="{{ g.onLabel }}" placeholder="group label (e.g. Domain)" style="flex:1;min-width:60px;height:32px;padding:0 10px;background:var(--surface);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);outline:none">
+                  <sc-for list="{{ g.scopeToggles }}" as="sc" hint-placeholder-count="2">
+                    <button onclick="{{ sc.onToggle }}" title="Match this group in the {{ sc.label }}" style="{{ sc.style }}" style-hover="filter:brightness(1.05)" style-active="transform:scale(.94)">{{ sc.label }}</button>
+                  </sc-for>
+                  <button onclick="{{ g.onRemove }}" style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex:0 0 auto;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--muted);cursor:pointer;transition:background-color .15s ease,color .15s ease" style-hover="background:var(--surface2);color:#E5484D"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg></button>
                 </div>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
                   <sc-for list="{{ g.tags }}" as="tg" hint-placeholder-count="2">
@@ -492,6 +495,34 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               Add AND group
             </button>
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Keyword Title Blocklist</label>
+          <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Any job whose <b style="color:var(--text)">title</b> contains one of these is hidden (e.g. <i>Senior</i>).</p>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+            <sc-for list="{{ pfTitleBlock }}" as="bl" hint-placeholder-count="2">
+              <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#E5484D;color:#fff;border-radius:99px;font:600 12px/1 var(--font-body)">
+                {{ bl.label }}
+                <button onclick="{{ bl.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+              </span>
+            </sc-for>
+            <input value="{{ pfTitleBlockDraft }}" oninput="{{ onPfTitleBlockDraft }}" onkeydown="{{ onPfTitleBlockKey }}" placeholder="add blocked title word…" style="flex:1;min-width:150px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Blocked Companies</label>
+          <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Jobs from these companies are always hidden. Use the <b style="color:var(--text)">block</b> button on a job card to add one quickly.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+            <sc-for list="{{ pfBlocked }}" as="bc" hint-placeholder-count="2">
+              <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#E5484D;color:#fff;border-radius:99px;font:600 12px/1 var(--font-body)">
+                {{ bc.label }}
+                <button onclick="{{ bc.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+              </span>
+            </sc-for>
+            <input value="{{ pfBlockedDraft }}" oninput="{{ onPfBlockedDraft }}" onkeydown="{{ onPfBlockedKey }}" placeholder="add company to block…" style="flex:1;min-width:150px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
           </div>
         </div>
       </div>
@@ -919,8 +950,8 @@ class Component extends DCLogic {
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false, scrapeEvents:[],
       // ---- Profile panel ----
       profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false,
-      profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],resume_text:'',source_filename:'',exists:false},
-      pfSkillDraft:'', pfTitleDraft:'', pfGroupDrafts:{},
+      profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],blocked_companies:[],title_blocklist:[],resume_text:'',source_filename:'',exists:false},
+      pfSkillDraft:'', pfTitleDraft:'', pfGroupDrafts:{}, pfBlockedDraft:'', pfTitleBlockDraft:'',
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
@@ -1271,6 +1302,8 @@ class Component extends DCLogic {
       this.setState({profile:{
         interests_paragraph:d.interests_paragraph||'', skills:d.skills||[], job_titles:d.job_titles||[],
         keyword_groups:Array.isArray(d.keyword_groups)?d.keyword_groups:[],
+        blocked_companies:Array.isArray(d.blocked_companies)?d.blocked_companies:[],
+        title_blocklist:Array.isArray(d.title_blocklist)?d.title_blocklist:[],
         resume_text:d.resume_text||'', source_filename:d.source_filename||'', exists:!!d.exists
       }});
     }catch(e){ console.error('profile load failed', e); this.showToast('Could not load profile'); }
@@ -1315,10 +1348,16 @@ class Component extends DCLogic {
   }
   saveProfile(){
     const p=this.state.profile;
-    const body={interests_paragraph:p.interests_paragraph||'',skills:p.skills||[],job_titles:p.job_titles||[],keyword_groups:p.keyword_groups||[],resume_text:p.resume_text||'',source_filename:p.source_filename||''};
+    const body={interests_paragraph:p.interests_paragraph||'',skills:p.skills||[],job_titles:p.job_titles||[],keyword_groups:p.keyword_groups||[],blocked_companies:p.blocked_companies||[],title_blocklist:p.title_blocklist||[],resume_text:p.resume_text||'',source_filename:p.source_filename||''};
     this.setState({pfBusy:true});
     fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-      .then(r=>r.json()).then(()=>{ this.setState(st=>({pfBusy:false,pfStatus:'Saved.',profile:Object.assign({},st.profile,{exists:true})})); this.showToast('Profile saved'); })
+      .then(r=>r.json()).then(d=>{
+        this.setState(st=>({pfBusy:false,pfStatus:'Saved.',profile:Object.assign({},st.profile,{exists:true})}));
+        const hidden=(d&&d.hidden)||0;
+        this.showToast(hidden>0?('Profile saved · '+hidden+' job'+(hidden===1?'':'s')+' hidden'):'Profile saved');
+        // Block-rule edits may have hidden jobs — refresh the feed to reflect it.
+        if(hidden>0) this.loadJobs();
+      })
       .catch(e=>{ console.error(e); this.setState({pfBusy:false}); this.showToast('Could not save profile'); });
   }
 
@@ -1518,8 +1557,20 @@ class Component extends DCLogic {
       draft:s.pfGroupDrafts[gi]||'',
       onDraft:(e)=>{ const v=e.target.value; this.setState(st=>({pfGroupDrafts:Object.assign({},st.pfGroupDrafts,{[gi]:v})})); },
       onKey:(e)=>{ const v=(s.pfGroupDrafts[gi]||'').trim(); if(e.key==='Enter'&&v){ e.preventDefault(); this.pfSet({keyword_groups:pf.keyword_groups.map((gr,k)=>k===gi?Object.assign({},gr,{terms:(gr.terms||[]).concat(v)}):gr)}); this.setState(st=>({pfGroupDrafts:Object.assign({},st.pfGroupDrafts,{[gi]:''})})); } },
+      // Per-group Title/Description scope toggles (default both; at least one must stay on).
+      scopeToggles:(()=>{
+        const cur=(Array.isArray(g.scopes)&&g.scopes.length)?g.scopes:['title','description'];
+        return [['title','Title'],['description','Description']].map(([sk,lab])=>{
+          const on=cur.indexOf(sk)!==-1;
+          return {key:sk,label:lab,on,
+            style:'padding:5px 10px;border-radius:99px;cursor:pointer;font:600 11px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease,color .15s ease;border:var(--bw) solid '+(on?'var(--accent2)':'var(--border2)')+';background:'+(on?'var(--accent2)':'transparent')+';color:'+(on?'#fff':'var(--muted)'),
+            onToggle:()=>{ let next; if(on){ if(cur.length<=1) return; next=cur.filter(x=>x!==sk); } else { next=['title','description'].filter(x=> x===sk || cur.indexOf(x)!==-1); } this.pfSet({keyword_groups:pf.keyword_groups.map((gr,k)=>k===gi?Object.assign({},gr,{scopes:next}):gr)}); }};
+        });
+      })(),
       onRemove:()=>this.pfSet({keyword_groups:pf.keyword_groups.filter((_,k)=>k!==gi)})
     }));
+    const pfBlocked=(pf.blocked_companies||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({blocked_companies:pf.blocked_companies.filter((_,k)=>k!==i)})}));
+    const pfTitleBlock=(pf.title_blocklist||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({title_blocklist:pf.title_blocklist.filter((_,k)=>k!==i)})}));
     const canBuild=!!pf.resume_text && !!s.llm.enabled;
     const dropzoneStyle='flex:1;min-width:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:22px 16px;cursor:pointer;border-radius:var(--r-sm);transition:border-color .15s,background .15s;border:1.5px dashed '+(s.pfDragging?'var(--accent2)':'var(--border2)')+';background:'+(s.pfDragging?'color-mix(in srgb,var(--accent2) 12%,transparent)':'var(--bg)');
     const buildBtnStyle='display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-width:130px;padding:0 16px;border-radius:var(--r-sm);font:600 13px/1.3 var(--font-body);text-align:center;transition:filter .15s ease;cursor:'+(canBuild?'pointer':'default')+';background:'+(canBuild?'var(--accent2)':'var(--surface2)')+';color:'+(canBuild?'#fff':'var(--muted)')+';border:var(--bw) solid '+(canBuild?'var(--accent2)':'var(--border2)')+';opacity:'+(s.pfBusy?'.7':'1');
@@ -1606,7 +1657,11 @@ class Component extends DCLogic {
       onPfSkillKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('skills','pfSkillDraft',s.pfSkillDraft); } },
       pfTitles, pfTitleDraft:s.pfTitleDraft, onPfTitleDraft:(e)=>this.setState({pfTitleDraft:e.target.value}),
       onPfTitleKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('job_titles','pfTitleDraft',s.pfTitleDraft); } },
-      pfGroups, addPfGroup:()=>this.pfSet({keyword_groups:(pf.keyword_groups||[]).concat([{label:'',terms:[]}])}),
+      pfGroups, addPfGroup:()=>this.pfSet({keyword_groups:(pf.keyword_groups||[]).concat([{label:'',terms:[],scopes:['title','description']}])}),
+      pfBlocked, pfBlockedDraft:s.pfBlockedDraft, onPfBlockedDraft:(e)=>this.setState({pfBlockedDraft:e.target.value}),
+      onPfBlockedKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('blocked_companies','pfBlockedDraft',s.pfBlockedDraft); } },
+      pfTitleBlock, pfTitleBlockDraft:s.pfTitleBlockDraft, onPfTitleBlockDraft:(e)=>this.setState({pfTitleBlockDraft:e.target.value}),
+      onPfTitleBlockKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('title_blocklist','pfTitleBlockDraft',s.pfTitleBlockDraft); } },
 
       // ---- options panel ----
       optionsOpen:s.optionsOpen, closeOptions:()=>this.closeOptions(),

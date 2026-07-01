@@ -11,7 +11,7 @@ Computed per job by `utils/backend/recommend/ranker.py` and combined into `rag_s
 | --- | --- | --- |
 | **semantic** | `embedder.cosine(profile_vec, job_vec)` | bge-small-en-v1.5 (384-dim, CPU). Profile vector = embedding of interests + skills + titles + keyword terms. |
 | **bm25** | `bm25.BM25Index` over the job corpus | Lexical overlap of the profile query vs descriptions, normalized 0..1. |
-| **keyword** | `ranker.keyword_group_score` | Fraction of the profile's keyword groups satisfied — **AND across groups, OR within**. |
+| **keyword** | `ranker.keyword_group_score` | Fraction of the profile's keyword groups satisfied — **AND across groups, OR within**, and **scope-aware**: each group's `scopes` (⊆ title/description) picks where its terms are matched. Groups also act as a **hard filter** at scrape time (see `docs/profile.md`). |
 | **skill** | `skills.match_profile_skills` | Fraction of the job's extracted skills the profile covers. |
 | **llm** | `service._llm_rerank` verdict | The LLM's 0-100 fit score (÷100), computed only for the top-N candidates (see Flow). Absent when offline or outside the top-N. |
 
@@ -39,7 +39,9 @@ the rest rescaled) — exactly as if the LLM weren't configured.
 ```
 Scrape completes → scraping_service (if runtime.enable_analysis and an active profile exists)
     → recommend.service.analyze_jobs(new_job_ids)
-        → keep only the keyword-filtered remainder (non-ignored jobs)  [Title/Description keywords]
+        → keep only the remainder left visible after filtering (non-ignored jobs)
+          [jobs_config Title/Description keywords + profile block rules: blocked companies,
+           title blocklist, scoped keyword groups — see docs/profile.md]
         → embed missing job descriptions (parallel, fastembed)         [embed-on-retrieve]
         → extract skills (gazetteer, or LLM batch if enabled)
         → ranker.rank_batch → semantic/bm25/keyword/skill scores
