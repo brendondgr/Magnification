@@ -2,7 +2,7 @@
 Data Processor for Job Scraping Operations.
 
 This module processes, cleans, and deduplicates scraped job data:
-- Deduplication by title + company + location
+- Deduplication by title + company (within and across job sites)
 - Data cleaning and validation
 - Transformation to database format
 """
@@ -17,26 +17,29 @@ logger = logging.getLogger(__name__)
 
 def deduplicate_jobs(job_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Remove duplicate job listings based on title + company + location.
-    
+    Remove duplicate job listings based on title + company, within and across sites.
+
+    Location is intentionally excluded from the key: companies commonly re-post the
+    same opening across many cities, and those postings should collapse to one listing
+    rather than one per location.
+
     Args:
         job_list: List of job dictionaries from scraping operations
-    
+
     Returns:
         List of unique job dictionaries
     """
-    seen: Set[Tuple[str, str, str]] = set()
+    seen: Set[Tuple[str, str]] = set()
     unique_jobs: List[Dict[str, Any]] = []
     duplicates_removed = 0
-    
+
     for job in job_list:
         # Create composite key for deduplication
         title = str(job.get('title', '')).strip().lower()
         company = str(job.get('company', '')).strip().lower()
-        location = str(job.get('location', '')).strip().lower()
-        
-        key = (title, company, location)
-        
+
+        key = (title, company)
+
         if key not in seen and title and company:  # Skip if missing required fields
             seen.add(key)
             unique_jobs.append(job)
