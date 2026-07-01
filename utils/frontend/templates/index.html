@@ -269,7 +269,7 @@
             </div>
             <h2 style="margin:8px 0 0;font:600 22px/1.2 var(--font-head);letter-spacing:-.01em">{{ selectedJob.title }}</h2>
           </div>
-          <button onclick="{{ selectedJob.onIgnore }}" style="{{ selectedJob.ignoreBtn }}">
+          <button onclick="{{ selectedJob.onIgnore }}" style="{{ selectedJob.ignoreBtn }}" style-hover="background:var(--surface2);border-color:var(--border)" style-active="transform:scale(.9)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22"></path></svg>
           </button>
         </div>
@@ -338,7 +338,7 @@
         <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Application Journey</div>
         <div style="display:flex;flex-direction:column;gap:0;margin-bottom:30px">
           <sc-for list="{{ selectedJob.timeline }}" as="st" hint-placeholder-count="6">
-            <div onclick="{{ st.onToggle }}" style="display:flex;align-items:center;gap:14px;padding:4px 0;cursor:pointer;position:relative">
+            <div onclick="{{ st.onToggle }}" style="display:flex;align-items:center;gap:14px;padding:4px 0;border-radius:var(--r-sm);cursor:pointer;position:relative;transition:background-color .15s ease" style-hover="background:var(--bg)">
               <div style="{{ st.line }}"></div>
               <div style="{{ st.dot }}">
                 <sc-if value="{{ st.checked }}" hint-placeholder-val="">
@@ -360,8 +360,8 @@
       </div>
 
       <div style="display:flex;gap:10px;padding:18px 26px;border-top:var(--bw) solid var(--border)">
-        <button onclick="{{ closeDetail }}" style="flex:1;height:44px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer">Close</button>
-        <button onclick="{{ selectedJob.onLink }}" style="flex:2;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer">
+        <button onclick="{{ closeDetail }}" style="flex:1;height:44px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Close</button>
+        <button onclick="{{ selectedJob.onLink }}" style="flex:2;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
           Visit Job Post
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
         </button>
