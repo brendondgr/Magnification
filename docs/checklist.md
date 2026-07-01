@@ -175,6 +175,38 @@ committed per phase, merged to `main`.
   this environment); the union logic mirrors the already-shipped `blocked_companies` union
   verbatim and is exercised for `add-skill` + save/load via tests and in-browser checks.
 
+## Shared Data Root — Definition of Done
+
+Plan: `docs/plans/shared-data-root.md`. Delivered on branch `shared-data-root` (worktree),
+committed per phase, merged to `main`.
+
+Fixes the reported "profile constantly gets deleted" bug: `data/magnificiation.db` and every
+gitignored `config/*.json` were resolved via `Path(__file__).resolve().parents[N]`, which points at
+whichever checkout is running — git worktrees don't share gitignored files, so every worktree got
+its own empty, disconnected database/config (proven on-disk: main checkout's DB was 5.3 MB vs. 53 KB
+in nine sibling worktrees).
+
+- [x] (1/3) `utils/backend/paths.get_project_root()` — resolves the project root via
+  `git rev-parse --git-common-dir` (shared by the main checkout and every worktree), with a
+  `__file__`-relative fallback when git is unavailable; memoized; unit tests
+  (`tests/backend/test_paths.py`)
+- [x] (2/3) `utils/backend/database/config.py`, `utils/backend/scrapers/job_filter.py`,
+  `utils/backend/scrapers/task_generator.py`, `utils/backend/routes/config_routes.py`,
+  `utils/backend/llm/config.py`, `utils/backend/recommend/runtime_config.py` all wired to the
+  shared resolver; cross-module consistency test added. **Also fixed in this step:**
+  `tests/database/test_profile_analysis.py` was mutating the real active profile's `is_active` flag
+  when run against a non-empty DB (harmless per-worktree before this fix, destructive after, since
+  all worktrees now share the real DB) — isolated against an in-memory engine like
+  `tests/database/test_clear_jobs.py`; the real profile's `is_active` flag was restored after the
+  incident (content was never lost)
+- [x] (3/3) Verified `DATABASE_PATH` resolves identically from the main checkout and a worktree;
+  launching the app from a worktree serves the real, persisted profile (`GET /api/profile` →
+  `exists: true`); docs (`docs/workflow.md`) updated with the shared-root + test-isolation rules;
+  merged to `main`
+- [x] All tests green (`pytest`, excluding the pre-existing live-network hang noted in
+  `docs/workflow.md`), `import app` clean; real `data/`/`config/` content verified unchanged
+  before/after the full suite run
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

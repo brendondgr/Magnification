@@ -3,9 +3,12 @@ import json
 import os
 from loguru import logger
 
+from ..paths import get_project_root
+
 config_bp = Blueprint('config_bp', __name__)
 
-CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../config/jobs_config.json'))
+# Shared root (same across the main checkout and every git worktree); see utils/backend/paths.py.
+CONFIG_PATH = str(get_project_root() / "config" / "jobs_config.json")
 
 def load_jobs_config():
     if not os.path.exists(CONFIG_PATH):

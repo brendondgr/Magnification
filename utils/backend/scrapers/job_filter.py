@@ -9,16 +9,16 @@ This module applies user-defined filters to mark irrelevant jobs:
 """
 
 import json
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 import logging
 
 from .scraper_config import SUPPORTED_SITES
+from ..paths import get_project_root
 
 logger = logging.getLogger(__name__)
 
-# Config file path (scrapers -> backend -> utils -> project root)
-CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
+# Shared root (same across the main checkout and every git worktree); see utils/backend/paths.py.
+CONFIG_DIR = get_project_root() / "config"
 JOBS_CONFIG_PATH = CONFIG_DIR / "jobs_config.json"
 
 

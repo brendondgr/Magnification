@@ -8,10 +8,12 @@ This module contains all database-related configuration including:
 """
 
 import os
-from pathlib import Path
 
-# Get project root directory (3 levels up from this file: database -> backend -> utils -> project root)
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+from ..paths import get_project_root
+
+# Shared root (same directory across the main checkout and every git worktree) so
+# the database is never silently split per-worktree. See utils/backend/paths.py.
+PROJECT_ROOT = get_project_root()
 
 # Database path configuration
 DATABASE_DIR = PROJECT_ROOT / "data"

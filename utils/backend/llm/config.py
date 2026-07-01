@@ -13,9 +13,10 @@ from typing import Any, Dict
 
 from loguru import logger
 
-CONFIG_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../../config/llm_endpoint_config.json")
-)
+from ..paths import get_project_root
+
+# Shared root (same across the main checkout and every git worktree); see utils/backend/paths.py.
+CONFIG_PATH = str(get_project_root() / "config" / "llm_endpoint_config.json")
 
 DEFAULT_LLM_ENDPOINT: Dict[str, Any] = {
     "enabled": False,
