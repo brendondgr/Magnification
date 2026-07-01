@@ -52,6 +52,7 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
 
     rjobs = [{
         "id": j["id"],
+        "title": j.get("title") or "",
         "description": j.get("description") or "",
         "embedding": job_vecs.get(j["id"], []),
         "extracted_skills": skills_map.get(j["id"], []),

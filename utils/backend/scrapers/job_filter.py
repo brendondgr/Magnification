@@ -189,43 +189,82 @@ def filter_jobs(jobs: List[Dict[str, Any]], filter_config: Optional[Dict[str, An
 def filter_and_mark_jobs(job_ids: List[int]) -> Dict[str, Any]:
     """
     Apply filters to existing jobs in database and mark ignored ones.
-    
-    This function retrieves jobs from the database, applies filters,
-    and updates the ignore flag for jobs that don't match.
-    
+
+    This function retrieves jobs from the database, applies the per-search
+    ``jobs_config`` title/description keyword filter AND the active profile's
+    block rules (blocked companies, title blocklist, scoped keyword groups),
+    and sets ignore=1 for jobs that don't pass either.
+
     Args:
         job_ids: List of job IDs to filter
-    
+
     Returns:
         Dict containing statistics about the filtering operation
     """
     # Import here to avoid circular imports
-    from ..database.operations import get_jobs_by_ids, set_job_ignore
-    
+    from ..database.operations import get_jobs_by_ids, set_job_ignore, get_active_profile
+    from . import profile_filter
+
     filter_config = load_filter_config()
-    
+    profile = get_active_profile()
+
     # Get jobs from database
     jobs = get_jobs_by_ids(job_ids)
-    
+
     kept_count = 0
     ignored_count = 0
-    
+
     for job in jobs:
-        if apply_filters(job, filter_config):
+        keep = apply_filters(job, filter_config) and not profile_filter.job_blocked_by_profile(job, profile)
+        if keep:
             kept_count += 1
         else:
             # Mark as ignored in database
             set_job_ignore(job['id'], 1)
             ignored_count += 1
-    
+
     logger.info(f"Filter and mark complete: {kept_count} kept, {ignored_count} ignored")
-    
+
     return {
         'total_processed': len(jobs),
         'kept': kept_count,
         'ignored': ignored_count,
         'filter_config': filter_config
     }
+
+
+def apply_profile_filters(job_ids: Optional[List[int]] = None,
+                          profile: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Retroactively hide jobs that the active profile's block rules match.
+
+    Used when the user blocks a company / edits their blocklists so the change takes effect on
+    the current feed, not just the next scrape. One-directional: only sets ignore=1 on currently
+    visible jobs; never un-hides. Pass ``job_ids`` to scope to specific jobs, else all jobs.
+
+    Returns a summary dict with the number of jobs newly blocked.
+    """
+    from ..database.operations import (
+        get_jobs_by_ids, get_all_jobs, set_job_ignore, get_active_profile,
+    )
+    from . import profile_filter
+
+    profile = profile or get_active_profile()
+    if not profile:
+        return {'blocked': 0, 'checked': 0}
+
+    jobs = get_jobs_by_ids(job_ids) if job_ids else get_all_jobs(include_ignored=True)
+
+    blocked = 0
+    for job in jobs:
+        if job.get('ignore'):
+            continue  # already hidden — leave it
+        if profile_filter.job_blocked_by_profile(job, profile):
+            set_job_ignore(job['id'], 1)
+            blocked += 1
+
+    logger.info(f"Applied profile block rules: {blocked} newly hidden of {len(jobs)} checked")
+    return {'blocked': blocked, 'checked': len(jobs)}
 
 
 def get_filter_summary(filter_config: Optional[Dict[str, Any]] = None) -> str:
