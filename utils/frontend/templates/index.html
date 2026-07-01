@@ -337,10 +337,13 @@
             </sc-if>
             <sc-if value="{{ selectedJob.hasSkillMissing }}" hint-placeholder-val="">
               <div style="margin-top:12px">
-                <div style="font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Skills the job wants you lack</div>
+                <div style="font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Skills the job wants you lack — click to add to your profile</div>
                 <div style="display:flex;flex-wrap:wrap;gap:6px">
                   <sc-for list="{{ selectedJob.skillMissing }}" as="sk" hint-placeholder-count="3">
-                    <span style="padding:4px 9px;background:var(--surface2);color:var(--muted);border:var(--bw) solid var(--border2);border-radius:99px;font:600 11px/1 var(--font-body)">{{ sk.label }}</span>
+                    <button onclick="{{ sk.onAdd }}" title="Add to your skills" style="display:flex;align-items:center;gap:5px;padding:4px 9px;background:var(--surface2);color:var(--muted);border:var(--bw) solid var(--border2);border-radius:99px;font:600 11px/1 var(--font-body);cursor:pointer;transition:border-color .15s ease,color .15s ease,transform .15s ease" style-hover="border-color:var(--accent);color:var(--text);transform:translateY(-1px)">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      {{ sk.label }}
+                    </button>
                   </sc-for>
                 </div>
               </div>
@@ -1026,7 +1029,7 @@ class Component extends DCLogic {
   matchColorFor(m){ return (m==null)?'var(--muted)':(m>=66?'var(--c-offer-text)':(m>=40?'var(--accent-text)':'#E5484D')); }
   // Build the shared analysis breakdown (score bars + skills + rationale) used by both
   // the detail panel and the card match-breakdown popup.
-  buildBreakdown(an, match){
+  buildBreakdown(an, match, jobId){
     const pct=(v)=>Math.round((v||0)*100); const sm=an.skill_match||{};
     const kh=Object.keys(an.keyword_group_hits||{}).map(label=>({label,terms:(an.keyword_group_hits[label]||[]).join(', ')}));
     const bars=[
@@ -1042,7 +1045,7 @@ class Component extends DCLogic {
       scoreBars:bars,
       llmRationale:an.llm_rationale||'', hasLlmRationale:!!an.llm_rationale,
       skillMatched:(sm.matched||[]).map(x=>({label:x})), hasSkillMatched:(sm.matched||[]).length>0,
-      skillMissing:(sm.missing||[]).map(x=>({label:x})), hasSkillMissing:(sm.missing||[]).length>0,
+      skillMissing:(sm.missing||[]).map(x=>({label:x, onAdd:()=>this.addSkillToProfile(x, jobId)})), hasSkillMissing:(sm.missing||[]).length>0,
       keywordHits:kh, hasKeywordHits:kh.length>0,
       matchColor:this.matchColorFor(match)
     };
@@ -1114,6 +1117,32 @@ class Component extends DCLogic {
       .then(r=>{ if(!r.ok) throw new Error('block-company '+r.status); return r.json(); })
       .then(d=>{ if(d&&Array.isArray(d.blocked_companies)) this.setState(st=>({profile:Object.assign({},st.profile,{blocked_companies:d.blocked_companies})})); })
       .catch(e=>{ console.error(e); this.showToast('Could not block company'); this.loadJobs(); });
+  }
+  // Add a job's "missing" skill to the profile (optimistic): appends to profile.skills and moves
+  // the skill from that job's skill_match.missing to .matched, reverting both if the save fails.
+  addSkillToProfile(skill, jobId){
+    const name=(skill||'').trim(); if(!name) return;
+    const lc=name.toLowerCase();
+    const s=this.state;
+    const already=(s.profile.skills||[]).some(x=>String(x).trim().toLowerCase()===lc);
+    const cur=jobId!=null?s.jobs.find(j=>j.id===jobId):null;
+    const priorSkillMatch=cur&&cur.analysis?cur.analysis.skill_match:null;
+    this.setState(st=>({profile:Object.assign({},st.profile,{skills:already?(st.profile.skills||[]):(st.profile.skills||[]).concat(name)})}));
+    if(priorSkillMatch){
+      const missing=(priorSkillMatch.missing||[]).filter(x=>String(x).trim().toLowerCase()!==lc);
+      const matchedAlready=(priorSkillMatch.matched||[]).some(x=>String(x).trim().toLowerCase()===lc);
+      const matched=matchedAlready?priorSkillMatch.matched:(priorSkillMatch.matched||[]).concat(name);
+      this.patchJob(jobId, j=>{ j.analysis=Object.assign({},j.analysis,{skill_match:Object.assign({},priorSkillMatch,{matched,missing})}); return j; });
+    }
+    this.showToast('Added "'+name+'" to your skills');
+    fetch('/api/profile/add-skill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({skill:name})})
+      .then(r=>{ if(!r.ok) throw new Error('add-skill '+r.status); return r.json(); })
+      .then(d=>{ if(d&&Array.isArray(d.skills)) this.setState(st=>({profile:Object.assign({},st.profile,{skills:d.skills})})); })
+      .catch(e=>{ console.error(e);
+        this.setState(st=>({profile:Object.assign({},st.profile,{skills:already?(st.profile.skills||[]):(st.profile.skills||[]).filter(x=>String(x).trim().toLowerCase()!==lc)})}));
+        if(priorSkillMatch) this.patchJob(jobId, j=>{ j.analysis=Object.assign({},j.analysis,{skill_match:priorSkillMatch}); return j; });
+        this.showToast('Could not add skill');
+      });
   }
   markApplied(id){
     const cur=this.state.jobs.find(j=>j.id===id); if(!cur) return;
@@ -1506,7 +1535,7 @@ class Component extends DCLogic {
       // recommendation breakdown
       const an=sj.analysis||null;
       d.hasAnalysis=!!an;
-      if(an){ Object.assign(d, this.buildBreakdown(an, d.match)); }
+      if(an){ Object.assign(d, this.buildBreakdown(an, d.match, sj.id)); }
       selectedJob=d;
     }
 
@@ -1515,7 +1544,7 @@ class Component extends DCLogic {
     if(s.matchInfoId!=null){
       const mj=s.jobs.find(j=>j.id===s.matchInfoId);
       if(mj && mj.analysis){
-        matchPopup=Object.assign({}, this.buildBreakdown(mj.analysis, mj.match), {
+        matchPopup=Object.assign({}, this.buildBreakdown(mj.analysis, mj.match, mj.id), {
           title:mj.title||mj.company||'', matchLabel:(mj.match==null?'':mj.match+'% match'),
           onOpenDetail:()=>this.setState({matchInfoId:null,selectedId:mj.id})
         });
