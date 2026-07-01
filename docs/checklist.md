@@ -89,6 +89,23 @@ Plan: `docs/plans/reco-pipeline-scoring.md`. Delivered on branch `reco-pipeline-
 - [ ] **LLM verdict live** — the fold + rationale are covered by mocked-client tests; real verdicts
   need an enabled endpoint (Options → LLM Endpoint) + "LLM re-rank" on.
 
+## UI Hover & Movement Animations — Definition of Done
+
+Plan: `docs/plans/ui-hover-animations.md`. Delivered on branch `ui-hover-animations`
+(worktree), committed per phase, merged to `main`.
+
+- [x] (1/7) Worktree + plan doc
+- [x] (2/7) Header, sidebar, and mobile nav hover/focus animations
+- [x] (3/7) New Jobs grid, card lift, and action-button hover animations
+- [x] (4/7) Tracker kanban polish + Job Detail panel/timeline hover animations
+- [x] (5/7) Find Jobs modal + Match Breakdown popup hover animations
+- [x] (6/7) Profile panel + Options panel hover animations
+- [x] (7/7) Motion section of `docs/design-system.md` documented + merge
+- [x] All tests green (`pytest`), `import app` clean; every panel/modal verified in-browser via
+  computed styles/classes on the generated `style-hover`/`style-active`/`style-focus` rules
+  (screenshot tooling was unavailable in this environment, so verification used DOM/stylesheet
+  inspection instead of visual screenshots)
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
@@ -96,6 +113,9 @@ Plan: `docs/plans/reco-pipeline-scoring.md`. Delivered on branch `reco-pipeline-
 - [ ] **Add `ruff`** for lint + format; record commands in `docs/workflow.md`.
 - [ ] **Add `ada-compliance` skill** when the accessibility audit work begins.
 - [ ] **`.env.example`** — add only if/when environment variables are introduced (currently config is JSON-file based).
+- [ ] **Reconcile `docs/design-system.md`** — the Color Tokens/Typography/Iconography sections
+  still describe an earlier design export; the live tokens are the per-theme `Component.THEMES`
+  vars in `index.html` (see the note added to the Motion section in this change).
 
 ## Intentionally Retained / Removed
 

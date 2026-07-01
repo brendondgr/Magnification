@@ -30,9 +30,48 @@ Plus a large **categorization palette** (`--color-cat-*`: yellow-orange, yellow,
 
 ## Surfaces, Radius, Shadow, Motion
 
-- **Glassmorphism:** `.glass` and `.glass-header` (translucent cream + `blur(12px)`).
-- **Hover lift:** `.hover-lift` — `translateY(-2px) scale(1.01)` with a spring cubic-bezier and `shadow-lg`.
-- Radius/spacing follow Tailwind defaults configured inline in `index.html`; standardizing them as tokens is a follow-up.
+> **Note:** the color tokens above (`--color-*`, `.glass`, `.hover-lift`, Tailwind config,
+> FontAwesome/Lucide) describe an earlier design export. The shipped `index.html` is a
+> dc-runtime template whose live tokens are defined per-theme in `Component.THEMES`
+> (`--bg`, `--surface`, `--surface2`, `--card`, `--text`, `--muted`, `--border`, `--border2`,
+> `--accent`, `--accent2`, `--accent-ink`, `--accent-text`, `--c-applied`/`--c-interview`/
+> `--c-offer`/`--c-archive`, `--radius`, `--r-sm`, `--font-head`/`--font-body`/`--font-mono`,
+> `--shadow`) — two themes exist (`editorial`, the default, and `neon`). Reconciling this doc
+> with the live tokens end-to-end is a follow-up (`docs/checklist.md`); the Motion notes below
+> reflect the current template.
+
+- **Entrance keyframes** (defined once in `index.html`'s `<style>`): `jf-fade` (opacity),
+  `jf-slide` (slide-in from the right, used by slide-over panels), `jf-pop` (scale+rise, used by
+  modals and chips), `jf-pulse` (used by the live-status dot), `jf-rise` (rise+fade, used by cards
+  and toasts).
+- **Hover/active/focus:** the dc-runtime template compiles any `style-<pseudo>` attribute
+  (`style-hover`, `style-active`, `style-focus`, …) on an element into a real inserted stylesheet
+  rule and merges the generated class onto that element — see `collectProps`/`createPseudoSheet`
+  in `utils/frontend/static/js/dc-runtime.js`. Every interactive element pairs a `transition:`
+  in its base `style` with a `style-hover` (and `style-active`/`style-focus` where relevant)
+  attribute; identical hover CSS across elements is deduped into one shared class automatically.
+- **Motion vocabulary** (small, reused everywhere, all values expressed via the theme tokens
+  above so both themes stay correct by construction):
+  - **Primary/accent buttons** (Applied, Find Jobs, Start Search, Save…, Analyze matches):
+    `translateY(-1px)` + `filter:brightness(1.06)` on hover, `translateY(0)` +
+    `brightness(.97)` on active/press — `.15s ease`.
+  - **Secondary/bordered buttons**: hover tints `background`/`border-color` toward
+    `var(--surface2)`/`var(--border2)`.
+  - **Icon-only square buttons** (panel close, ignore, remove): `background:var(--surface2)` +
+    a slight `scale(1.06)` press on active.
+  - **Cards** (New Jobs grid article, Tracker kanban job card): `translateY(-2px)` +
+    `box-shadow:var(--shadow)` on hover — the same treatment on both card types.
+  - **Pills/tabs/toggle rows** (nav tabs, Options tabs, site/job-type pills, toggle rows, mobile
+    nav): background/border tint on hover, no movement — the selected state already carries the
+    color change.
+  - **Chip remove "×" buttons**: `opacity` 0.7/0.8 → 1 + `scale(1.1)`.
+  - **Range sliders**: `filter:brightness(1.1)` on hover (native thumb; no custom track styling).
+  - **Text inputs** (search, Options endpoint fields, number fields): `border-color:var(--accent)`
+    + a soft `box-shadow` ring on focus.
+  - **Clickable rows** (job-detail timeline steps): background tint (`var(--bg)`) on hover, no
+    movement.
+- Radius/spacing follow the per-theme `--radius`/`--r-sm` tokens; standardizing further shared
+  spacing tokens is a follow-up.
 
 ## Iconography
 
