@@ -27,7 +27,10 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 - `GET /api/jobs/<int:job_id>` → a single job record.
 - `PATCH /api/jobs/<int:job_id>/ignore` → marks the job hidden/ignored.
 - `PATCH /api/jobs/<int:job_id>/status` — body: new tracker/application status → updates the job's status.
-- `POST /api/database/clear` → removes all job records.
+- `POST /api/database/clear` — body: `{"scope": "full" | "jobs"}` (defaults to
+  `"full"`). `"full"` drops and recreates every table (jobs + profiles +
+  analyses); `"jobs"` deletes jobs, application statuses, and analyses while
+  **keeping** profiles. Unknown scope → `400`. Response: `{"success": true, "scope": <scope>}`.
 
 ## LLM (prefix `/api`)
 

@@ -166,8 +166,28 @@ def delete_job(job_id: int) -> bool:
             return False
         
         db.delete(job)
-    
+
     return True
+
+
+def clear_jobs_database() -> int:
+    """
+    Delete every job and all job-scoped data (application statuses and job
+    analyses) while leaving profiles intact.
+
+    Bulk ``Query.delete()`` bypasses ORM-level cascades, so the dependent rows
+    are removed explicitly in FK-safe order (analyses + statuses before jobs)
+    within a single transaction.
+
+    Returns:
+        int: number of Job rows deleted.
+    """
+    with get_db_context() as db:
+        db.query(JobAnalysis).delete(synchronize_session=False)
+        db.query(ApplicationStatus).delete(synchronize_session=False)
+        deleted = db.query(Job).delete(synchronize_session=False)
+
+    return deleted
 
 
 def get_job_by_id(job_id: int) -> Optional[Dict[str, Any]]:
