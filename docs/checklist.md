@@ -207,6 +207,26 @@ in nine sibling worktrees).
   `docs/workflow.md`), `import app` clean; real `data/`/`config/` content verified unchanged
   before/after the full suite run
 
+## All Jobs LLM Fitting — Definition of Done
+
+Plan: `docs/plans/all-jobs-llm-fitting.md`. Delivered on branch `all-jobs-llm-fitting`
+(worktree), committed per phase, merged to `main`.
+
+Requirement: **every** analyzed job goes through LLM Fitting, not just a select few (was: only
+the top `top_n_llm` = 30 by `semantic+bm25`).
+
+- [x] (1/5) Worktree + plan doc
+- [x] (2/5) `service._llm_rerank` verdicts **all** analyzed jobs by default; `top_n_llm`
+  repurposed as an optional cost cap (`0`/absent/negative = all jobs, `N>0` = top-N); runtime
+  default `top_n_llm=0`; ranker/service docstrings updated; all-jobs test added, cap test kept
+- [x] (3/5) Options Runtime UI: default `top_n_llm=0`, "LLM top-N (0 = all)" input (`min=0`),
+  "LLM re-rank" copy notes it now covers every analyzed job
+- [x] (4/5) Docs updated (`recommendation.md`, `data-flow.md`, `api-contract.md`, this checklist)
+- [x] (5/5) Full offline suite green + `import app` clean; merged to `main`
+- [ ] **LLM fit live on all jobs** — the all-jobs path is covered by mocked-client tests; running
+  real verdicts for every job needs an enabled endpoint (Options → LLM Endpoint) + "LLM re-rank"
+  on. Note: uncapped fitting issues one LLM call **per analyzed job** — set `top_n_llm` > 0 to cap.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
