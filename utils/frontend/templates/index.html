@@ -37,7 +37,7 @@
 
   <!-- ============ HEADER ============ -->
   <header style="position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:18px;height:66px;padding:0 22px;background:var(--surface);border-bottom:var(--bw) solid var(--border)">
-    <button onclick="{{ toggleSidebar }}" data-desk="" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border:var(--bw) solid var(--border);background:transparent;color:var(--text);border-radius:var(--r-sm);cursor:pointer" aria-label="Toggle sidebar">
+    <button onclick="{{ toggleSidebar }}" data-desk="" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border:var(--bw) solid var(--border);background:transparent;color:var(--text);border-radius:var(--r-sm);cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .15s ease" style-hover="background:var(--surface2);border-color:var(--border2)" style-active="transform:scale(.93)" aria-label="Toggle sidebar">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="14" y2="17"></line></svg>
     </button>
     <div style="display:flex;align-items:center;gap:11px">
@@ -50,20 +50,20 @@
 
     <nav data-desk="" style="display:flex;gap:4px;margin-left:14px">
       <sc-for list="{{ navTabs }}" as="t" hint-placeholder-count="2">
-        <button onclick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+        <button onclick="{{ t.onClick }}" style="{{ t.style }}" style-hover="background:var(--surface2);color:var(--text)">{{ t.label }}</button>
       </sc-for>
     </nav>
 
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-      <button onclick="{{ openProfile }}" data-desk="" style="{{ profileBtnStyle }}">
+      <button onclick="{{ openProfile }}" data-desk="" style="{{ profileBtnStyle }}" style-hover="background:var(--surface2);border-color:var(--border)" style-active="transform:scale(.97)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         Profile
       </button>
-      <button onclick="{{ openFind }}" style="display:flex;align-items:center;gap:8px;padding:0 18px;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow)">
+      <button onclick="{{ openFind }}" style="display:flex;align-items:center;gap:8px;padding:0 18px;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow);transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
         Find Jobs
       </button>
-      <button onclick="{{ openOptions }}" data-desk="" style="{{ optionsBtnStyle }}">
+      <button onclick="{{ openOptions }}" data-desk="" style="{{ optionsBtnStyle }}" style-hover="background:var(--surface2);border-color:var(--border)" style-active="transform:scale(.97)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         Options
       </button>
@@ -80,7 +80,7 @@
           <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Search</div>
           <div style="position:relative">
             <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%)" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-            <input value="{{ search }}" oninput="{{ onSearch }}" placeholder="Title or company…" style="width:100%;height:42px;padding:0 12px 0 36px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+            <input value="{{ search }}" oninput="{{ onSearch }}" placeholder="Title or company…" style="width:100%;height:42px;padding:0 12px 0 36px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)">
           </div>
         </div>
 
@@ -98,7 +98,7 @@
         </div>
 
         <div style="margin-top:auto">
-          <button onclick="{{ clearDatabase }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:#E5484D;font:600 13px/1 var(--font-body);cursor:pointer">
+          <button onclick="{{ clearDatabase }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:#E5484D;font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:rgba(229,72,77,.1);border-color:#E5484D">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
             Clear Database
           </button>
@@ -248,7 +248,7 @@
   <!-- ============ MOBILE NAV ============ -->
   <nav data-mob="" style="position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;background:var(--surface);border-top:var(--bw) solid var(--border)">
     <sc-for list="{{ mobTabs }}" as="t" hint-placeholder-count="3">
-      <button onclick="{{ t.onClick }}" style="{{ t.style }}">
+      <button onclick="{{ t.onClick }}" style="{{ t.style }}" style-active="transform:scale(.92)">
         <span style="{{ t.iconWrap }}">{{ t.icon }}</span>
         <span style="font:600 10px/1 var(--font-body)">{{ t.label }}</span>
       </button>
@@ -1349,12 +1349,12 @@ class Component extends DCLogic {
       style:'padding:9px 16px;border:none;border-radius:var(--r-sm);cursor:pointer;font:600 14px/1 var(--font-body);background:'+(s.tab===k?'var(--surface2)':'transparent')+';color:'+(s.tab===k?'var(--text)':'var(--muted)')}));
 
     const mkMobTab=(k,l,icon)=>({key:k,label:l,onClick:()=>this.setState({tab:k}),icon:React.createElement('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},icon),
-      iconWrap:'',style:'flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;background:none;border:none;cursor:pointer;color:'+(s.tab===k?'var(--accent-text)':'var(--muted)')});
+      iconWrap:'',style:'flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;background:none;border:none;cursor:pointer;transition:color .15s ease,transform .15s ease;color:'+(s.tab===k?'var(--accent-text)':'var(--muted)')});
     const mobTabs=[
       mkMobTab('newjobs','New Jobs',React.createElement('g',null,React.createElement('rect',{x:3,y:3,width:7,height:7,rx:1}),React.createElement('rect',{x:14,y:3,width:7,height:7,rx:1}),React.createElement('rect',{x:3,y:14,width:7,height:7,rx:1}),React.createElement('rect',{x:14,y:14,width:7,height:7,rx:1}))),
       mkMobTab('tracker','Tracker',React.createElement('g',null,React.createElement('rect',{x:3,y:3,width:7,height:18,rx:1}),React.createElement('rect',{x:14,y:3,width:7,height:11,rx:1}))),
     ];
-    mobTabs.push({key:'find',label:'Find',onClick:()=>this.openFind(),icon:React.createElement('g',null,React.createElement('circle',{cx:11,cy:11,r:7}),React.createElement('line',{x1:16.5,y1:16.5,x2:21,y2:21})),iconWrap:'',style:'flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;background:none;border:none;cursor:pointer;color:var(--accent-text)'});
+    mobTabs.push({key:'find',label:'Find',onClick:()=>this.openFind(),icon:React.createElement('g',null,React.createElement('circle',{cx:11,cy:11,r:7}),React.createElement('line',{x1:16.5,y1:16.5,x2:21,y2:21})),iconWrap:'',style:'flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;background:none;border:none;cursor:pointer;transition:color .15s ease,transform .15s ease;color:var(--accent-text)'});
 
     // tracker columns
     const columns=Component.COLS.map(c=>{
@@ -1482,7 +1482,7 @@ class Component extends DCLogic {
     const llm=s.llm; const rt=s.runtime; const w=rt.weights||{};
     const wTotal=['semantic','bm25','keyword','skill','llm'].reduce((sum,k)=>sum+(+(w[k]||0)),0);
     const wTotalOk=Math.abs(wTotal-1)<0.001;
-    const secBtn='display:flex;align-items:center;gap:8px;padding:0 16px;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer';
+    const secBtn='display:flex;align-items:center;gap:8px;padding:0 16px;height:42px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .15s ease';
     const tabStyle=(on)=>'flex:1;padding:11px 0;border:none;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);background:'+(on?'var(--surface2)':'transparent')+';color:'+(on?'var(--text)':'var(--muted)');
     const toggleRow=(on)=>'display:flex;align-items:center;gap:11px;width:100%;padding:13px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;border:var(--bw) solid '+(on?'var(--accent)':'var(--border)');
     const toggleChk=(on)=>'width:20px;height:20px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent');
