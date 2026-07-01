@@ -8,7 +8,7 @@ This module provides all database operations for:
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set, Tuple
 
 from .init_db import get_db_context
 from .models import Job, ApplicationStatus, Profile, JobAnalysis
@@ -437,29 +437,22 @@ def get_timeline_for_job(job_id: int) -> List[Dict[str, Any]]:
         return [_status_to_dict(s) for s in statuses]
 
 
-def get_job_by_criteria(title: str, company: str, location: str) -> Optional[Dict[str, Any]]:
+def get_existing_job_keys() -> Set[Tuple[str, str]]:
     """
-    Find job by title, company, and location (for duplicate checking during scraping).
-    
-    Args:
-        title: Job title (exact match)
-        company: Company name (exact match)
-        location: Job location (exact match)
-    
+    Return the (title, company) key of every job in the database, lowercased and
+    trimmed, for duplicate checking during scraping.
+
+    One bulk query against the whole table is far cheaper than a per-candidate
+    lookup when checking a batch of newly scraped jobs. Location is intentionally
+    excluded: the same opening reposted across cities should still be recognized
+    as already tracked.
+
     Returns:
-        Dictionary containing job data, or None if not found
+        Set of (title, company) tuples.
     """
     with get_db_context() as db:
-        job = db.query(Job).filter(
-            Job.title == title,
-            Job.company == company,
-            Job.location == location
-        ).first()
-        
-        if not job:
-            return None
-        
-        return _job_to_dict(job)
+        rows = db.query(Job.title, Job.company).all()
+        return {(str(t).strip().lower(), str(c).strip().lower()) for t, c in rows}
 
 
 # ==================== Profile Operations ====================

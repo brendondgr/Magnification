@@ -52,7 +52,7 @@ from .operations import (
     get_jobs_by_status,
     get_jobs_by_company,
     get_timeline_for_job,
-    get_job_by_criteria,
+    get_existing_job_keys,
 )
 
 from .utils import (
@@ -103,7 +103,7 @@ __all__ = [
     'get_jobs_by_status',
     'get_jobs_by_company',
     'get_timeline_for_job',
-    'get_job_by_criteria',
+    'get_existing_job_keys',
     # Utils
     'validate_status',
     'validate_job_data',
