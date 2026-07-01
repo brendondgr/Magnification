@@ -10,9 +10,10 @@ from typing import Any, Dict
 
 from loguru import logger
 
-CONFIG_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../../config/runtime_config.json")
-)
+from ..paths import get_project_root
+
+# Shared root (same across the main checkout and every git worktree); see utils/backend/paths.py.
+CONFIG_PATH = str(get_project_root() / "config" / "runtime_config.json")
 
 # Reserve a couple of cores so the dev server stays responsive.
 _CPU = os.cpu_count() or 4
