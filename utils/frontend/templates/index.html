@@ -460,6 +460,9 @@
             </sc-for>
             <input value="{{ pfSkillDraft }}" oninput="{{ onPfSkillDraft }}" onkeydown="{{ onPfSkillKey }}" placeholder="add skill…" style="flex:1;min-width:120px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
           </div>
+          <sc-if value="{{ pfSkillsHasMore }}" hint-placeholder-val="">
+            <button onclick="{{ togglePfSkillsExpanded }}" style="margin-top:8px;background:none;border:none;padding:0;color:var(--accent2);font:600 12px/1 var(--font-body);cursor:pointer">{{ pfSkillsToggleLabel }}</button>
+          </sc-if>
         </div>
 
         <div>
@@ -957,7 +960,7 @@ class Component extends DCLogic {
       termDraft:'', groupDrafts:{},
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false, scrapeEvents:[],
       // ---- Profile panel ----
-      profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false,
+      profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false, pfSkillsExpanded:false,
       profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],blocked_companies:[],title_blocklist:[],llm_instructions:'',resume_text:'',source_filename:'',exists:false},
       pfSkillDraft:'', pfTitleDraft:'', pfGroupDrafts:{}, pfBlockedDraft:'', pfTitleBlockDraft:'',
       // ---- Options panel ----
@@ -1372,18 +1375,18 @@ class Component extends DCLogic {
       .then(r=>r.json()).then(d=>{
         if(!d.success){ this.setState({pfBusy:false,pfStatus:d.message||'Rebuild failed — is the LLM enabled?'}); return; }
         const p=d.profile||{};
+        const union=(exist,gen)=>(exist||[]).concat((Array.isArray(gen)?gen:[]).filter(c=>!(exist||[]).some(e=>String(e).trim().toLowerCase()===String(c).trim().toLowerCase())));
         this.setState(st=>{
-          // Regenerated fields replace; blocked_companies is UNIONED so a rebuild never wipes
-          // companies the user blocked via the card button (the LLM only adds ones the user
-          // explicitly named in their instructions).
-          const exist=st.profile.blocked_companies||[];
-          const gen=Array.isArray(p.blocked_companies)?p.blocked_companies:[];
-          const mergedBlocked=exist.concat(gen.filter(c=>!exist.some(e=>String(e).trim().toLowerCase()===String(c).trim().toLowerCase())));
+          // Regenerated fields replace; blocked_companies AND skills are UNIONED so a rebuild
+          // never wipes companies the user blocked via the card button, or skills the user
+          // click-added from a job's "missing skills" list (the LLM only adds new ones).
           return {profile:Object.assign({},st.profile,{
-            interests_paragraph:p.interests_paragraph,skills:p.skills,job_titles:p.job_titles,
+            interests_paragraph:p.interests_paragraph,
+            skills:union(st.profile.skills,p.skills),
+            job_titles:p.job_titles,
             keyword_groups:p.keyword_groups,
             title_blocklist:Array.isArray(p.title_blocklist)?p.title_blocklist:[],
-            blocked_companies:mergedBlocked
+            blocked_companies:union(st.profile.blocked_companies,p.blocked_companies)
           }),pfBusy:false,pfStatus:'Rebuilt — review & save.'};
         });
       }).catch(e=>{ console.error(e); this.setState({pfBusy:false,pfStatus:'Rebuild failed'}); });
@@ -1596,7 +1599,11 @@ class Component extends DCLogic {
     // ---- profile panel ----
     const pf=s.profile;
     const addPfTag=(field,draftKey,val)=>{ const v=(val||'').trim(); if(!v) return; this.pfSet({[field]:(pf[field]||[]).concat(v)}); this.setState({[draftKey]:''}); };
-    const pfSkills=(pf.skills||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({skills:pf.skills.filter((_,k)=>k!==i)})}));
+    const SKILLS_SHOW_LIMIT=20;
+    const allPfSkills=(pf.skills||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({skills:pf.skills.filter((_,k)=>k!==i)})}));
+    const pfSkillsHasMore=allPfSkills.length>SKILLS_SHOW_LIMIT;
+    const pfSkills=(s.pfSkillsExpanded||!pfSkillsHasMore)?allPfSkills:allPfSkills.slice(0,SKILLS_SHOW_LIMIT);
+    const pfSkillsToggleLabel=s.pfSkillsExpanded?'Show less':'Show all ('+allPfSkills.length+')';
     const pfTitles=(pf.job_titles||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({job_titles:pf.job_titles.filter((_,k)=>k!==i)})}));
     const pfGroups=(pf.keyword_groups||[]).map((g,gi)=>({
       label:g.label||'',
@@ -1702,7 +1709,9 @@ class Component extends DCLogic {
       rebuildProfile:()=>this.rebuildProfile(), saveProfile:()=>this.saveProfile(),
       pfLlmInstructions:pf.llm_instructions||'', onPfLlmInstructions:(e)=>this.pfSet({llm_instructions:e.target.value}),
       pfInterests:pf.interests_paragraph||'', onPfInterests:(e)=>this.pfSet({interests_paragraph:e.target.value}),
-      pfSkills, pfSkillDraft:s.pfSkillDraft, onPfSkillDraft:(e)=>this.setState({pfSkillDraft:e.target.value}),
+      pfSkills, pfSkillsHasMore, pfSkillsToggleLabel,
+      togglePfSkillsExpanded:()=>this.setState(st=>({pfSkillsExpanded:!st.pfSkillsExpanded})),
+      pfSkillDraft:s.pfSkillDraft, onPfSkillDraft:(e)=>this.setState({pfSkillDraft:e.target.value}),
       onPfSkillKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('skills','pfSkillDraft',s.pfSkillDraft); } },
       pfTitles, pfTitleDraft:s.pfTitleDraft, onPfTitleDraft:(e)=>this.setState({pfTitleDraft:e.target.value}),
       onPfTitleKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('job_titles','pfTitleDraft',s.pfTitleDraft); } },

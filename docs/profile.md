@@ -10,7 +10,7 @@ Find Jobs).
 | --- | --- |
 | `llm_instructions` | Optional free-text guidance the user types to steer the LLM profile build (which job titles/queries/skills to emphasize, how to frame interests). Injected ahead of the résumé as a prioritized instruction; edited in the Profile panel above the résumé section. |
 | `interests_paragraph` | Open-body paragraph of research/job interests — used by the **LLM** matching pass. |
-| `skills` | List of skills — matched against skills extracted from each job description. |
+| `skills` | List of skills — matched against skills extracted from each job description. Editable in the Profile panel (capped to the first 20 with a "Show all" expander), or one-click-added from a job's "Skills the job wants you lack" list in the job detail panel. |
 | `job_titles` | List of search-query titles — seed the Find Jobs search. |
 | `keyword_groups` | `[{label, terms:[...], scopes:[...]}]` — **AND across groups, OR within a group**, applied as a **hard filter**: a job is hidden unless *every* group matches. `scopes` ⊆ `{"title","description"}` (defaults to both) picks where each group's terms must appear — e.g. an "intern" group scoped to Title-only requires "intern" in the title, not just the description. |
 | `blocked_companies` | List of company names (case-insensitive, exact) whose jobs are always hidden. Added via the per-card **Block** button or edited in the Profile panel. |
@@ -36,6 +36,16 @@ scoped `keyword_groups` entry. The pure predicates live in
 Blocking is **one-directional**: applying rules only hides jobs; removing a rule does not un-hide
 already-hidden jobs (a re-scrape re-evaluates from scratch).
 
+## Quick-add a missing skill
+
+The job detail panel's **"Skills the job wants you lack"** tags (from `JobAnalysis.skill_match.missing`)
+are clickable. Clicking one calls `POST /api/profile/add-skill` (`{skill}`, case-insensitive
+de-dupe, creates a default profile if none exists) and optimistically moves the skill from that
+job's missing list to its matched list in the UI. Because the skill is now already present in
+`skills`, a later **Rebuild** unions rather than overwrites it — see below — so a click-added
+skill survives future LLM rewrites of the profile. The added skill only affects future
+`/api/recommend/analyze` runs; it does not retroactively rescore the job it was added from.
+
 ## Building from a résumé
 
 1. **Upload** (`POST /api/profile/upload`) — accepts **PDF / LaTeX (.tex) / Markdown (.md)**.
@@ -55,16 +65,20 @@ already-hidden jobs (a re-scrape re-evaluates from scratch).
 4. **Save** (`POST /api/profile`) — `upsert_active_profile` writes the active profile.
 5. **Rebuild** (`POST /api/profile/build`) — regenerate fields from the stored `resume_text`
    without re-uploading (requires the LLM). Regenerated fields replace their prior values, except
-   **`blocked_companies`, which is unioned** so a rebuild never drops companies the user blocked
-   via the card button.
+   **`blocked_companies` and `skills`, which are unioned** (client-side, in `rebuildProfile`) so a
+   rebuild never drops companies the user blocked via the card button, or skills the user
+   click-added from a job's "missing skills" list.
 
 ## API
 
 See `docs/routes.md` / `docs/api-contract.md` for the `profile_bp` endpoints
-(`/api/profile`, `/api/profile/upload`, `/api/profile/build`).
+(`/api/profile`, `/api/profile/upload`, `/api/profile/build`, `/api/profile/block-company`,
+`/api/profile/add-skill`).
 
 ## Frontend
 
 The Profile panel is a right slide-over in `utils/frontend/templates/index.html`
 (`profileOpen` state; `openProfile`/`loadProfile`/`saveProfile`/`onResumeFile`/`rebuildProfile`
-methods; `pf*` render values). See `docs/component-map.md`.
+methods; `pf*` render values). The Skills tag list caps at 20 with a `pfSkillsExpanded`-driven
+"Show all"/"Show less" toggle. `addSkillToProfile(skill, jobId)` (near `blockCompany`) backs the
+job detail panel's clickable missing-skill chips. See `docs/component-map.md`.

@@ -154,6 +154,27 @@ Plan: `docs/plans/profile-llm-instructions.md`. Delivered on branch `profile-llm
   section, round-trips through save/load, and is sent to the build endpoint)
 - [x] All tests green (`pytest`), `import app` clean; UI verified via preview tools
 
+## Skills Quick-Add — Definition of Done
+
+Plan: `docs/plans/skills-quick-add.md`. Delivered on branch `skills-quick-add` (worktree),
+committed per phase, merged to `main`.
+
+- [x] (1/3) `POST /api/profile/add-skill` endpoint (case-insensitive de-dupe, creates a default
+  profile if none exists) + isolated in-memory API tests + docs
+- [x] (2/3) Job detail panel's "Skills the job wants you lack" chips are clickable —
+  `addSkillToProfile(skill, jobId)` optimistically adds to `profile.skills` and moves the skill
+  from that job's `skill_match.missing` to `.matched`, reverting both on a failed save (verified
+  in-browser: click moves the chip and the skill appears in `GET /api/profile` and the Profile
+  panel)
+- [x] (3/3) `rebuildProfile()` unions `skills` (like the existing `blocked_companies` union) so a
+  résumé rebuild never drops a click-added skill; Profile panel Skills list caps at 20 with a
+  "Show all (N)" / "Show less" toggle (verified in-browser: 25 seeded skills render 20 + the
+  toggle expands/collapses); docs + merge
+- [x] All tests green (`pytest`), `import app` clean; UI verified via preview tools
+- [ ] **Skills union on a real LLM rebuild** — not exercised live (no LLM endpoint configured in
+  this environment); the union logic mirrors the already-shipped `blocked_companies` union
+  verbatim and is exercised for `add-skill` + save/load via tests and in-browser checks.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
