@@ -151,7 +151,16 @@ def execute_full_scraping_workflow(
         logger.info("Step 2: Executing concurrent scraping...")
         
         # Create a callback to bridge scraper progress to workflow progress (10% -> 80%)
+        # Only emit once per 20% bucket of scraper progress to avoid flooding the
+        # activity feed with a "Scraping..." update for every completed site/term.
+        last_logged_bucket = [-1]
+
         def scraper_progress_handler(scraper_percent, jobs_count):
+            bucket = int(scraper_percent // 20)
+            if bucket == last_logged_bucket[0] and scraper_percent < 100:
+                return
+            last_logged_bucket[0] = bucket
+
             # Map 0-100% scraper progress to 10-80% workflow progress
             workflow_percent = 10 + (scraper_percent * 0.7)
             update_progress('scraping', workflow_percent, {
