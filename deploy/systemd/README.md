@@ -11,6 +11,26 @@ Runs `app.py` (Flask) on **http://127.0.0.1:13374** with `FLASK_DEBUG=0` (no
 auto-reloader) and `Restart=on-failure`. Enabled by `install.sh`; starts at boot.
 Change the port via the `PORT=` line in `magnification-web.service`.
 
+## Manage it: the `jobs` command
+
+These are systemd **user** units, so `sudo systemctl ...` can't see them (that
+talks to the *system* manager) — use `systemctl --user`, or the wrapper:
+
+```bash
+jobs start        # start the web app (http://127.0.0.1:13374)
+jobs restart      # restart it
+jobs stop         # stop it
+jobs status       # status
+jobs logs [-f]    # recent logs (-f to follow)
+jobs search       # run the daily job search now (bypasses the daily guard)
+```
+
+`install.sh` installs this as `~/.local/bin/jobsctl` plus a `jobs` shell function
+in `~/.bashrc` (the bare name `jobs` is a bash builtin, so the function overrides
+it for these subcommands and falls back to the builtin otherwise). After
+installing, open a new shell or run `source ~/.bashrc`. `jobsctl <cmd>` works
+without the function.
+
 ## Daily search — what it does
 
 On boot (and once per day) the timer starts a oneshot service that runs

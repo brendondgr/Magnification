@@ -7,7 +7,9 @@
 #
 # Renders the {{REPO_ROOT}} / {{PYTHON}} placeholders in the templates for THIS
 # checkout, copies them into ~/.config/systemd/user/, reloads the user manager,
-# and enables the web service + timer so they start at the next boot.
+# and enables the web service + timer so they start at the next boot. Also
+# installs the `jobs`/`jobsctl` management command (~/.local/bin + a ~/.bashrc
+# shell function).
 #
 # Run this from the checkout you want the units to point at (normally the main
 # checkout, after merging to main). Idempotent: safe to re-run.
@@ -77,6 +79,38 @@ if [[ "${START_NOW}" == "1" ]]; then
   # activates at the next boot. To trigger a scrape now, run the service directly.
 fi
 
+# --- 'jobs' / 'jobsctl' management command -----------------------------------
+BIN_DIR="${HOME}/.local/bin"
+JOBSCTL_SRC="${REPO_ROOT}/deploy/bin/jobsctl"
+chmod +x "${JOBSCTL_SRC}" 2>/dev/null || true
+mkdir -p "${BIN_DIR}"
+ln -sf "${JOBSCTL_SRC}" "${BIN_DIR}/jobsctl"
+echo "Linked ${BIN_DIR}/jobsctl -> ${JOBSCTL_SRC}"
+
+# `jobs` is a bash builtin, so a PATH executable named `jobs` would be shadowed.
+# A shell function overrides the builtin for our subcommands and falls back to
+# it otherwise. Added to ~/.bashrc idempotently (via markers).
+BASHRC="${HOME}/.bashrc"
+if [[ -f "${BASHRC}" ]] && grep -qF "# >>> magnification jobs command >>>" "${BASHRC}"; then
+  echo "'jobs' shell function already present in ${BASHRC}"
+else
+  cat >> "${BASHRC}" <<'JOBS_FUNC'
+
+# >>> magnification jobs command >>>
+# `jobs start|stop|restart|status|logs|search` manages the Magnification app.
+# Any other invocation falls through to the bash `jobs` builtin.
+jobs() {
+  case "${1:-}" in
+    start|stop|restart|status|logs|search|search-logs|url|help|-h|--help)
+      command jobsctl "$@" ;;
+    *) builtin jobs "$@" ;;
+  esac
+}
+# <<< magnification jobs command <<<
+JOBS_FUNC
+  echo "Added 'jobs' shell function to ${BASHRC}  (activate now: source ~/.bashrc)"
+fi
+
 echo
 echo "Done. The web app and daily search are enabled and start at the next boot."
 echo "Inspect with:"
@@ -85,7 +119,9 @@ echo "  systemctl --user list-timers magnification-daily-search.timer --all"
 echo "  journalctl --user -u magnification-web.service -e"
 echo
 echo "Web app URL: http://127.0.0.1:13374"
+echo
+echo "Manage the app with:  jobs start | stop | restart | status | logs | search"
+echo "  (open a new shell or 'source ~/.bashrc' first; 'jobsctl <cmd>' also works)"
+echo
 echo "Probe the LLM gate without scraping:"
 echo "  ${PYTHON} -m utils.backend.scheduler --check-llm ; echo exit=\$?"
-echo "Force a scrape now (bypasses the once-per-day guard):"
-echo "  ${PYTHON} -m utils.backend.scheduler --force"

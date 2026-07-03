@@ -66,6 +66,7 @@ Magnification/
 │   └── docs/                   # Doc/skill-pointer verification tests
 │
 ├── deploy/                     # Deployment assets (not app code)
+│   ├── bin/                    # jobsctl — `jobs start|stop|restart|status|logs|search` app-control wrapper
 │   └── systemd/                # User units: web app (magnification-web.service) + LLM-gated daily search (.service/.timer) + install.sh/uninstall.sh
 │
 └── data/                       # SQLite database + local data (gitignored)
