@@ -1,11 +1,17 @@
-# Systemd deploy — LLM-gated daily job search
+# Systemd deploy — web app on boot + LLM-gated daily job search
 
-These are **systemd user units** that run Magnification's daily job search
-automatically. The machine already runs the local LLM as a user service
-(`llamacpp-router.service`) and has lingering enabled (`loginctl enable-linger`),
-so user units start at boot without a login.
+These are **systemd user units** that (1) run the Magnification web app on boot
+and (2) run the daily job search automatically. The machine already runs the
+local LLM as a user service (`llamacpp-router.service`) and has lingering enabled
+(`loginctl enable-linger`), so user units start at boot without a login.
 
-## What it does
+## Web app (`magnification-web.service`)
+
+Runs `app.py` (Flask) on **http://127.0.0.1:13374** with `FLASK_DEBUG=0` (no
+auto-reloader) and `Restart=on-failure`. Enabled by `install.sh`; starts at boot.
+Change the port via the `PORT=` line in `magnification-web.service`.
+
+## Daily search — what it does
 
 On boot (and once per day) the timer starts a oneshot service that runs
 `python -m utils.backend.scheduler`. That runner:
@@ -26,7 +32,8 @@ The retry loop lives in the Python runner, so the units stay simple.
 
 | File | Purpose |
 | --- | --- |
-| `magnification-daily-search.service` | Oneshot unit; runs the scheduler CLI. Template (`{{REPO_ROOT}}`, `{{PYTHON}}`). |
+| `magnification-web.service` | Flask web app on port 13374 (`WantedBy=default.target`). Template (`{{REPO_ROOT}}`, `{{PYTHON}}`). |
+| `magnification-daily-search.service` | Oneshot unit; runs the scheduler CLI. Template. |
 | `magnification-daily-search.timer` | Boot (`OnBootSec`) + daily (`OnCalendar`) trigger. Template. |
 | `install.sh` | Renders + installs + enables the units for this checkout. |
 | `uninstall.sh` | Disables + removes the installed units. |
@@ -36,9 +43,13 @@ The retry loop lives in the Python runner, so the units stay simple.
 Run from the checkout the units should point at (normally the **main** checkout):
 
 ```bash
-deploy/systemd/install.sh          # install + enable (live at next boot)
-deploy/systemd/install.sh --now    # also start the timer in this session
+deploy/systemd/install.sh          # install + enable both (live at next boot)
+deploy/systemd/install.sh --now    # also start the web app in this session
 ```
+
+`--now` starts only the web app; the daily-search timer is never auto-started
+(that would fire the boot trigger immediately and could launch a scrape). Start
+the web app manually with `systemctl --user start magnification-web.service`.
 
 `install.sh` requires a working venv at `.venv/bin/python` (it does not use
 `uv run`, to avoid any lock/sync/network attempt at boot).

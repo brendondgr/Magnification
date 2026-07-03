@@ -66,7 +66,7 @@ Magnification/
 │   └── docs/                   # Doc/skill-pointer verification tests
 │
 ├── deploy/                     # Deployment assets (not app code)
-│   └── systemd/                # LLM-gated daily-search user units (.service/.timer) + install.sh/uninstall.sh
+│   └── systemd/                # User units: web app (magnification-web.service) + LLM-gated daily search (.service/.timer) + install.sh/uninstall.sh
 │
 └── data/                       # SQLite database + local data (gitignored)
 ```
@@ -81,7 +81,7 @@ Magnification/
 | `.claude/`, `.agents/`, `.cursor/` | Tool-specific pointer files. No canonical content. |
 | `utils/backend/` | API routes, scraping pipeline, database layer, and the scheduled daily-search runner. |
 | `utils/backend/scheduler/` | LLM-gated, once-per-day job-search runner + CLI invoked by the systemd units. |
-| `deploy/systemd/` | Systemd **user** units + installer for the automated daily search (see `deploy/systemd/README.md`). |
+| `deploy/systemd/` | Systemd **user** units + installer for the web app on boot and the automated daily search (see `deploy/systemd/README.md`). |
 | `utils/frontend/` | Jinja templates and static CSS/JS assets. |
 | `utils/LocalLLM/` | Self-contained local-LLM management library. |
 | `tests/` | Lightweight, area-grouped tests. |

@@ -1,0 +1,18 @@
+[Unit]
+Description=Magnification web app (Flask)
+Documentation=file://{{REPO_ROOT}}/docs/documentation.md
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{REPO_ROOT}}
+Environment=PYTHONUNBUFFERED=1
+# Disable the Flask auto-reloader (its forking fights the service supervisor).
+Environment=FLASK_DEBUG=0
+Environment=PORT=13374
+ExecStart={{PYTHON}} app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

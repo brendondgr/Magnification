@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 #
-# Install the Magnification daily-search systemd *user* units.
+# Install the Magnification systemd *user* units:
+#   * magnification-web.service            — the Flask web app (starts at boot)
+#   * magnification-daily-search.service   — the LLM-gated daily scrape (oneshot)
+#   * magnification-daily-search.timer     — boot + daily trigger for the scrape
 #
-# Renders the {{REPO_ROOT}} / {{PYTHON}} placeholders in the .service/.timer
-# templates for THIS checkout, copies them into ~/.config/systemd/user/, reloads
-# the user manager, and enables the timer so it fires at the next boot.
+# Renders the {{REPO_ROOT}} / {{PYTHON}} placeholders in the templates for THIS
+# checkout, copies them into ~/.config/systemd/user/, reloads the user manager,
+# and enables the web service + timer so they start at the next boot.
 #
 # Run this from the checkout you want the units to point at (normally the main
 # checkout, after merging to main). Idempotent: safe to re-run.
 #
 # Usage:
 #   deploy/systemd/install.sh          # install + enable (live next boot)
-#   deploy/systemd/install.sh --now    # also start the timer in this session
+#   deploy/systemd/install.sh --now    # also start the web app in this session
+#                                      # (the daily-search timer is never auto-
+#                                      #  started, to avoid an immediate scrape)
 
 set -euo pipefail
 
@@ -24,8 +29,8 @@ START_NOW=0
 [[ "${1:-}" == "--now" ]] && START_NOW=1
 
 # --- Sanity checks -----------------------------------------------------------
-if [[ ! -d "${REPO_ROOT}/utils/backend/scheduler" ]]; then
-  echo "ERROR: ${REPO_ROOT} does not look like the Magnification repo (no utils/backend/scheduler)." >&2
+if [[ ! -d "${REPO_ROOT}/utils/backend/scheduler" || ! -f "${REPO_ROOT}/app.py" ]]; then
+  echo "ERROR: ${REPO_ROOT} does not look like the Magnification repo." >&2
   exit 1
 fi
 if [[ ! -x "${PYTHON}" ]]; then
@@ -53,29 +58,34 @@ render() {
 }
 
 echo "Rendering units..."
+render "${HERE}/magnification-web.service"          "${UNIT_DIR}/magnification-web.service"
 render "${HERE}/magnification-daily-search.service" "${UNIT_DIR}/magnification-daily-search.service"
 render "${HERE}/magnification-daily-search.timer"   "${UNIT_DIR}/magnification-daily-search.timer"
 
 echo "Reloading user manager..."
 systemctl --user daemon-reload
 
-echo "Enabling timer..."
+echo "Enabling web service + daily-search timer..."
+systemctl --user enable magnification-web.service
 systemctl --user enable magnification-daily-search.timer
 
 if [[ "${START_NOW}" == "1" ]]; then
-  echo "Starting timer now..."
-  systemctl --user start magnification-daily-search.timer
+  echo "Starting web app now (http://127.0.0.1:13374)..."
+  systemctl --user restart magnification-web.service
+  # NOTE: the daily-search timer is intentionally NOT started here — starting it
+  # would fire OnBootSec immediately and could launch a scrape mid-session. It
+  # activates at the next boot. To trigger a scrape now, run the service directly.
 fi
 
 echo
-echo "Done. The daily search is enabled and will run at the next boot."
+echo "Done. The web app and daily search are enabled and start at the next boot."
 echo "Inspect with:"
+echo "  systemctl --user status magnification-web.service"
 echo "  systemctl --user list-timers magnification-daily-search.timer --all"
-echo "  systemctl --user status magnification-daily-search.service"
-echo "  journalctl --user -u magnification-daily-search.service -e"
+echo "  journalctl --user -u magnification-web.service -e"
 echo
+echo "Web app URL: http://127.0.0.1:13374"
 echo "Probe the LLM gate without scraping:"
 echo "  ${PYTHON} -m utils.backend.scheduler --check-llm ; echo exit=\$?"
-echo "Force a run now (ignores the once-per-day guard):"
-echo "  systemctl --user start magnification-daily-search.service   # honors the guard"
-echo "  ${PYTHON} -m utils.backend.scheduler --force                # bypasses the guard"
+echo "Force a scrape now (bypasses the once-per-day guard):"
+echo "  ${PYTHON} -m utils.backend.scheduler --force"
