@@ -32,6 +32,7 @@ Magnification/
 │   ├── job_scraping.md         # Scraping pipeline deep-dive
 │   ├── find_jobs.md            # Find-Jobs flow deep-dive
 │   ├── ui.md                   # UI notes
+│   ├── assets/                 # Static SVG diagrams embedded in README.md
 │   ├── plans/                  # Implementation/handoff plans
 │   └── skills/                 # Canonical agent skills (source of truth)
 │       ├── global-project-rules/

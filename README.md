@@ -8,6 +8,8 @@ No live demo — it's a single-user, local-first app by design (see [Setup](#set
 
 Job searching means checking a dozen boards a day and re-reading listings you've already dismissed. Magnification automates the first half and augments the second: a scheduler pulls new listings from multiple boards (including a rate-limit-safe LinkedIn description fetch), a hybrid recommender scores each one against a profile built from your résumé, and a web UI turns the results into a working queue — new jobs, saved jobs, and an application tracker.
 
+![Pipeline: job boards → scraper → SQLite → hybrid recommender → web UI](docs/assets/pipeline-diagram.svg)
+
 ## Tech Stack
 
 - **Python 3.12+** / Flask, server-rendered Jinja + a vendored React runtime (no build step)
@@ -52,6 +54,8 @@ Full breakdown: [`docs/architecture.md`](docs/architecture.md), [`docs/routes.md
 
 - **Worktrees silently forked the database.** Paths to `data/magnificiation.db` and gitignored `config/*.json` were resolved relative to `__file__`, which points at whichever git checkout is running. Since git worktrees don't share gitignored files, every worktree quietly got its own empty database — the main checkout's DB was 5.3 MB against 53 KB in nine sibling worktrees before anyone noticed. Fixed by resolving the project root through `git rev-parse --git-common-dir` (shared across the main checkout and all worktrees), with a `__file__`-relative fallback when git isn't available.
 - **LLM-gated automation over a naive cron job.** A daily scrape shouldn't silently no-op just because a local LLM server hasn't finished booting. The scheduler checks LLM availability first, retries every 10 minutes for up to an hour, and only then either runs or cleanly skips the day — rather than failing partway through a scrape that assumed the LLM was already up.
+
+![LLM-gated daily scheduler: boot/timer → check LLM → retry up to 6x → run or skip](docs/assets/scheduler-flow.svg)
 
 ## Roadmap
 
