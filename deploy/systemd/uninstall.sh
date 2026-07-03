@@ -17,3 +17,12 @@ rm -f "${UNIT_DIR}/magnification-daily-search.timer" \
 
 systemctl --user daemon-reload
 echo "Removed magnification-web.service + magnification-daily-search.{timer,service} from ${UNIT_DIR}."
+
+# Remove the jobs/jobsctl management command.
+rm -f "${HOME}/.local/bin/jobsctl" && echo "Removed ~/.local/bin/jobsctl."
+BASHRC="${HOME}/.bashrc"
+if [[ -f "${BASHRC}" ]] && grep -qF "# >>> magnification jobs command >>>" "${BASHRC}"; then
+  # Delete the marked block (inclusive) plus a preceding blank line if present.
+  sed -i '/# >>> magnification jobs command >>>/,/# <<< magnification jobs command <<</d' "${BASHRC}"
+  echo "Removed 'jobs' shell function from ${BASHRC} (open a new shell to drop it)."
+fi

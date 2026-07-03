@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#
+# jobsctl — manage the Magnification systemd *user* services.
+#
+# The web app and daily search run as systemd USER units, so plain
+# `sudo systemctl ...` cannot see them (that talks to the system manager).
+# This wrapper always uses `systemctl --user` for you.
+#
+# Usage: jobsctl <command>
+#   start        Start the web app (http://127.0.0.1:13374)
+#   stop         Stop the web app
+#   restart      Restart the web app
+#   status       Show web app status
+#   logs [-f]    Show web app logs (-f / follow to tail live)
+#   search       Run the daily job search now (bypasses the once-per-day guard)
+#   search-logs  Show the daily-search logs
+#   url          Print the web app URL
+#   help         Show this help
+#
+# Also exposed as the `jobs` shell function (see install.sh); run directly as
+# `jobsctl` or `deploy/bin/jobsctl`.
+
+set -euo pipefail
+
+WEB="magnification-web.service"
+SCRAPE="magnification-daily-search.service"
+URL="http://127.0.0.1:13374"
+
+SELF="$(readlink -f "${BASH_SOURCE[0]:-$0}")"
+REPO_ROOT="$(cd "$(dirname "$SELF")/../.." && pwd)"
+PYTHON="${REPO_ROOT}/.venv/bin/python"
+
+usage() { awk 'NR>2 { if ($0 ~ /^#/) { sub(/^# ?/, ""); print } else exit }' "$SELF"; }
+
+cmd="${1:-help}"
+case "$cmd" in
+  start)
+    systemctl --user start "$WEB"
+    echo "started $WEB — $URL"
+    ;;
+  stop)
+    systemctl --user stop "$WEB"
+    echo "stopped $WEB"
+    ;;
+  restart)
+    systemctl --user restart "$WEB"
+    echo "restarted $WEB — $URL"
+    ;;
+  status)
+    systemctl --user status "$WEB" --no-pager
+    ;;
+  logs)
+    if [[ "${2:-}" == "-f" || "${2:-}" == "follow" ]]; then
+      journalctl --user -u "$WEB" -f
+    else
+      journalctl --user -u "$WEB" -n 200 --no-pager
+    fi
+    ;;
+  search)
+    echo "Running the daily job search now (LLM-gated)..."
+    exec "$PYTHON" -m utils.backend.scheduler --force
+    ;;
+  search-logs)
+    journalctl --user -u "$SCRAPE" -n 200 --no-pager
+    ;;
+  url)
+    echo "$URL"
+    ;;
+  help | -h | --help)
+    usage
+    ;;
+  *)
+    echo "jobsctl: unknown command '$cmd'" >&2
+    echo >&2
+    usage >&2
+    exit 2
+    ;;
+esac

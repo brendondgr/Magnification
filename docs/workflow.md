@@ -64,6 +64,7 @@ enabled, so user units start at boot). Units + installer live in
 | Task | Command |
 | --- | --- |
 | Install + enable both (from the checkout to run) | `deploy/systemd/install.sh` (`--now` also starts the web app now) |
+| Manage the app | `jobs start` · `jobs restart` · `jobs stop` · `jobs status` · `jobs logs [-f]` · `jobs search` (also `jobsctl <cmd>`) |
 | Web app status / logs | `systemctl --user status magnification-web.service` · `journalctl --user -u magnification-web.service -e` |
 | Probe the LLM gate (no scrape) | `.venv/bin/python -m utils.backend.scheduler --check-llm` |
 | Force a scrape now (bypass daily guard) | `.venv/bin/python -m utils.backend.scheduler --force` |
