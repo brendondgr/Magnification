@@ -48,14 +48,9 @@ For the daily-scrape systemd units, see [`deploy/systemd/`](deploy/systemd/).
 - [`utils/frontend/`](utils/frontend/) — the Jinja/React-runtime UI (no build step)
 - [`deploy/systemd/`](deploy/systemd/) — boot + daily-timer units for the LLM-gated scrape
 
-Full breakdown: [`docs/architecture.md`](docs/architecture.md), [`docs/routes.md`](docs/routes.md), [`docs/api-contract.md`](docs/api-contract.md), [`docs/data-flow.md`](docs/data-flow.md).
-
-## Challenges & Design Decisions
-
-- **Worktrees silently forked the database.** Paths to `data/magnificiation.db` and gitignored `config/*.json` were resolved relative to `__file__`, which points at whichever git checkout is running. Since git worktrees don't share gitignored files, every worktree quietly got its own empty database — the main checkout's DB was 5.3 MB against 53 KB in nine sibling worktrees before anyone noticed. Fixed by resolving the project root through `git rev-parse --git-common-dir` (shared across the main checkout and all worktrees), with a `__file__`-relative fallback when git isn't available.
-- **LLM-gated automation over a naive cron job.** A daily scrape shouldn't silently no-op just because a local LLM server hasn't finished booting. The scheduler checks LLM availability first, retries every 10 minutes for up to an hour, and only then either runs or cleanly skips the day — rather than failing partway through a scrape that assumed the LLM was already up.
-
 ![LLM-gated daily scheduler: boot/timer → check LLM → retry up to 6x → run or skip](docs/assets/scheduler-flow.svg)
+
+Full breakdown: [`docs/architecture.md`](docs/architecture.md), [`docs/routes.md`](docs/routes.md), [`docs/api-contract.md`](docs/api-contract.md), [`docs/data-flow.md`](docs/data-flow.md).
 
 ## Roadmap
 

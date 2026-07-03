@@ -1,50 +1,46 @@
-<svg viewBox="0 0 940 420" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
-  <rect x="0" y="0" width="940" height="420" fill="#ffffff"/>
-
+<svg viewBox="0 0 760 270" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
   <defs>
     <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#57606a"/>
     </marker>
   </defs>
 
-  <!-- Start: boot / daily timer -->
-  <rect x="370" y="20" width="200" height="60" rx="30" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
-  <text x="470" y="46" text-anchor="middle" font-size="14" font-weight="600" fill="#24292f">systemd timer</text>
-  <text x="470" y="64" text-anchor="middle" font-size="11" fill="#57606a">on boot + daily</text>
+  <!-- systemd timer -->
+  <rect x="20" y="75" width="150" height="70" rx="10" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+  <text x="95" y="106" text-anchor="middle" font-size="14" font-weight="600" fill="#24292f">systemd timer</text>
+  <text x="95" y="124" text-anchor="middle" font-size="11" fill="#57606a">on boot + daily</text>
 
-  <line x1="470" y1="80" x2="470" y2="115" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="170" y1="110" x2="207" y2="110" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
 
-  <!-- Decision: LLM ready? -->
-  <polygon points="470,115 570,175 470,235 370,175" fill="#fff8c5" stroke="#9a6700" stroke-width="1.5"/>
-  <text x="470" y="170" text-anchor="middle" font-size="13" font-weight="600" fill="#9a6700">LLM reachable?</text>
-  <text x="470" y="188" text-anchor="middle" font-size="10" fill="#57606a">GET /models</text>
+  <!-- decision: LLM ready? -->
+  <polygon points="280,55 350,110 280,165 210,110" fill="#fff8c5" stroke="#9a6700" stroke-width="1.5"/>
+  <text x="280" y="106" text-anchor="middle" font-size="12" font-weight="600" fill="#9a6700">LLM</text>
+  <text x="280" y="120" text-anchor="middle" font-size="12" font-weight="600" fill="#9a6700">reachable?</text>
 
-  <!-- Yes branch -->
-  <line x1="570" y1="175" x2="680" y2="175" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow2)"/>
-  <text x="618" y="163" text-anchor="middle" font-size="11" fill="#1a7f37" font-weight="600">yes</text>
+  <!-- yes: run scrape -->
+  <line x1="350" y1="110" x2="387" y2="110" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <text x="368" y="98" text-anchor="middle" font-size="11" fill="#1a7f37" font-weight="600">yes</text>
 
-  <rect x="685" y="140" width="220" height="70" rx="10" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.5"/>
-  <text x="795" y="168" text-anchor="middle" font-size="14" font-weight="600" fill="#1a7f37">Run daily scrape</text>
-  <text x="795" y="186" text-anchor="middle" font-size="11" fill="#24292f">once-per-day stamp guard</text>
+  <rect x="390" y="75" width="220" height="70" rx="10" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="500" y="106" text-anchor="middle" font-size="14" font-weight="600" fill="#1a7f37">Run daily scrape</text>
+  <text x="500" y="124" text-anchor="middle" font-size="11" fill="#24292f">once-per-day stamp guard</text>
 
-  <!-- No branch: retry loop -->
-  <line x1="470" y1="235" x2="470" y2="270" stroke="#cf222e" stroke-width="1.5" marker-end="url(#arrow2)"/>
-  <text x="490" y="255" text-anchor="middle" font-size="11" fill="#cf222e" font-weight="600">no</text>
+  <!-- no: retry loop -->
+  <line x1="280" y1="165" x2="280" y2="193" stroke="#cf222e" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <text x="302" y="182" text-anchor="middle" font-size="11" fill="#cf222e" font-weight="600">no</text>
 
-  <rect x="335" y="270" width="270" height="70" rx="10" fill="#ffebe9" stroke="#cf222e" stroke-width="1.5"/>
-  <text x="470" y="298" text-anchor="middle" font-size="14" font-weight="600" fill="#cf222e">Wait 10 min, recheck</text>
-  <text x="470" y="317" text-anchor="middle" font-size="11" fill="#24292f">up to 6 tries (~1 hour)</text>
+  <rect x="165" y="195" width="230" height="55" rx="10" fill="#ffebe9" stroke="#cf222e" stroke-width="1.5"/>
+  <text x="280" y="219" text-anchor="middle" font-size="13" font-weight="600" fill="#cf222e">Wait 10 min, recheck</text>
+  <text x="280" y="237" text-anchor="middle" font-size="11" fill="#24292f">up to 6 tries (~1 hour)</text>
 
   <!-- loop back to decision -->
-  <path d="M 335 305 C 250 305, 250 175, 370 175" fill="none" stroke="#cf222e" stroke-width="1.5" marker-end="url(#arrow2)"/>
-  <text x="250" y="240" text-anchor="middle" font-size="10" fill="#cf222e">retry &lt; 6</text>
+  <path d="M 165 222 C 95 222, 95 110, 208 110" fill="none" stroke="#cf222e" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <text x="105" y="168" text-anchor="middle" font-size="10" fill="#cf222e">retry &lt; 6</text>
 
-  <!-- fall through to skip -->
-  <line x1="470" y1="340" x2="470" y2="375" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
-  <text x="500" y="362" text-anchor="middle" font-size="10" fill="#57606a">retry = 6</text>
+  <!-- after 6 tries: skip -->
+  <line x1="395" y1="222" x2="432" y2="222" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <text x="413" y="210" text-anchor="middle" font-size="10" fill="#57606a">retry = 6</text>
 
-  <rect x="360" y="375" width="220" height="45" rx="10" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
-  <text x="470" y="403" text-anchor="middle" font-size="13" font-weight="600" fill="#24292f">Skip the day</text>
-
-  <text x="470" y="14" text-anchor="middle" font-size="11" fill="#57606a"></text>
+  <rect x="435" y="197" width="170" height="50" rx="10" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+  <text x="520" y="227" text-anchor="middle" font-size="13" font-weight="600" fill="#24292f">Skip the day</text>
 </svg>
