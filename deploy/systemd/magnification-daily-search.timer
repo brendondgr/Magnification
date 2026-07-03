@@ -1,0 +1,16 @@
+[Unit]
+Description=Magnification daily job search timer (boot + daily)
+Documentation=file://{{REPO_ROOT}}/docs/plans/systemd-daily-search.md
+
+[Timer]
+# Fire shortly after the user manager starts at boot (linger is enabled, so the
+# user manager starts at boot without a login).
+OnBootSec=2min
+# ...and once per day at a fixed wall-clock time. Adjust to taste, e.g. 07:30.
+OnCalendar=*-*-* 09:00:00
+# If a scheduled run was missed (machine off at 09:00), run it soon after boot.
+Persistent=true
+Unit=magnification-daily-search.service
+
+[Install]
+WantedBy=timers.target

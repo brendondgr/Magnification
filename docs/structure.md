@@ -50,7 +50,8 @@ Magnification/
 │   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
 │   │   ├── llm/                # OpenAI-compatible client + endpoint config (recommendation system)
 │   │   ├── recommend/          # RAG/LLM recommendation: embedder, bm25, ranker, skills, compensation, service, keywords, profile_builder, runtime_config
-│   │   └── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD
+│   │   ├── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD
+│   │   └── scheduler/          # LLM-gated daily job-search runner + CLI (systemd-driven: llm_health, daily_runner, __main__)
 │   ├── frontend/
 │   │   ├── templates/          # index.html — single dc-runtime design export (no Jinja partials)
 │   │   └── static/             # js/dc-runtime.js (vendored React runtime)
@@ -61,7 +62,11 @@ Magnification/
 │   ├── test_config_loading.py
 │   ├── test_frontend_wiring.py # dc-runtime page + job/config API contract
 │   ├── database/               # Profile + JobAnalysis CRUD round-trip
+│   ├── scheduler/              # LLM-health probe + once-per-day runner (offline, mocked)
 │   └── docs/                   # Doc/skill-pointer verification tests
+│
+├── deploy/                     # Deployment assets (not app code)
+│   └── systemd/                # LLM-gated daily-search user units (.service/.timer) + install.sh/uninstall.sh
 │
 └── data/                       # SQLite database + local data (gitignored)
 ```
@@ -74,7 +79,9 @@ Magnification/
 | `docs/` | Source of truth: project docs, plans, and canonical skills. |
 | `docs/skills/` | Canonical skill definitions; agent folders only point here. |
 | `.claude/`, `.agents/`, `.cursor/` | Tool-specific pointer files. No canonical content. |
-| `utils/backend/` | API routes, scraping pipeline, and database layer. |
+| `utils/backend/` | API routes, scraping pipeline, database layer, and the scheduled daily-search runner. |
+| `utils/backend/scheduler/` | LLM-gated, once-per-day job-search runner + CLI invoked by the systemd units. |
+| `deploy/systemd/` | Systemd **user** units + installer for the automated daily search (see `deploy/systemd/README.md`). |
 | `utils/frontend/` | Jinja templates and static CSS/JS assets. |
 | `utils/LocalLLM/` | Self-contained local-LLM management library. |
 | `tests/` | Lightweight, area-grouped tests. |

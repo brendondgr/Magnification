@@ -1,0 +1,16 @@
+[Unit]
+Description=Magnification daily job search (LLM-gated)
+Documentation=file://{{REPO_ROOT}}/docs/plans/systemd-daily-search.md
+# Order after (and pull up) the local LLM router. Not being "ready" yet is fine:
+# the runner re-checks the LLM every 10 min, up to 6 times, before giving up.
+After=llamacpp-router.service
+Wants=llamacpp-router.service
+
+[Service]
+Type=oneshot
+# A single invocation may block up to ~1 hour (LLM re-check: 10 min x 6) plus the
+# scrape + per-job LLM-fit time, so do not impose a start timeout.
+TimeoutStartSec=infinity
+WorkingDirectory={{REPO_ROOT}}
+Environment=PYTHONUNBUFFERED=1
+ExecStart={{PYTHON}} -m utils.backend.scheduler

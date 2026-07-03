@@ -227,6 +227,34 @@ the top `top_n_llm` = 30 by `semantic+bm25`).
   real verdicts for every job needs an enabled endpoint (Options → LLM Endpoint) + "LLM re-rank"
   on. Note: uncapped fitting issues one LLM call **per analyzed job** — set `top_n_llm` > 0 to cap.
 
+## Systemd Daily Search (LLM-gated) — Definition of Done
+
+Plan: `docs/plans/systemd-daily-search.md`. Delivered on branch
+`systemd-daily-search` (worktree), committed per phase, merged to `main`.
+
+Requirement: on computer start-up (and daily), begin the daily search **only if
+the LLM is running**; if not, retry every 10 minutes up to 6 times (~1 h), else
+skip the day.
+
+- [x] (1/5) Worktree + plan doc
+- [x] (2/5) `utils/backend/scheduler` — `check_llm_ready()` (`GET {base_url}/models`),
+  `run_daily_search()` (once-per-day stamp guard; LLM re-check every 10 min ×6 then
+  give up; runs `execute_full_scraping_workflow` once on first success) + `python -m
+  utils.backend.scheduler` CLI (`--check-llm`, `--force`) + 14 offline tests
+- [x] (3/5) `deploy/systemd/` oneshot `.service` + boot/daily `.timer` templates +
+  `install.sh`/`uninstall.sh`/README; validated with `systemd-analyze --user verify`
+- [x] (4/5) Docs updated (`structure.md`, `workflow.md`, `documentation.md`, this
+  checklist, plan doc)
+- [ ] (5/5) Merge to `main`; install + enable the user timer from the main checkout;
+  verify it is enabled/scheduled (`systemctl --user list-timers`) without triggering
+  a live scrape
+- [x] Scheduler tests green (`pytest tests/scheduler`), `import app` clean; `--check-llm`
+  correctly reports LLM up (exit 0) / down (exit 1) live
+- [ ] **Live daily scrape** — not exercised end-to-end (would hit real job boards +
+  the LLM). The gate, retry, guard, and scrape-invocation paths are covered by
+  mocked tests + a live `--check-llm`; the real scrape runs at the next boot/daily
+  trigger when the LLM is up.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
