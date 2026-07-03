@@ -31,6 +31,7 @@ The primary table storing job listing information retrieved from web scrapers.
 - `description` (String) - Full job description
 - `compensation` (String) - Salary/compensation information
 - `ignore` (Integer, Default: 0) - Flag to exclude from application tracking (0 = track, 1 = ignore)
+- `saved` (Integer, Default: 0) - Flag pinning the job to the **Saved** lane (0 = not saved, 1 = saved). Saved jobs are hidden from the New Jobs feed and always shown under the Saved tab, even after being marked Applied. Independent of `ignore`. Indexed (`idx_jobs_saved`). Added to pre-existing databases by the idempotent `migrate_job_saved` migration.
 - `created_at` (DateTime, Default: Current timestamp) - When the job was added to the database
 - `updated_at` (DateTime, Default: Current timestamp) - Last update timestamp
 

@@ -257,6 +257,27 @@ skip the day.
   mocked tests + a live `--check-llm`; the real scrape runs at the next boot/daily
   trigger when the LLM is up.
 
+## Save Jobs (Saved lane) — Definition of Done
+
+Plan: `docs/plans/save-jobs.md`. Delivered on branch `save-jobs` (worktree), committed per
+phase, merged to `main`.
+
+Requirement: a **Save** button next to the Hide button on each job card moves the job out of
+New Jobs into a **Saved** tab; saved jobs always appear there, even once Applied.
+
+- [x] (1/3) `Job.saved` column (+ `idx_jobs_saved`) + idempotent `migrate_job_saved` (wired into
+  `_run_migrations`) + `set_job_saved()` + `saved` in `_job_to_dict` + `PATCH /api/jobs/<id>/save`;
+  isolated in-memory round-trip test (`tests/database/test_job_saved.py`)
+- [x] (2/3) Save button (right of Hide) on New Jobs cards + detail panel; `toggleSave` (optimistic
+  PATCH); new **Saved** tab (desktop + mobile nav) + grid; saved jobs excluded from New Jobs
+  (verified in-browser: Save pulls a card out of New Jobs and into Saved, persists, and a saved
+  job stays in Saved **and** appears on the Tracker after being marked Applied)
+- [x] (3/3) Docs updated (`api-contract.md`, `database.md`, `component-map.md`, `structure.md`,
+  this checklist, plan) + merged to `main`
+- [x] All tests green (offline subset: `tests/database` + `tests/test_frontend_wiring.py`),
+  `import app` clean; UI verified via preview tools (DOM/eval — screenshot tooling timed out in
+  this environment, as noted for prior UI work)
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
