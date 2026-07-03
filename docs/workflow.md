@@ -45,6 +45,30 @@ not cached, and all LLM-dependent tests run against a mocked endpoint (no networ
 
 > Lint/format/type-check tools are not yet configured. Adding `ruff` (lint+format) is a recommended follow-up in `docs/checklist.md`.
 
+## Scheduled Daily Search (systemd)
+
+The daily job search can run automatically via **systemd user units** (the LLM
+runs as the user service `llamacpp-router.service`, and lingering is enabled, so
+user units start at boot). Units + installer live in `deploy/systemd/`; the
+runner is `utils/backend/scheduler` (`python -m utils.backend.scheduler`).
+
+Behaviour: on boot and once per day it runs the scrape **only if the LLM is
+reachable** (`GET {base_url}/models` from `config/llm_endpoint_config.json`).
+If not, it re-checks every 10 min up to 6 times (~1 h), then skips the day. A
+once-per-day stamp (`data/daily_search_state.json`) prevents duplicate runs. See
+`docs/plans/systemd-daily-search.md` for the design.
+
+| Task | Command |
+| --- | --- |
+| Install + enable (from the checkout to run) | `deploy/systemd/install.sh` |
+| Probe the LLM gate (no scrape) | `.venv/bin/python -m utils.backend.scheduler --check-llm` |
+| Force a run now (bypass daily guard) | `.venv/bin/python -m utils.backend.scheduler --force` |
+| Inspect schedule / logs | `systemctl --user list-timers magnification-daily-search.timer --all` · `journalctl --user -u magnification-daily-search.service -e` |
+| Uninstall | `deploy/systemd/uninstall.sh` |
+
+> The units run `.venv/bin/python` directly (not `uv run`) to avoid any
+> lock/sync/network attempt at boot; `install.sh` errors if the venv is missing.
+
 ## Testing & Verification
 
 - Tests live in top-level `tests/`, grouped by area (`tests/<area>/test_<behavior>.py`).

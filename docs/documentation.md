@@ -62,4 +62,8 @@ These existing references remain canonical for their subsystems:
   safe); analysis scores only the keyword-filtered remainder, ranks by semantic+bm25, sends the
   top 30 to the LLM for a 2–3 sentence fit verdict, and folds that verdict into the score (LLM
   weight 0.40, renormalized when unavailable); score weights are sliders that must total 1.0.
+- **Automated daily search complete:** `utils/backend/scheduler` + `deploy/systemd/`
+  user units run the scrape on boot and daily, **gated on the LLM being reachable**
+  (re-checks every 10 min ×6, else skips the day; once-per-day stamp). See
+  `docs/plans/systemd-daily-search.md`.
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.
