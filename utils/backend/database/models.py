@@ -32,6 +32,9 @@ class Job(Base):
         compensation: Salary/compensation information
         site: The job board site where the job was found
         ignore: Flag to exclude from application tracking (0=track, 1=ignore)
+        saved: Flag pinning the job to the Saved lane (0=not saved, 1=saved). Saved jobs
+            are hidden from the New Jobs feed and always shown under the Saved tab, even
+            after they are marked Applied.
         created_at: When the job was added to the database
         updated_at: Last update timestamp
     """
@@ -46,6 +49,7 @@ class Job(Base):
     compensation = Column(String(255), nullable=True)
     site = Column(String(50), nullable=True)
     ignore = Column(Integer, default=0)
+    saved = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -61,11 +65,16 @@ class Job(Base):
     __table_args__ = (
         Index('idx_jobs_company', 'company'),
         Index('idx_jobs_ignore', 'ignore'),
+        Index('idx_jobs_saved', 'saved'),
     )
-    
+
     def is_ignored(self) -> bool:
         """Check if job is marked as ignored."""
         return self.ignore == 1
+
+    def is_saved(self) -> bool:
+        """Check if job is marked as saved (pinned to the Saved lane)."""
+        return self.saved == 1
     
     def __repr__(self):
         return f"<Job(id={self.id}, title='{self.title}', company='{self.company}')>"

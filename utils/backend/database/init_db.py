@@ -38,8 +38,10 @@ def _run_migrations():
     """Run idempotent additive migrations for databases created before newer columns."""
     from .migrate_profile_blocklists import migrate as migrate_profile_blocklists
     from .migrate_profile_llm_instructions import migrate as migrate_profile_llm_instructions
+    from .migrate_job_saved import migrate as migrate_job_saved
     migrate_profile_blocklists()
     migrate_profile_llm_instructions()
+    migrate_job_saved()
 
 
 def get_db_session() -> Session:

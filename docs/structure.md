@@ -50,7 +50,7 @@ Magnification/
 │   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
 │   │   ├── llm/                # OpenAI-compatible client + endpoint config (recommendation system)
 │   │   ├── recommend/          # RAG/LLM recommendation: embedder, bm25, ranker, skills, compensation, service, keywords, profile_builder, runtime_config
-│   │   ├── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD
+│   │   ├── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD, idempotent migrations (incl. migrate_job_saved)
 │   │   └── scheduler/          # LLM-gated daily job-search runner + CLI (systemd-driven: llm_health, daily_runner, __main__)
 │   ├── frontend/
 │   │   ├── templates/          # index.html — single dc-runtime design export (no Jinja partials)

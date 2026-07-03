@@ -252,6 +252,23 @@ def set_job_ignore(job_id: int, ignore_value: int = 1) -> bool:
     return update_job(job_id, {'ignore': ignore_value})
 
 
+def set_job_saved(job_id: int, saved_value: int = 1) -> bool:
+    """
+    Toggle the saved flag on a job.
+
+    Saving a job pins it to the Saved lane: it leaves the New Jobs feed and always
+    appears under the Saved tab (independent of the ignore flag and application status).
+
+    Args:
+        job_id: ID of the job to update
+        saved_value: 1 to save, 0 to unsave
+
+    Returns:
+        bool: True if job was updated successfully
+    """
+    return update_job(job_id, {'saved': saved_value})
+
+
 def get_jobs_by_ids(job_ids: List[int]) -> List[Dict[str, Any]]:
     """
     Retrieve multiple jobs by their IDs.
@@ -623,6 +640,7 @@ def _job_to_dict(job: Job) -> Dict[str, Any]:
         'compensation': job.compensation,
         'site': job.site,
         'ignore': job.ignore,
+        'saved': job.saved,
         'created_at': job.created_at.isoformat() if job.created_at else None,
         'updated_at': job.updated_at.isoformat() if job.updated_at else None,
     }
