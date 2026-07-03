@@ -245,9 +245,11 @@ skip the day.
   `install.sh`/`uninstall.sh`/README; validated with `systemd-analyze --user verify`
 - [x] (4/5) Docs updated (`structure.md`, `workflow.md`, `documentation.md`, this
   checklist, plan doc)
-- [ ] (5/5) Merge to `main`; install + enable the user timer from the main checkout;
-  verify it is enabled/scheduled (`systemctl --user list-timers`) without triggering
-  a live scrape
+- [x] (5/5) Merged to `main`; installed + enabled the user timer from the main
+  checkout (`~/.config/systemd/user/`, symlinked into `timers.target.wants`);
+  verified `is-enabled=enabled` and next daily elapse `2026-07-04 09:00 EDT`
+  (`systemd-analyze calendar`); no live scrape triggered. Not started this session
+  — it activates at the next boot (`OnBootSec` + `OnCalendar`).
 - [x] Scheduler tests green (`pytest tests/scheduler`), `import app` clean; `--check-llm`
   correctly reports LLM up (exit 0) / down (exit 1) live
 - [ ] **Live daily scrape** — not exercised end-to-end (would hit real job boards +
