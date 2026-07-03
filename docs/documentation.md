@@ -23,7 +23,7 @@ Primary users: the developer (single-user, local-first). It is not a multi-tenan
 
 Magnification is a **Flask/Jinja monolith** (Mode F in `docs/skills/repository-structure/structures/web-interfaces.md`):
 
-- `app.py` boots Flask, registers the blueprints (config, scrape, job, llm, options, profile, recommend), initializes the SQLite database and logger, and serves the dc-runtime `index.html`.
+- `app.py` boots Flask, registers the blueprints (config, scrape, job, llm, options, profile, recommend), initializes the SQLite database and logger, and serves the dc-runtime `index.html`. It listens on port **13374** by default (`PORT` overrides; `FLASK_DEBUG=0` disables the reloader) and can run on boot via `deploy/systemd/magnification-web.service`.
 - `utils/backend/` holds the API blueprints, scraping pipeline, and database layer.
 - `utils/frontend/` holds Jinja templates (`templates/`) and static assets (`static/css`, `static/js`).
 - `utils/LocalLLM/` is a self-contained local-LLM management library exposed through the `llm` blueprint.

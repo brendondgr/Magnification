@@ -10,9 +10,18 @@ Magnification is a **local-first, single-user** Flask application. It currently 
 | --- | --- |
 | Install deps | `uv sync` |
 | Run | `uv run app.py` |
-| URL | `http://127.0.0.1:5000` |
+| URL | `http://127.0.0.1:13374` |
 
-`app.py` runs `application.run(debug=True)` when executed directly.
+`app.py` listens on port **13374** by default (override with `PORT`), and runs
+with the Flask debugger/auto-reloader on unless `FLASK_DEBUG=0`.
+
+## Run on boot (systemd)
+
+The web app can start automatically at boot as the systemd **user** service
+`magnification-web.service` (runs `app.py` with `FLASK_DEBUG=0`, `PORT=13374`,
+`Restart=on-failure`). Install/enable it — alongside the daily-search timer —
+with `deploy/systemd/install.sh` (add `--now` to also start the web app in the
+current session). See `deploy/systemd/README.md`.
 
 ## Runtime Dependencies
 

@@ -40,5 +40,8 @@ def index():
 
 if __name__ == '__main__':
     # PORT env override lets the dev server run alongside other instances
-    # (e.g. a worktree preview next to the main checkout).
-    application.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+    # (e.g. a worktree preview next to the main checkout). Default 13374.
+    # FLASK_DEBUG=0 disables the debugger/auto-reloader — used by the systemd
+    # service, where the reloader's forking would fight the service supervisor.
+    debug = os.environ.get('FLASK_DEBUG', '1') != '0'
+    application.run(debug=debug, port=int(os.environ.get('PORT', 13374)))

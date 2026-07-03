@@ -38,33 +38,37 @@ not cached, and all LLM-dependent tests run against a mocked endpoint (no networ
 | --- | --- |
 | Install / sync deps | `uv sync` |
 | Add a dependency | `uv add <package>` |
-| Run the app (dev) | `uv run app.py` (Flask dev server, `debug=True`, default `http://127.0.0.1:5000`) |
+| Run the app (dev) | `uv run app.py` (Flask dev server, default `http://127.0.0.1:13374`; `PORT` overrides, `FLASK_DEBUG=0` disables the reloader) |
 | Run tests | `uv run pytest` |
 | Run a single test | `uv run pytest tests/<area>/test_<name>.py` |
 | Smoke-check import | `uv run python -c "import app; print('ok')"` |
 
 > Lint/format/type-check tools are not yet configured. Adding `ruff` (lint+format) is a recommended follow-up in `docs/checklist.md`.
 
-## Scheduled Daily Search (systemd)
+## Run on boot (systemd)
 
-The daily job search can run automatically via **systemd user units** (the LLM
-runs as the user service `llamacpp-router.service`, and lingering is enabled, so
-user units start at boot). Units + installer live in `deploy/systemd/`; the
-runner is `utils/backend/scheduler` (`python -m utils.backend.scheduler`).
+Two things can start automatically via **systemd user units** (lingering is
+enabled, so user units start at boot). Units + installer live in
+`deploy/systemd/`; `deploy/systemd/install.sh` installs + enables both.
 
-Behaviour: on boot and once per day it runs the scrape **only if the LLM is
-reachable** (`GET {base_url}/models` from `config/llm_endpoint_config.json`).
-If not, it re-checks every 10 min up to 6 times (~1 h), then skips the day. A
-once-per-day stamp (`data/daily_search_state.json`) prevents duplicate runs. See
-`docs/plans/systemd-daily-search.md` for the design.
+- **`magnification-web.service`** — the Flask web app on
+  `http://127.0.0.1:13374` (`FLASK_DEBUG=0`, `Restart=on-failure`).
+- **`magnification-daily-search.timer` + `.service`** — the LLM-gated daily
+  scrape. On boot and once per day it runs the scrape **only if the LLM is
+  reachable** (`GET {base_url}/models` from `config/llm_endpoint_config.json`);
+  otherwise it re-checks every 10 min up to 6 times (~1 h), then skips the day.
+  A once-per-day stamp (`data/daily_search_state.json`) prevents duplicate runs.
+  Runner: `utils/backend/scheduler` (`python -m utils.backend.scheduler`). See
+  `docs/plans/systemd-daily-search.md`.
 
 | Task | Command |
 | --- | --- |
-| Install + enable (from the checkout to run) | `deploy/systemd/install.sh` |
+| Install + enable both (from the checkout to run) | `deploy/systemd/install.sh` (`--now` also starts the web app now) |
+| Web app status / logs | `systemctl --user status magnification-web.service` · `journalctl --user -u magnification-web.service -e` |
 | Probe the LLM gate (no scrape) | `.venv/bin/python -m utils.backend.scheduler --check-llm` |
-| Force a run now (bypass daily guard) | `.venv/bin/python -m utils.backend.scheduler --force` |
-| Inspect schedule / logs | `systemctl --user list-timers magnification-daily-search.timer --all` · `journalctl --user -u magnification-daily-search.service -e` |
-| Uninstall | `deploy/systemd/uninstall.sh` |
+| Force a scrape now (bypass daily guard) | `.venv/bin/python -m utils.backend.scheduler --force` |
+| Inspect scrape schedule / logs | `systemctl --user list-timers magnification-daily-search.timer --all` · `journalctl --user -u magnification-daily-search.service -e` |
+| Uninstall both | `deploy/systemd/uninstall.sh` |
 
 > The units run `.venv/bin/python` directly (not `uv run`) to avoid any
 > lock/sync/network attempt at boot; `install.sh` errors if the venv is missing.
