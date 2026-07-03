@@ -64,6 +64,21 @@ def ignore_job(job_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@job_bp.route('/api/jobs/<int:job_id>/save', methods=['PATCH'])
+def save_job(job_id):
+    """Toggle the saved flag on a job (pins it to the Saved lane)."""
+    try:
+        data = request.json or {}
+        saved_value = data.get('saved', 1)
+
+        success = db_ops.set_job_saved(job_id, saved_value)
+        if success:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'message': 'Job not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @job_bp.route('/api/jobs/<int:job_id>/status', methods=['PATCH'])
 def update_status(job_id):
     """Update application status."""
