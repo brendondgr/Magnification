@@ -21,6 +21,7 @@ SKILLS = [
     "repository-structure",
     "website-architecture",
     "accessibility-mobile",
+    "portfolio-readme",
 ]
 
 CANONICAL_DOCS = [

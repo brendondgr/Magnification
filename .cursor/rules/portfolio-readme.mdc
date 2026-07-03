@@ -1,0 +1,15 @@
+---
+description: Creates and audits GitHub portfolio material — profile READMEs, per-project READMEs, and repo pinning/organization strategy. Use when writing, improving, or reviewing a README; making a repo or profile "portfolio-ready"; deciding what to pin; or preparing for a job/internship/PhD-internship application.
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# Portfolio README
+
+Read these files before acting:
+
+1. `docs/skills/global-project-rules/SKILL.md`
+2. `docs/skills/portfolio-readme/SKILL.md`
+3. `docs/skills/portfolio-readme/references/project-readme-template.md`
+4. `docs/skills/portfolio-readme/references/profile-readme-template.md`
+5. `docs/skills/portfolio-readme/references/research-portfolio-guide.md` (research track only)

@@ -38,7 +38,8 @@ Magnification/
 │       ├── planner/
 │       ├── repository-structure/
 │       ├── website-architecture/
-│       └── accessibility-mobile/
+│       ├── accessibility-mobile/
+│       └── portfolio-readme/
 │
 ├── .claude/skills/             # Claude Code pointer files → docs/skills
 ├── .agents/skills/             # OpenAI Codex pointer files → docs/skills

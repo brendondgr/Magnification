@@ -30,6 +30,7 @@ For any web/UI/route/data-flow work, also read `docs/architecture.md`, `docs/rou
 - `docs/skills/repository-structure/` — repository layout standards.
 - `docs/skills/website-architecture/` — web app structure, routes, data flow, design-quality gate.
 - `docs/skills/accessibility-mobile/` — mobile-responsive and touch accessibility checks.
+- `docs/skills/portfolio-readme/` — write/audit GitHub profile and project READMEs, and repo pinning/curation advice.
 
 ## Environment Manager
 
