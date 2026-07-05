@@ -28,7 +28,7 @@ the rest rescaled) — exactly as if the LLM weren't configured.
 | `embedder.py` | fastembed bge-small singleton; batch/parallel embed; float32 byte (de)serialization; cosine. |
 | `bm25.py` | rank_bm25 index + tokenizer; raw + normalized scores. |
 | `skills.py` | gazetteer skill extractor (+ optional LLM); `match_profile_skills`. |
-| `compensation.py` | LLM compensation extraction — recovers pay from the description prose for jobs the board left blank (parallel `chat_many`); returns None when no pay is stated (never fabricates). Gated by `enable_llm_compensation` + an enabled endpoint; runs in the scrape pipeline before storage. |
+| `compensation.py` | LLM compensation extraction — recovers pay from the description prose for jobs the board left blank (parallel `chat_many`); returns None when no pay is stated (never fabricates). Gated by `enable_llm_compensation` + an enabled endpoint; runs in the scrape pipeline before storage **and** during `analyze_jobs` (so "Analyze Matches" backfills pay for existing jobs). |
 | `ranker.py` | pure hybrid scoring (no I/O) — unit-tested with fake vectors. |
 | `service.py` | orchestration: embed-on-retrieve (reuse stored vectors), skill extraction, scoring, persist `JobAnalysis`; builds the ranked report. |
 | `runtime_config.py` | parallelism + toggles + weights (`config/runtime_config.json`). |
@@ -43,14 +43,19 @@ Scrape completes → scraping_service (if runtime.enable_analysis and an active 
           [jobs_config Title/Description keywords + profile block rules: blocked companies,
            title blocklist, scoped keyword groups — see docs/profile.md]
         → embed missing job descriptions (parallel, fastembed)         [embed-on-retrieve]
+        → recover missing compensation from descriptions (LLM, when enable_llm_compensation
+          + endpoint enabled) and persist it                            [gap-fill]
         → extract skills (gazetteer, or LLM batch if enabled)
         → ranker.rank_batch → semantic/bm25/keyword/skill scores
-        → LLM fit verdict on **all** analyzed jobs by default (2-3 sentences, weighs what the
-          company wants); optional `top_n_llm` cap (0 = all, N>0 = top-N by semantic+bm25)
-          → fold `llm` into rag_score (renormalized when absent)
+        → seed any existing stored LLM verdict onto the fresh analysis  [preserve]
+        → LLM fit verdict only for jobs that don't already have one (gap-fill; 2-3 sentences,
+          weighs what the company wants); optional `top_n_llm` cap on the remainder
+          (0 = all, N>0 = top-N by semantic+bm25) → fold `llm` into rag_score (renormalized
+          when absent)
         → save_job_analysis per job (JobAnalysis table)
 
-Manual: POST /api/recommend/analyze  (re-score on demand, e.g. after editing the profile)
+Manual: POST /api/recommend/analyze  ("Analyze Matches" — gap-fills LLM fit + compensation for
+        non-ignored jobs; pass reanalyze_all=true to re-score every job, e.g. after a profile edit)
 Read:   GET  /api/jobs?with_analysis=1   → each job carries its `analysis`
         GET  /api/recommend/report       → jobs ranked by rag_score
 ```

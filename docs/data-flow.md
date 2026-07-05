@@ -84,11 +84,13 @@ to call, while `utils/LocalLLM` manages *running* a local one.
 ## Recommendation Analysis Flow
 
 ```
-Scrape completes (or POST /api/recommend/analyze)
-   → recommend.service.analyze_jobs(job_ids)
+Scrape completes (or POST /api/recommend/analyze — "Analyze Matches")
+   → recommend.service.analyze_jobs(job_ids, llm_only_missing=not reanalyze_all)
        → embed missing job descriptions (fastembed, parallel)   [embed-on-retrieve]
+       → recover missing compensation from descriptions (LLM)   [gap-fill, non-ignored jobs]
        → extract skills (gazetteer, or LLM batch if enabled)
        → ranker.rank_batch (semantic + bm25 + keyword-group + skill → rag_score)
+       → LLM fit verdict only for jobs missing one (gap-fill; reanalyze_all re-scores all)
        → save_job_analysis → JobAnalysis table
 Read: GET /api/jobs?with_analysis=1  /  GET /api/recommend/report  → match badges + detail breakdown
 ```

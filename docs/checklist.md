@@ -257,6 +257,35 @@ skip the day.
   mocked tests + a live `--check-llm`; the real scrape runs at the next boot/daily
   trigger when the LLM is up.
 
+## LLM Re-analyze Missing (Analyze Matches gap-fill) — Definition of Done
+
+Plan: `docs/plans/llm-reanalyze-missing.md`. Delivered on branch `llm-reanalyze-missing`
+(worktree), committed per phase, merged to `main`.
+
+Requirement: "Analyze Matches" should **gap-fill** — re-run the LLM fit verdict across
+non-ignored jobs that don't yet have one (the LLM fit is the dominant match weight), and
+re-extract hourly/salary pay from the description when it's still unspecified. Only ignored
+jobs are excluded (saved jobs are included).
+
+- [x] (1/5) Worktree + plan doc
+- [x] (2/5) `analyze_jobs` seeds existing stored LLM verdicts onto fresh analyses (preserved +
+  folded into `rag_score`); `_llm_rerank` gains `llm_only_missing` (default True) → issues
+  verdicts only for jobs lacking one, honoring `top_n_llm` on the remainder, and returns the
+  new-verdict count
+- [x] (3/5) `_recover_compensation` extracts pay from the description for non-ignored jobs still
+  missing it (gated by `enable_llm_compensation` + endpoint) and persists via `update_job`;
+  summary returns `llm_analyzed` + `compensation_extracted`
+- [x] (4/5) `/api/recommend/analyze` accepts optional `reanalyze_all` (→ `llm_only_missing`);
+  `analyzeJobs` toast surfaces new LLM-fit + compensation counts
+- [x] (5/5) Tests (`tests/recommend/test_analyze_gapfill.py`: gap-fill selection, reanalyze-all,
+  compensation recovery/persistence, disabled-toggle no-ops) + docs (`api-contract.md`,
+  `data-flow.md`, `recommendation.md`, this checklist) + merge
+- [x] Offline test subset green (`tests/recommend`, `tests/database`, `tests/test_frontend_wiring.py`),
+  `import app` clean
+- [ ] **Live gap-fill with a real LLM endpoint** — the gap-fill selection, verdict preservation,
+  and compensation recovery are covered by mocked-client tests; filling real verdicts/pay needs an
+  enabled endpoint (Options → LLM Endpoint) with "LLM re-rank" + "LLM compensation extraction" on.
+
 ## Save Jobs (Saved lane) — Definition of Done
 
 Plan: `docs/plans/save-jobs.md`. Delivered on branch `save-jobs` (worktree), committed per
