@@ -20,10 +20,18 @@ from utils.backend.llm.client import OpenAIClient
 def analyze_jobs(job_ids: Optional[List[int]] = None,
                  profile: Optional[Dict[str, Any]] = None,
                  runtime: Optional[Dict[str, Any]] = None,
-                 progress_callback=None) -> Dict[str, Any]:
+                 progress_callback=None,
+                 llm_only_missing: bool = True) -> Dict[str, Any]:
     """
-    Embed + score the given jobs (or all jobs) against the active profile and persist a
-    JobAnalysis per job. Returns a summary dict.
+    Embed + score the given jobs (or all non-ignored jobs) against the active profile and
+    persist a JobAnalysis per job. Returns a summary dict.
+
+    When ``llm_only_missing`` is True (the default, used by the "Analyze Matches" button),
+    the LLM fit verdict is issued **only for jobs that do not yet have one** — existing
+    verdicts are preserved and folded back into ``rag_score`` without another LLM call. This
+    makes the action a gap-filler so every non-ignored job eventually gets an LLM fit
+    percentage. Pass ``llm_only_missing=False`` to force a fresh verdict on every job (e.g.
+    after a profile change). Missing compensation is likewise recovered from the description.
     """
     profile = profile or db_ops.get_active_profile()
     if not profile:
@@ -40,8 +48,15 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
 
     weights = runtime.get("weights") or ranker.DEFAULT_WEIGHTS
 
+    # Stored verdicts for these jobs: used to preserve existing LLM fit scores and to spend
+    # LLM calls only on jobs that still lack one when ``llm_only_missing`` is set.
+    stored = db_ops.get_analysis_for_jobs([j["id"] for j in jobs])
+
     _report(progress_callback, "embedding", 10, f"Embedding {len(jobs)} jobs…")
     job_vecs = _ensure_embeddings(jobs, runtime)
+
+    _report(progress_callback, "compensation", 40, "Recovering missing compensation…")
+    comp_recovered = _recover_compensation(jobs, runtime)
 
     _report(progress_callback, "skills", 45, "Extracting skills…")
     skills_map = _extract_skills_for_jobs(jobs, profile, runtime)
@@ -60,9 +75,19 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     # Preliminary scores from semantic/bm25/keyword/skill (llm folded in below).
     analyses = ranker.rank_batch(profile, profile_vec, rjobs, weights=weights)
 
+    # Carry forward any existing LLM verdict so it survives re-scoring and folds into
+    # rag_score even when we don't re-query the LLM for it.
+    for j, an in zip(jobs, analyses):
+        prev = stored.get(j["id"])
+        if prev and prev.get("llm_score") is not None:
+            an["llm_score"] = prev.get("llm_score")
+            an["llm_rationale"] = prev.get("llm_rationale")
+
+    llm_new = 0
     if runtime.get("enable_llm_rerank"):
-        _report(progress_callback, "llm", 90, "LLM fit verdict on all matches…")
-        _llm_rerank(jobs, analyses, profile, runtime)
+        _report(progress_callback, "llm", 90, "LLM fit verdict on matches missing one…")
+        llm_new = _llm_rerank(jobs, analyses, profile, runtime,
+                              llm_only_missing=llm_only_missing)
 
     # Fold the LLM verdict into rag_score. Jobs with no verdict (offline, or excluded by an
     # optional top_n_llm cap) renormalize over the remaining signals (combined_score handles it).
@@ -98,6 +123,8 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     return {
         "success": True,
         "analyzed": len(analyses),
+        "llm_analyzed": llm_new,
+        "compensation_extracted": comp_recovered,
         "profile_id": profile["id"],
         "top": ranked[:30],
     }
@@ -182,31 +209,39 @@ _LLM_VERDICT_PROMPT = (
 )
 
 
-def _llm_rerank(jobs, analyses, profile, runtime) -> None:
+def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True) -> int:
     """
-    Add llm_score + llm_rationale (in place) to the analyzed jobs.
+    Add llm_score + llm_rationale (in place) to the analyzed jobs. Returns the number of new
+    verdicts issued.
 
-    By default **every** analyzed job gets an LLM fit verdict. ``top_n_llm`` is an optional
-    cost cap: ``0`` (or missing/negative) means no cap → all jobs; a positive value limits the
-    verdict to that many top candidates by **semantic + bm25** (the lexical/vector relevance).
+    When ``llm_only_missing`` is True, jobs that already carry a verdict (``llm_score`` set,
+    e.g. seeded from a prior analysis) are skipped so "Analyze Matches" only fills the gaps.
+    ``top_n_llm`` is an optional cost cap on the remaining candidates: ``0`` (or
+    missing/negative) means no cap → all of them; a positive value limits the verdict to that
+    many top candidates by **semantic + bm25** (the lexical/vector relevance).
     """
     cfg = load_llm_endpoint_config()
     if not cfg.get("enabled"):
-        return
+        return 0
     if not analyses:
-        return
+        return 0
+    candidates = [
+        i for i in range(len(analyses))
+        if not (llm_only_missing and analyses[i].get("llm_score") is not None)
+    ]
     top_n = int(runtime.get("top_n_llm", 0) or 0)
     if top_n > 0:
         order = sorted(
-            range(len(analyses)),
+            candidates,
             key=lambda i: (analyses[i].get("semantic_score") or 0.0) + (analyses[i].get("bm25_score") or 0.0),
             reverse=True,
         )[:top_n]
     else:
-        order = list(range(len(analyses)))
+        order = candidates
     if not order:
-        return
+        return 0
     profile_summary = ranker.build_profile_query(profile)[:2000]
+    updated = 0
     try:
         client = OpenAIClient.from_config(cfg)
         messages = [[
@@ -220,10 +255,46 @@ def _llm_rerank(jobs, analyses, profile, runtime) -> None:
         for idx, verdict in zip(order, results):
             if isinstance(verdict, dict):
                 score = verdict.get("score")
-                analyses[idx]["llm_score"] = float(score) if isinstance(score, (int, float)) else None
-                analyses[idx]["llm_rationale"] = verdict.get("rationale")
+                if isinstance(score, (int, float)):
+                    analyses[idx]["llm_score"] = float(score)
+                    analyses[idx]["llm_rationale"] = verdict.get("rationale")
+                    updated += 1
+                else:
+                    analyses[idx]["llm_score"] = None
     except Exception as e:
         logger.warning(f"LLM re-rank failed (non-fatal): {e}")
+    return updated
+
+
+def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any]) -> int:
+    """
+    Fill in missing compensation for the given (non-ignored) jobs by extracting it from the
+    description via the LLM, persisting each recovered value. Returns the number recovered.
+
+    Gated by the ``enable_llm_compensation`` runtime toggle and the LLM endpoint being
+    enabled; a no-op (returns 0) otherwise. Mirrors the scraping-pipeline recovery so the
+    "Analyze Matches" action also backfills pay the board listing never provided.
+    """
+    if not runtime.get("enable_llm_compensation"):
+        return 0
+    cfg = load_llm_endpoint_config()
+    if not cfg.get("enabled"):
+        return 0
+    from .compensation import extract_compensation_llm, needs_compensation
+    pending = [j for j in jobs if needs_compensation(j)]
+    if not pending:
+        return 0
+    try:
+        client = OpenAIClient.from_config(cfg)
+        extracted = extract_compensation_llm(
+            jobs, client, max_workers=int(runtime.get("llm_workers", 4)))
+        for j in pending:
+            if j.get("compensation"):
+                db_ops.update_job(j["id"], {"compensation": j["compensation"]})
+        return extracted
+    except Exception as e:
+        logger.warning(f"Compensation recovery failed (non-fatal): {e}")
+        return 0
 
 
 def _report(cb, stage, percent, message):
