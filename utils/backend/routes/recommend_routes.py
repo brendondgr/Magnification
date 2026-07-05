@@ -16,13 +16,20 @@ recommend_bp = Blueprint("recommend_bp", __name__)
 
 @recommend_bp.route("/api/recommend/analyze", methods=["POST"])
 def analyze():
-    """Embed + score jobs against the active profile. Body: optional {job_ids:[...]}."""
+    """
+    Embed + score jobs against the active profile.
+
+    Body (all optional): ``{job_ids:[...], reanalyze_all: bool}``. By default the LLM fit
+    verdict only fills jobs that don't have one yet (gap-fill); pass ``reanalyze_all: true``
+    to force a fresh verdict on every job.
+    """
     if db_ops.get_active_profile() is None:
         return jsonify({"success": False, "message": "Create a profile first."}), 400
     data = request.json or {}
     job_ids = data.get("job_ids")
+    reanalyze_all = bool(data.get("reanalyze_all"))
     try:
-        result = service.analyze_jobs(job_ids=job_ids)
+        result = service.analyze_jobs(job_ids=job_ids, llm_only_missing=not reanalyze_all)
         status = 200 if result.get("success") else 400
         return jsonify(result), status
     except Exception as e:

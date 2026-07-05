@@ -1417,7 +1417,7 @@ class Component extends DCLogic {
       .then(r=>r.json())
       .then(d=>{
         this.setState({analyzing:false});
-        if(d.success){ this.showToast('Analyzed '+(d.analyzed||0)+' jobs'); this.setState({sortByMatch:true}); this.loadJobs(); }
+        if(d.success){ var msg='Analyzed '+(d.analyzed||0)+' jobs'; if(d.llm_analyzed){ msg+=' · '+d.llm_analyzed+' new LLM fit'+(d.llm_analyzed===1?'':'s'); } if(d.compensation_extracted){ msg+=' · '+d.compensation_extracted+' pay recovered'; } this.showToast(msg); this.setState({sortByMatch:true}); this.loadJobs(); }
         else { this.showToast(d.message||'Analysis failed'); }
       })
       .catch(e=>{ console.error(e); this.setState({analyzing:false}); this.showToast('Analysis failed'); });
