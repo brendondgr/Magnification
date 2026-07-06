@@ -55,7 +55,11 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     _report(progress_callback, "embedding", 10, f"Embedding {len(jobs)} jobs…")
     job_vecs = _ensure_embeddings(jobs, runtime)
 
-    _report(progress_callback, "compensation", 40, "Recovering missing compensation…")
+    from .compensation import needs_compensation
+    n_missing_comp = sum(1 for j in jobs if needs_compensation(j))
+    _report(progress_callback, "compensation", 40,
+            (f"Recovering compensation for {n_missing_comp} job(s)…" if n_missing_comp
+             else "Compensation already present — nothing to recover."))
     comp_recovered = _recover_compensation(jobs, runtime)
 
     _report(progress_callback, "skills", 45, "Extracting skills…")
@@ -85,7 +89,11 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
 
     llm_new = 0
     if runtime.get("enable_llm_rerank"):
-        _report(progress_callback, "llm", 90, "LLM fit verdict on matches missing one…")
+        n_for_llm = (sum(1 for an in analyses if an.get("llm_score") is None)
+                     if llm_only_missing else len(analyses))
+        _report(progress_callback, "llm", 90,
+                (f"LLM fit verdict on {n_for_llm} of {len(analyses)} job(s)…" if n_for_llm
+                 else f"All {len(analyses)} job(s) already have an LLM fit."))
         llm_new = _llm_rerank(jobs, analyses, profile, runtime,
                               llm_only_missing=llm_only_missing)
 
@@ -118,7 +126,9 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
         }
         db_ops.save_job_analysis(j["id"], payload, profile_id=profile["id"])
 
-    _report(progress_callback, "completed", 100, f"Analyzed {len(analyses)} jobs.")
+    summary_msg = (f"Analyzed {len(analyses)} jobs · {llm_new} new LLM fit"
+                   f"{'' if llm_new == 1 else 's'} · {comp_recovered} pay recovered.")
+    _report(progress_callback, "completed", 100, summary_msg)
     ranked = sorted(analyses, key=lambda a: a.get("rag_score") or 0.0, reverse=True)
     return {
         "success": True,

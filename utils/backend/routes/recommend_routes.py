@@ -3,6 +3,11 @@ Recommendation API: run the RAG analysis over jobs and read back the ranked repo
 (LLM keyword generation is added in a later phase.)
 """
 
+import threading
+import time
+import uuid
+from typing import Any, Dict
+
 from flask import Blueprint, request, jsonify
 from loguru import logger
 
@@ -12,6 +17,57 @@ from utils.backend.llm.config import load_llm_endpoint_config
 from utils.backend.llm.client import OpenAIClient, LLMConfigError
 
 recommend_bp = Blueprint("recommend_bp", __name__)
+
+# In-memory store for background analyze tasks, mirroring scrape_routes.scrape_jobs.
+# Format: { job_id: {status, progress, events:[...], results, start_time, end_time, error} }
+analyze_tasks: Dict[str, Any] = {}
+
+
+def _cleanup_old_analyze_tasks() -> None:
+    """Drop finished analyze tasks older than an hour to bound memory."""
+    now = time.time()
+    for jid in list(analyze_tasks.keys()):
+        rec = analyze_tasks[jid]
+        if rec.get("end_time") and (now - rec["end_time"] > 3600):
+            del analyze_tasks[jid]
+
+
+def _run_analyze_background(job_id: str, job_ids, reanalyze_all: bool) -> None:
+    """Run analyze_jobs in a thread, streaming staged progress into analyze_tasks[job_id]."""
+    rec = analyze_tasks[job_id]
+    rec["status"] = "running"
+
+    def progress_callback(update: Dict[str, Any]) -> None:
+        rec["progress"] = update
+        details = update.get("details") or {}
+        msg = details.get("message") or ""
+        events = rec.setdefault("events", [])
+        if msg and (not events or events[-1].get("message") != msg):
+            events.append({
+                "t": round(time.time() - rec.get("start_time", time.time()), 1),
+                "stage": update.get("stage"),
+                "percent": update.get("percent"),
+                "message": msg,
+            })
+            if len(events) > 200:
+                del events[:len(events) - 200]
+
+    try:
+        result = service.analyze_jobs(
+            job_ids=job_ids, llm_only_missing=not reanalyze_all,
+            progress_callback=progress_callback)
+        rec["results"] = result
+        if result.get("success"):
+            rec["status"] = "completed"
+        else:
+            rec["status"] = "failed"
+            rec["error"] = result.get("message", "Analysis failed")
+    except Exception as e:
+        logger.error(f"Background analysis failed: {e}")
+        rec["status"] = "failed"
+        rec["error"] = str(e)
+    finally:
+        rec["end_time"] = time.time()
 
 
 @recommend_bp.route("/api/recommend/analyze", methods=["POST"])
@@ -35,6 +91,42 @@ def analyze():
     except Exception as e:
         logger.error(f"Recommendation analysis failed: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+@recommend_bp.route("/api/recommend/analyze/start", methods=["POST"])
+def analyze_start():
+    """
+    Start a background analysis and return a ``job_id`` to poll. Body (all optional):
+    ``{job_ids:[...], reanalyze_all: bool}`` (same semantics as ``/api/recommend/analyze``).
+    Progress is read back from ``/api/recommend/analyze/status/<job_id>``.
+    """
+    if db_ops.get_active_profile() is None:
+        return jsonify({"success": False, "message": "Create a profile first."}), 400
+    _cleanup_old_analyze_tasks()
+    data = request.json or {}
+    job_ids = data.get("job_ids")
+    reanalyze_all = bool(data.get("reanalyze_all"))
+    job_id = f"analyze_{uuid.uuid4().hex[:8]}"
+    analyze_tasks[job_id] = {
+        "status": "pending",
+        "progress": {"stage": "pending", "percent": 0, "details": {}},
+        "events": [],
+        "results": None,
+        "start_time": time.time(),
+    }
+    thread = threading.Thread(
+        target=_run_analyze_background, args=(job_id, job_ids, reanalyze_all), daemon=True)
+    thread.start()
+    return jsonify({"success": True, "job_id": job_id, "message": "Analysis started"})
+
+
+@recommend_bp.route("/api/recommend/analyze/status/<job_id>", methods=["GET"])
+def analyze_status(job_id):
+    """Return the full task record (status, progress, events, results) for a poll."""
+    rec = analyze_tasks.get(job_id)
+    if not rec:
+        return jsonify({"success": False, "message": "Task not found"}), 404
+    return jsonify(rec)
 
 
 @recommend_bp.route("/api/recommend/keywords", methods=["POST"])
