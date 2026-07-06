@@ -257,6 +257,33 @@ skip the day.
   mocked tests + a live `--check-llm`; the real scrape runs at the next boot/daily
   trigger when the LLM is up.
 
+## Analyze Matches Progress Popup — Definition of Done
+
+Plan: `docs/plans/analyze-progress-popup.md`. Delivered on branch `analyze-progress-popup`
+(worktree), committed per phase, merged to `main`.
+
+Requirement: clicking "Analyze Matches" should bring up a popup showing how many jobs it is
+going through and the percent done.
+
+- [x] (1/4) Worktree + plan doc
+- [x] (2/4) Backend: `analyze_tasks` in-memory store + `_run_analyze_background` thread +
+  `POST /api/recommend/analyze/start` + `GET /api/recommend/analyze/status/<job_id>` (mirrors
+  `scrape_routes`); `service.analyze_jobs` progress messages carry job counts (compensation
+  candidates, jobs sent to the LLM of the total, summary line). Synchronous `/analyze` retained.
+- [x] (3/4) Frontend: `analyzeJobs` → `/analyze/start`, `pollAnalyze` polls `/status` @1s; a
+  dedicated popup (percent ring, stage + count message, live activity feed, and an
+  Analyzed/New-LLM-Fits/Pay-Recovered stats grid + Done on completion). Verified in-browser
+  (DOM inspection): running + completed states render, Done closes, real `/start`+`/status`
+  stream live counts ("Embedding 12 jobs…", "Recovering compensation for 3 job(s)…").
+- [x] (4/4) Tests (`tests/recommend/test_analyze_progress.py`: start→stream→complete, reanalyze_all
+  forwarded, profile-required 400, unknown-job 404, background failure → failed) + docs
+  (`routes.md`, `api-contract.md`, `data-flow.md`, `component-map.md`, this checklist) + merge
+- [x] Offline subset green (`tests/recommend`, `tests/database`, `tests/test_frontend_wiring.py`),
+  `import app` clean
+- [ ] **Live full pipeline with an LLM endpoint** — the popup + endpoints are verified end-to-end
+  against the real background runner; issuing real LLM verdicts/compensation still needs an enabled
+  endpoint (Options → LLM Endpoint).
+
 ## LLM Re-analyze Missing (Analyze Matches gap-fill) — Definition of Done
 
 Plan: `docs/plans/llm-reanalyze-missing.md`. Delivered on branch `llm-reanalyze-missing`

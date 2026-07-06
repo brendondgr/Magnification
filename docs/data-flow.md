@@ -83,9 +83,18 @@ to call, while `utils/LocalLLM` manages *running* a local one.
 
 ## Recommendation Analysis Flow
 
+The "Analyze Matches" button uses the **background** variant so the UI can show a live progress
+popup: `POST /api/recommend/analyze/start` spawns a thread (in-memory `analyze_tasks` store,
+mirroring the scrape task store) and returns a `job_id`; the client polls
+`GET /api/recommend/analyze/status/<job_id>` once per second for `{progress, events, results}`
+and renders a percent ring + count-rich activity feed. The synchronous `POST /api/recommend/analyze`
+remains for programmatic use. Both call the same service:
+
 ```
-Scrape completes (or POST /api/recommend/analyze — "Analyze Matches")
-   → recommend.service.analyze_jobs(job_ids, llm_only_missing=not reanalyze_all)
+Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
+   → recommend.service.analyze_jobs(job_ids, llm_only_missing=not reanalyze_all,
+                                    progress_callback=…)   [staged progress: embedding→
+                                    compensation→skills→scoring→llm→completed, w/ job counts]
        → embed missing job descriptions (fastembed, parallel)   [embed-on-retrieve]
        → recover missing compensation from descriptions (LLM)   [gap-fill, non-ignored jobs]
        → extract skills (gazetteer, or LLM batch if enabled)

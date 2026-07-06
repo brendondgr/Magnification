@@ -81,7 +81,9 @@ RAG scoring of jobs against the active profile (see `docs/recommendation.md`).
 
 | Path | Method | Purpose |
 | --- | --- | --- |
-| `/api/recommend/analyze` | POST | Embed + score jobs against the active profile (body: optional `{job_ids}`); persists `JobAnalysis` |
+| `/api/recommend/analyze` | POST | Embed + score jobs against the active profile synchronously (body: optional `{job_ids, reanalyze_all}`); persists `JobAnalysis` |
+| `/api/recommend/analyze/start` | POST | Start a **background** analysis (same body); returns `{job_id}` to poll — powers the Analyze Matches progress popup |
+| `/api/recommend/analyze/status/<job_id>` | GET | Poll a background analysis: `{status, progress, events, results}` (404 if unknown) |
 | `/api/recommend/report` | GET | Jobs ranked by `rag_score` (query: `limit`, `include_ignored`) |
 | `/api/recommend/keywords` | POST | LLM-generate search terms + AND/OR keyword groups + job type (body: optional `{seed}`; falls back to the active profile) |
 
