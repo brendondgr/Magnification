@@ -130,6 +130,105 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     }
 
 
+def rescore_jobs(profile: Optional[Dict[str, Any]] = None,
+                 runtime: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Cheaply recompute sub-scores + ``rag_score`` for already-analyzed jobs from their
+    **stored** artifacts, against the current profile and score weights. No job re-embedding,
+    no LLM calls, and no compensation recovery — this is the fast refresh used when only the
+    score weights or the profile's skills/keywords changed.
+
+    Reuses each job's stored embedding and ``extracted_skills``, and **preserves** the stored
+    LLM verdict (``llm_score``/``llm_rationale``) — folding it back into ``rag_score`` — so the
+    LLM-fit share survives a rescore without another call. Only jobs that already have an
+    analysis are touched (unanalyzed jobs have no sub-scores to reweight).
+
+    When the profile embedding is unavailable (e.g. the embedding model isn't cached and there
+    is no network), it falls back to a **reweight-only** pass: ``rag_score`` is recomputed from
+    the stored sub-scores so score-weight changes still take effect offline.
+    """
+    profile = profile or db_ops.get_active_profile()
+    if not profile:
+        return {"success": False, "message": "No active profile to rescore against."}
+    runtime = runtime or get_runtime_config()
+    weights = runtime.get("weights") or ranker.DEFAULT_WEIGHTS
+
+    jobs = [j for j in db_ops.get_all_jobs(include_ignored=False) if not j.get("ignore")]
+    stored = db_ops.get_analysis_for_jobs([j["id"] for j in jobs], include_embedding=True)
+    jobs = [j for j in jobs if j["id"] in stored]
+    if not jobs:
+        return {"success": True, "rescored": 0, "profile_id": profile["id"], "top": []}
+
+    def _fold_llm(an: Dict[str, Any], prev: Dict[str, Any]) -> None:
+        """Carry the stored LLM verdict onto ``an`` and (re)compute ``rag_score``."""
+        if prev and prev.get("llm_score") is not None:
+            an["llm_score"] = prev.get("llm_score")
+            an["llm_rationale"] = prev.get("llm_rationale")
+        signals = {
+            "semantic": an["semantic_score"], "bm25": an["bm25_score"],
+            "keyword": an["keyword_score"], "skill": an["skill_score"],
+        }
+        if an.get("llm_score") is not None:
+            signals["llm"] = max(0.0, min(1.0, an["llm_score"] / 100.0))
+        an["rag_score"] = round(ranker.combined_score(signals, weights), 4)
+
+    # Try a full rescore (needs the profile embedding for the semantic signal); fall back to a
+    # reweight-only pass from the stored sub-scores when the embedder is unavailable.
+    profile_query = ranker.build_profile_query(profile)
+    profile_vec: list = []
+    if profile_query:
+        try:
+            profile_vec = embedder.embed_text(profile_query)
+        except Exception as e:  # pragma: no cover - depends on model/network availability
+            logger.warning(f"rescore: profile embed unavailable, reweighting from stored sub-scores: {e}")
+
+    if profile_vec:
+        rjobs = [{
+            "id": j["id"],
+            "title": j.get("title") or "",
+            "description": j.get("description") or "",
+            "embedding": embedder.from_bytes(stored[j["id"]].get("embedding")) or [],
+            "extracted_skills": stored[j["id"]].get("extracted_skills") or [],
+        } for j in jobs]
+        analyses = ranker.rank_batch(profile, profile_vec, rjobs, weights=weights)
+        for j, an in zip(jobs, analyses):
+            _fold_llm(an, stored.get(j["id"]) or {})
+            db_ops.save_job_analysis(j["id"], {
+                "semantic_score": an["semantic_score"],
+                "bm25_score": an["bm25_score"],
+                "keyword_score": an["keyword_score"],
+                "skill_score": an["skill_score"],
+                "rag_score": an["rag_score"],
+                "keyword_group_hits": an["keyword_group_hits"],
+                "skill_match": an["skill_match"],
+                "llm_score": an.get("llm_score"),
+                "llm_rationale": an.get("llm_rationale"),
+            }, profile_id=profile["id"])
+    else:
+        # Reweight only: recompute rag_score from the stored sub-scores.
+        analyses = []
+        for j in jobs:
+            prev = stored[j["id"]]
+            an = {
+                "semantic_score": prev.get("semantic_score") or 0.0,
+                "bm25_score": prev.get("bm25_score") or 0.0,
+                "keyword_score": prev.get("keyword_score") or 0.0,
+                "skill_score": prev.get("skill_score") or 0.0,
+            }
+            _fold_llm(an, prev)
+            analyses.append(an)
+            db_ops.save_job_analysis(j["id"], {"rag_score": an["rag_score"]},
+                                     profile_id=profile["id"])
+
+    ranked = sorted(analyses, key=lambda a: a.get("rag_score") or 0.0, reverse=True)
+    return {
+        "success": True,
+        "rescored": len(analyses),
+        "profile_id": profile["id"],
+        "top": ranked[:30],
+    }
+
+
 def build_report(limit: int = 50, include_ignored: bool = False) -> List[Dict[str, Any]]:
     """Return jobs that have an analysis, merged with it, sorted by rag_score desc."""
     jobs = db_ops.get_all_jobs(include_ignored=include_ignored)
