@@ -307,6 +307,32 @@ New Jobs into a **Saved** tab; saved jobs always appear there, even once Applied
   `import app` clean; UI verified via preview tools (DOM/eval — screenshot tooling timed out in
   this environment, as noted for prior UI work)
 
+## Auto-Update Match Percentages — Definition of Done
+
+Plan: `docs/plans/auto-update-match-percent.md`. Delivered on branch `auto-update-match-percent`
+(worktree), committed per phase, merged to `main`.
+
+Requirement: when the score-weight sliders change (Options → Runtime), when "Analyze Matches"
+returns new percent matches, **or when profile skills change** (skill quick-add / Profile save),
+the displayed match percentages update on the page automatically.
+
+- [x] (1/5) Worktree + plan doc
+- [x] (2/5) `service.rescore_jobs` — recompute sub-scores + `rag_score` from the **stored**
+  embedding/`extracted_skills` against the current profile + weights, preserving the stored LLM
+  verdict; no job re-embedding, no LLM calls, no compensation recovery; reweight-only fallback
+  when the embedder is unavailable
+- [x] (3/5) `POST /api/recommend/rescore` endpoint (400 without an active profile) →
+  `{success, rescored, profile_id, top}`
+- [x] (4/5) Frontend `rescoreJobs()` (POST rescore → `loadJobs()`) wired into
+  `saveRuntimeOptions`, `addSkillToProfile`, and `saveProfile`; "Analyze Matches" already reloads
+  (verified live: rescore recomputed 12 real jobs, preserved LLM verdicts, reused embeddings; no
+  console errors; helper + 3 call-sites present in the served page)
+- [x] (5/5) Tests (`tests/recommend/test_rescore.py`: reweight-only rag recompute, stored-LLM fold,
+  full-rescore threads stored artifacts + persists sub-scores + doesn't rewrite the embedding,
+  guards) + docs (`api-contract.md`, `data-flow.md`, `recommendation.md`, this checklist) + merge
+- [x] Offline test subset green (`tests/recommend`, `tests/database`, `tests/test_frontend_wiring.py`),
+  `import app` clean; rescore verified live against the real DB via the preview server
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

@@ -19,7 +19,9 @@ Weights are configurable in **Options → Runtime** (`runtime_config.weights`) a
 must total exactly **1.00**; default `semantic 0.30 / bm25 0.15 / keyword 0.10 / skill 0.05 /
 llm 0.40`. `ranker.combined_score` **renormalizes over the signals actually present**, so a job
 with no LLM verdict is scored over the remaining `0.60` (i.e. the LLM's `0.40` is dropped and
-the rest rescaled) — exactly as if the LLM weren't configured.
+the rest rescaled) — exactly as if the LLM weren't configured. Saving new weights auto-triggers a
+cheap `rescore` (see Flow) so the displayed match percentages update immediately — no full
+"Analyze Matches" needed.
 
 ## Modules (`utils/backend/recommend/`)
 
@@ -56,6 +58,10 @@ Scrape completes → scraping_service (if runtime.enable_analysis and an active 
 
 Manual: POST /api/recommend/analyze  ("Analyze Matches" — gap-fills LLM fit + compensation for
         non-ignored jobs; pass reanalyze_all=true to re-score every job, e.g. after a profile edit)
+Rescore: POST /api/recommend/rescore ("cheap refresh" — recompute sub-scores + rag_score from the
+        STORED embedding/extracted_skills + current weights, preserving the stored LLM verdict; no
+        re-embed, no LLM. Fired automatically by the UI after a score-weight save, a skill quick-add,
+        or a Profile save so match percentages update on the page. Reweight-only fallback offline.)
 Read:   GET  /api/jobs?with_analysis=1   → each job carries its `analysis`
         GET  /api/recommend/report       → jobs ranked by rag_score
 ```
