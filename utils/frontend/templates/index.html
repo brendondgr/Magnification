@@ -947,6 +947,77 @@
     </div>
   </sc-if>
 
+  <!-- ============ ANALYZE MATCHES PROGRESS POPUP ============ -->
+  <sc-if value="{{ analyzeOpen }}" hint-placeholder-val="">
+    <div onclick="{{ closeAnalyze }}" style="position:fixed;inset:0;z-index:72;background:rgba(0,0,0,.55);animation:jf-fade .25s ease;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onclick="{{ stop }}" style="width:min(560px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;animation:jf-pop .32s cubic-bezier(.16,1,.3,1)">
+
+        <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+          </div>
+          <div>
+            <h2 style="margin:0;font:600 18px/1 var(--font-head)">Analyze Matches</h2>
+            <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Scoring jobs against your profile</div>
+          </div>
+          <button onclick="{{ closeAnalyze }}" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color .15s ease,transform .15s ease" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div style="padding:34px 24px 28px;display:flex;flex-direction:column;align-items:center">
+          <div style="position:relative;width:150px;height:150px">
+            <svg width="150" height="150" viewBox="0 0 150 150" style="transform:rotate(-90deg)">
+              <circle cx="75" cy="75" r="64" fill="none" stroke="var(--border)" stroke-width="11"></circle>
+              <circle cx="75" cy="75" r="64" fill="none" stroke="var(--accent)" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{ aRingDash }}" style="transition:stroke-dasharray .6s ease"></circle>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <span style="font:600 34px/1 var(--font-head);color:var(--text)">{{ aPercent }}</span>
+              <span style="font:500 12px/1 var(--font-mono);color:var(--muted);margin-top:2px">PERCENT</span>
+            </div>
+          </div>
+
+          <div style="margin-top:22px;text-align:center">
+            <div style="font:600 18px/1 var(--font-head);color:var(--text)">{{ aStage }}</div>
+            <div style="margin-top:8px;font:400 13px/1.4 var(--font-body);color:var(--muted)">{{ aStatusMsg }}</div>
+          </div>
+
+          <sc-if value="{{ aDone }}" hint-placeholder-val="">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;margin-top:26px">
+              <sc-for list="{{ analyzeStats }}" as="st" hint-placeholder-count="3">
+                <div style="padding:16px 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);text-align:center">
+                  <div style="font:600 26px/1 var(--font-head);color:{{ st.color }}">{{ st.value }}</div>
+                  <div style="margin-top:8px;font:500 10px/1.2 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">{{ st.label }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasAnalyzeEvents }}" hint-placeholder-val="">
+            <div style="width:100%;margin-top:22px">
+              <div style="font:600 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Live Activity</div>
+              <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                <sc-for list="{{ analyzeEvents }}" as="ev" hint-placeholder-count="4">
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <span style="flex:0 0 auto;width:7px;height:7px;border-radius:99px;background:{{ ev.dot }}"></span>
+                    <span style="flex:0 0 auto;font:500 10px/1.4 var(--font-mono);color:var(--muted);min-width:40px">{{ ev.time }}</span>
+                    <span style="min-width:0;font:400 12px/1.4 var(--font-body);color:var(--text)">{{ ev.msg }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ aDone }}" hint-placeholder-val="">
+            <button onclick="{{ closeAnalyze }}" style="margin-top:26px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;height:48px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);cursor:pointer;animation:jf-rise .35s ease;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
+              Done
+            </button>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <!-- ============ MATCH BREAKDOWN POPUP ============ -->
   <sc-if value="{{ matchPopup }}" hint-placeholder-val="">
     <div onclick="{{ closeMatchPopup }}" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);animation:jf-fade .2s ease;display:flex;align-items:center;justify-content:center;padding:24px">
@@ -1042,6 +1113,9 @@ class Component extends DCLogic {
       countries:{USA:true}, jobType:'', genBusy:false,
       termDraft:'', groupDrafts:{},
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false, scrapeEvents:[],
+      // ---- Analyze Matches progress popup ----
+      analyzeOpen:false, aPercent:0, aStage:'', aStatusMsg:'', aEvents:[], aDone:false,
+      aTotal:0, aLLM:0, aComp:0,
       // ---- Profile panel ----
       profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false, pfSkillsExpanded:false,
       profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],blocked_companies:[],title_blocklist:[],llm_instructions:'',resume_text:'',source_filename:'',exists:false},
@@ -1354,7 +1428,7 @@ class Component extends DCLogic {
   }
   formatStage(stage){
     if(!stage) return 'Processing…';
-    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',extracting_compensation:'Extracting Compensation',analyzing:'Scoring Matches',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed'};
+    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',extracting_compensation:'Extracting Compensation',analyzing:'Scoring Matches',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed',embedding:'Embedding Jobs',compensation:'Recovering Compensation',skills:'Extracting Skills',scoring:'Scoring Matches',llm:'LLM Fit Verdict'};
     return m[stage]||(stage.charAt(0).toUpperCase()+stage.slice(1));
   }
 
@@ -1411,17 +1485,42 @@ class Component extends DCLogic {
   // ---------- recommendation analysis ----------
   analyzeJobs(){
     if(this.state.analyzing) return;
-    this.setState({analyzing:true});
-    this.showToast('Scoring jobs against your profile…');
-    fetch('/api/recommend/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+    this.setState({analyzing:true, analyzeOpen:true, aDone:false, aPercent:0,
+                   aStage:'Starting', aStatusMsg:'Preparing analysis…', aEvents:[],
+                   aTotal:0, aLLM:0, aComp:0});
+    fetch('/api/recommend/analyze/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
       .then(r=>r.json())
       .then(d=>{
-        this.setState({analyzing:false});
-        if(d.success){ var msg='Analyzed '+(d.analyzed||0)+' jobs'; if(d.llm_analyzed){ msg+=' · '+d.llm_analyzed+' new LLM fit'+(d.llm_analyzed===1?'':'s'); } if(d.compensation_extracted){ msg+=' · '+d.compensation_extracted+' pay recovered'; } this.showToast(msg); this.setState({sortByMatch:true}); this.loadJobs(); }
-        else { this.showToast(d.message||'Analysis failed'); }
+        if(d.success && d.job_id){ this.pollAnalyze(d.job_id); }
+        else { this.setState({analyzing:false, aStage:'Failed', aStatusMsg:d.message||'Analysis failed', aDone:true}); }
       })
-      .catch(e=>{ console.error(e); this.setState({analyzing:false}); this.showToast('Analysis failed'); });
+      .catch(e=>{ console.error(e); this.setState({analyzing:false, aStage:'Failed', aStatusMsg:'Analysis failed', aDone:true}); });
   }
+  pollAnalyze(jobId){
+    clearInterval(this._apoll);
+    this._apoll=setInterval(async()=>{
+      try{
+        const res=await fetch('/api/recommend/analyze/status/'+jobId);
+        const data=await res.json();
+        const prog=data.progress||{}; const details=prog.details||{};
+        const patch={aPercent:Math.round(prog.percent||0), aStage:this.formatStage(prog.stage), aStatusMsg:details.message||''};
+        if(Array.isArray(data.events)) patch.aEvents=data.events;
+        this.setState(patch);
+        if(data.status==='completed'){
+          clearInterval(this._apoll);
+          const r=data.results||{};
+          this.setState({analyzing:false, aPercent:100, aStage:'Completed',
+            aStatusMsg:'Analyzed '+(r.analyzed||0)+' jobs · '+(r.llm_analyzed||0)+' new LLM fit'+((r.llm_analyzed===1)?'':'s')+' · '+(r.compensation_extracted||0)+' pay recovered.',
+            aDone:true, aTotal:r.analyzed||0, aLLM:r.llm_analyzed||0, aComp:r.compensation_extracted||0, sortByMatch:true});
+          this.loadJobs();
+        } else if(data.status==='failed'){
+          clearInterval(this._apoll);
+          this.setState({analyzing:false, aStage:'Failed', aStatusMsg:data.error||'Analysis failed', aDone:true});
+        }
+      }catch(e){ console.error('analyze poll error', e); }
+    },1000);
+  }
+  closeAnalyze(){ clearInterval(this._apoll); this.setState({analyzeOpen:false, analyzing:false}); }
 
   // ---------- profile panel (real API) ----------
   openProfile(){ this.setState({profileOpen:true,pfStatus:'',pfDragging:false}); this.loadProfile(); this.loadOptions(); }
@@ -1696,6 +1795,10 @@ class Component extends DCLogic {
     const evColor=(stg)=>stg==='failed'?'#E5484D':((stg==='completed'||stg==='complete')?'var(--c-offer-text)':(stg==='analyzing'?'var(--c-applied)':'var(--accent)'));
     const scrapeEvents=(s.scrapeEvents||[]).slice().reverse().map((e,i)=>({key:i,time:'+'+(e.t!=null?e.t:0)+'s',msg:e.message||'',dot:evColor(e.stage)}));
     const hasScrapeEvents=scrapeEvents.length>0;
+    // live Analyze Matches activity feed (newest first) + result stats
+    const analyzeEvents=(s.aEvents||[]).slice().reverse().map((e,i)=>({key:i,time:'+'+(e.t!=null?e.t:0)+'s',msg:e.message||'',dot:evColor(e.stage)}));
+    const hasAnalyzeEvents=analyzeEvents.length>0;
+    const analyzeStats=[{label:'Analyzed',value:s.aTotal,color:'var(--accent-text)'},{label:'New LLM Fits',value:s.aLLM,color:'var(--c-applied)'},{label:'Pay Recovered',value:s.aComp,color:'var(--c-offer-text)'}];
 
     // ---- profile panel ----
     const pf=s.profile;
@@ -1798,6 +1901,12 @@ class Component extends DCLogic {
       percent:s.percent, stage:s.stage, statusMsg:s.statusMsg,
       ringDash:(ringC*s.percent/100)+' '+ringC,
       scrapeStats, scrapeEvents, hasScrapeEvents, scrapeDone:s.scrapeDone, viewNewJobs:()=>this.viewNewJobs(),
+
+      // ---- Analyze Matches progress popup ----
+      analyzeOpen:s.analyzeOpen, closeAnalyze:()=>this.closeAnalyze(),
+      aPercent:s.aPercent, aStage:s.aStage, aStatusMsg:s.aStatusMsg, aDone:s.aDone,
+      aRingDash:(ringC*s.aPercent/100)+' '+ringC,
+      analyzeStats, analyzeEvents, hasAnalyzeEvents,
 
       // ---- header buttons ----
       openProfile:()=>this.openProfile(), profileBtnStyle:secBtn,
