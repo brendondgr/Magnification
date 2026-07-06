@@ -104,6 +104,16 @@ Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
 Read: GET /api/jobs?with_analysis=1  /  GET /api/recommend/report  → match badges + detail breakdown
 ```
 
+**Cheap rescore (auto-refresh of match %).** When only the score weights or the profile's
+skills/keywords change, a full re-analyze is overkill. `POST /api/recommend/rescore` →
+`service.rescore_jobs` recomputes each analyzed job's sub-scores + `rag_score` from its
+**stored** embedding + `extracted_skills` against the current profile + weights, **preserving**
+the stored LLM verdict — no job re-embedding, no LLM calls, no compensation recovery (reweight-
+only fallback when the embedder is unavailable). The frontend fires it automatically after a
+score-weight save (Options → Runtime), a skill quick-add, or a Profile save, then reloads the
+feed so the displayed match percentages update on the page. "Analyze Matches" already reloads
+the feed after a full analyze.
+
 See `docs/recommendation.md`. Stored embeddings are reused on re-analysis; analysis in the
 scrape pipeline is gated by `runtime_config.enable_analysis` + an active profile and is
 non-fatal (a scrape still succeeds if the embedding model is unavailable).

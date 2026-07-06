@@ -1307,7 +1307,7 @@ class Component extends DCLogic {
     this.showToast('Added "'+name+'" to your skills');
     fetch('/api/profile/add-skill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({skill:name})})
       .then(r=>{ if(!r.ok) throw new Error('add-skill '+r.status); return r.json(); })
-      .then(d=>{ if(d&&Array.isArray(d.skills)) this.setState(st=>({profile:Object.assign({},st.profile,{skills:d.skills})})); })
+      .then(d=>{ if(d&&Array.isArray(d.skills)) this.setState(st=>({profile:Object.assign({},st.profile,{skills:d.skills})})); this.rescoreJobs(); })
       .catch(e=>{ console.error(e);
         this.setState(st=>({profile:Object.assign({},st.profile,{skills:already?(st.profile.skills||[]):(st.profile.skills||[]).filter(x=>String(x).trim().toLowerCase()!==lc)})}));
         if(priorSkillMatch) this.patchJob(jobId, j=>{ j.analysis=Object.assign({},j.analysis,{skill_match:priorSkillMatch}); return j; });
@@ -1521,6 +1521,16 @@ class Component extends DCLogic {
     },1000);
   }
   closeAnalyze(){ clearInterval(this._apoll); this.setState({analyzeOpen:false, analyzing:false}); }
+  // Fast, on-page match-% refresh: recomputes scores from stored analysis artifacts (no
+  // re-embed / no LLM) against the current weights + profile, then reloads the feed. Used
+  // after a score-weight change or a profile/skill edit. Silent no-op when there's no
+  // profile / nothing analyzed yet — those users have no percentages to update.
+  rescoreJobs(){
+    return fetch('/api/recommend/rescore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(r=>r.json())
+      .then(d=>{ if(d&&d.success&&d.rescored){ this.loadJobs(); } })
+      .catch(e=>{ console.error('rescore failed', e); });
+  }
 
   // ---------- profile panel (real API) ----------
   openProfile(){ this.setState({profileOpen:true,pfStatus:'',pfDragging:false}); this.loadProfile(); this.loadOptions(); }
@@ -1600,6 +1610,8 @@ class Component extends DCLogic {
         this.showToast(hidden>0?('Profile saved · '+hidden+' job'+(hidden===1?'':'s')+' hidden'):'Profile saved');
         // Block-rule edits may have hidden jobs — refresh the feed to reflect it.
         if(hidden>0) this.loadJobs();
+        // Skill / keyword / interest edits change the sub-scores → refresh match %.
+        this.rescoreJobs();
       })
       .catch(e=>{ console.error(e); this.setState({pfBusy:false}); this.showToast('Could not save profile'); });
   }
@@ -1635,7 +1647,7 @@ class Component extends DCLogic {
     if(Math.abs(total-1)>0.001){ this.showToast('Score weights must sum to 1.00 (now '+total.toFixed(2)+')'); return; }
     this.setState({optBusy:true});
     fetch('/api/options/runtime',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.state.runtime)})
-      .then(r=>r.json()).then(()=>{ this.setState({optBusy:false,optStatus:'Runtime settings saved.'}); this.showToast('Runtime settings saved'); })
+      .then(r=>r.json()).then(()=>{ this.setState({optBusy:false,optStatus:'Runtime settings saved.'}); this.showToast('Runtime settings saved'); this.rescoreJobs(); })
       .catch(e=>{ console.error(e); this.setState({optBusy:false}); this.showToast('Could not save runtime settings'); });
   }
 

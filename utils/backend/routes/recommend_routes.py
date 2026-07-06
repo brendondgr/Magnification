@@ -129,6 +129,27 @@ def analyze_status(job_id):
     return jsonify(rec)
 
 
+@recommend_bp.route("/api/recommend/rescore", methods=["POST"])
+def rescore():
+    """
+    Cheaply recompute match scores from **stored** analysis artifacts (embeddings, extracted
+    skills, preserved LLM verdicts) against the current profile + score weights — no job
+    re-embedding, no LLM calls. Used to refresh the displayed match percentages after a
+    score-weight or profile/skill change without paying the full "Analyze Matches" cost.
+
+    No body required. Returns ``{success, rescored, profile_id, top}``.
+    """
+    if db_ops.get_active_profile() is None:
+        return jsonify({"success": False, "message": "Create a profile first."}), 400
+    try:
+        result = service.rescore_jobs()
+        status = 200 if result.get("success") else 400
+        return jsonify(result), status
+    except Exception as e:
+        logger.error(f"Recommendation rescore failed: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 @recommend_bp.route("/api/recommend/keywords", methods=["POST"])
 def gen_keywords():
     """
