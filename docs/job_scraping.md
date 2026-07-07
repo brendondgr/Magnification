@@ -260,12 +260,18 @@ This directory will contain multiple focused files to maintain clean separation 
 
 **Implementation Details**:
 - `execute_full_scraping_workflow()` function:
+  - **Iteration loop (`max_iterations`, 1–5, config-driven)**: steps 2–5 (scrape → process →
+    db-dedup → LinkedIn → save) are extracted into an inner `_scrape_process_store(offset)` and
+    run once per iteration, advancing a jobspy page `offset` by `results_wanted` each pass so later
+    iterations surface *new* jobs. The in-batch + database dedup guarantees cross-pass uniqueness.
+    Steps 6–7 (filter + compensation + LLM analysis) run **once** over the accumulated new-job ids.
+    Forced to a single pass in non-DB mode (no store to dedup against).
   - **Step 1**: Generate scraping tasks
     - Calls `task_generator.generate_scraping_tasks()`
     - Logs number of tasks generated
   
   - **Step 2**: Execute concurrent scraping
-    - Calls `concurrent_scraper.execute_scraping_tasks(tasks)`
+    - Calls `concurrent_scraper.execute_scraping_tasks(tasks)` with the iteration's `offset`
     - Logs total jobs scraped
   
   - **Step 3**: Process and deduplicate data

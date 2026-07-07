@@ -50,7 +50,8 @@ class JobSpyScraper:
         location: Optional[str] = None,
         progress_callback: Optional[callable] = None,
         countries: Optional[List[str]] = None,
-        job_type: Optional[str] = None
+        job_type: Optional[str] = None,
+        offset: int = 0
     ):
         """
         Initialize the JobSpyScraper.
@@ -76,6 +77,7 @@ class JobSpyScraper:
         # Multiple countries: one task per (title x country). Empty/None -> single country_indeed.
         self.countries = [c for c in (countries or []) if c] or [country_indeed]
         self.job_type = job_type or None
+        self.offset = max(0, int(offset or 0))
 
         # Create data directory
         os.makedirs(self.data_dir, exist_ok=True)
@@ -89,7 +91,8 @@ class JobSpyScraper:
                 hours_old=self.hours_old,
                 country_indeed=country,
                 location=self.location,
-                job_type=self.job_type
+                job_type=self.job_type,
+                offset=self.offset
             )
             for title in self.job_titles
             for country in self.countries

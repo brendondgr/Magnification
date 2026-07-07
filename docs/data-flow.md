@@ -33,6 +33,12 @@ Each pipeline step calls a progress callback; `scrape_routes` records the messag
 append-only, timestamped, de-duplicated `events` list on the job record (capped at 200), which
 the Find Jobs progress view renders as a live, step-by-step activity feed.
 
+The scrape+store block (scrape → dedup → db-dedup → LinkedIn → save) runs once per
+**iteration** (`max_iterations`, 1–5 from the Find Jobs config), each pass advancing a jobspy
+page `offset` by `results_wanted` to surface additional unique jobs; the database dedup drops
+anything an earlier pass saved. The filter + analysis steps run once over the accumulated new
+jobs.
+
 The dedup/database-check/filter steps run *before* the LinkedIn fetch and LLM compensation
 steps specifically so those expensive calls only ever touch jobs that are both new and pass
 the keyword filter — not the full scraped batch. LinkedIn descriptions are fetched

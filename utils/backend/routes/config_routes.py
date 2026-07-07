@@ -20,6 +20,7 @@ def load_jobs_config():
             "sites": ["indeed", "linkedin", "glassdoor", "zip_recruiter", "google"],
             "hours_old": 24,
             "results_wanted": 20,
+            "max_iterations": 1,
             "location": ""
         }
     try:

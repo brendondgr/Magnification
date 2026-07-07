@@ -386,6 +386,30 @@ personalized fit, and this must be **adjustable** (default **1.0** = all) in the
   + "LLM re-rank" on. Note: `llm_fraction = 1.0` issues one LLM call **per final job** — lower it
   (or set `top_n_llm` > 0) to cap cost.
 
+## Find Jobs: Max Results 100 + Max Iterations — Definition of Done
+
+Plan: `docs/plans/find-jobs-iterations.md`. Delivered on branch `find-jobs-iterations`
+(worktree), committed per phase, merged to `main`.
+
+Requirement: raise the Find Jobs **Max Results** ceiling to **100**, and add a **Max Iterations**
+(1–5) control below it that loops/re-searches to surface unique/various results.
+
+- [x] (1/5) Worktree + plan doc
+- [x] (2/5) Page `offset` threaded through `JobSpyScraper` → `JobScrapeTask` → jobspy
+  `scrape_jobs`; steps 2–5 of `execute_full_scraping_workflow` extracted into an inner helper and
+  run up to `max_iterations` times (config-driven, clamped 1–5, forced 1 in non-DB mode),
+  advancing `offset` by `results_wanted` per pass and accumulating new-job ids; steps 6–7 run once.
+  `max_iterations:1` added to the default config. Offline tests (`tests/scrapers/test_iterations.py`:
+  advancing offset, cross-pass dedup, single-pass default, clamp-to-5).
+- [x] (3/5) Frontend: Max Results slider `max=100`; Max Iterations slider (1–5, default 1) below
+  it + helper copy; `maxIterations`/`onMaxIter` state, `configToSave`/`applyConfig` wiring
+  (verified: served template `max=100` + control present, config save/load round-trip persists
+  `max_iterations`)
+- [x] (4/5) Docs (`find_jobs.md`, `job_scraping.md`, `data-flow.md`, this checklist)
+- [x] (5/5) Offline suite green + `import app` clean; merged to `main`
+- [ ] **Live multi-iteration scrape** — the offset/loop/dedup paths are covered by an offline
+  mocked-scraper test; a real multi-pass run hits live job boards (and, for new jobs, the LLM fit).
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

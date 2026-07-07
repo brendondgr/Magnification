@@ -141,184 +141,232 @@ def execute_full_scraping_workflow(
         logger.info(f"  Search terms: {search_terms}")
         logger.info(f"  Sites: {sites}")
         
-        # Step 2: Execute concurrent scraping
-        _countries_txt = ', '.join(countries) if countries else DEFAULT_COUNTRY
-        _jt_txt = f' · {job_type}' if job_type else ''
-        update_progress('scraping', 10, {'message': (
-            f'Searching {len(search_terms)} term(s) on {len(sites)} site(s) · '
-            f'{_countries_txt}{_jt_txt}'
-        )})
-        logger.info("Step 2: Executing concurrent scraping...")
-        
-        # Create a callback to bridge scraper progress to workflow progress (10% -> 80%)
-        # Only emit once per 20% bucket of scraper progress to avoid flooding the
-        # activity feed with a "Scraping..." update for every completed site/term.
-        last_logged_bucket = [-1]
+        # Resolve the number of search iterations. Each iteration re-runs steps 2–5 with a
+        # deeper page `offset` (advanced by results_wanted) to surface *additional* unique jobs;
+        # cross-iteration uniqueness is guaranteed by the in-batch dedup (step 3) + the database
+        # dedup (step 3.5), which drop anything an earlier pass already saved. Non-DB mode can't
+        # dedup across passes, so it always runs a single pass.
+        try:
+            max_iterations = min(5, max(1, int(config.get('max_iterations', 1) or 1)))
+        except (TypeError, ValueError):
+            max_iterations = 1
+        if not save_to_database:
+            max_iterations = 1
 
-        def scraper_progress_handler(scraper_percent, jobs_count):
-            bucket = int(scraper_percent // 20)
-            if bucket == last_logged_bucket[0] and scraper_percent < 100:
-                return
-            last_logged_bucket[0] = bucket
+        def _scrape_process_store(iteration, offset):
+            """One scrape → process → db-dedup → LinkedIn → save pass at the given page offset.
 
-            # Map 0-100% scraper progress to 10-80% workflow progress
-            workflow_percent = 10 + (scraper_percent * 0.7)
-            update_progress('scraping', workflow_percent, {
-                'message': f'Scraping... ({int(scraper_percent)}% done) - Found {jobs_count} jobs',
-                'jobs_found': jobs_count
+            Returns (job_ids, raw_count, processed_jobs). Passes that find nothing return
+            ([], raw_count, []) so the outer loop can try the next page rather than ending the
+            whole workflow.
+            """
+            iter_tag = f'[iter {iteration}/{max_iterations}] ' if max_iterations > 1 else ''
+
+            # Step 2: Execute concurrent scraping
+            _countries_txt = ', '.join(countries) if countries else DEFAULT_COUNTRY
+            _jt_txt = f' · {job_type}' if job_type else ''
+            update_progress('scraping', 10, {'message': (
+                f'{iter_tag}Searching {len(search_terms)} term(s) on {len(sites)} site(s) · '
+                f'{_countries_txt}{_jt_txt}'
+            )})
+            logger.info(f"Step 2: Executing concurrent scraping (offset={offset})...")
+
+            # Create a callback to bridge scraper progress to workflow progress (10% -> 80%)
+            # Only emit once per 20% bucket of scraper progress to avoid flooding the
+            # activity feed with a "Scraping..." update for every completed site/term.
+            last_logged_bucket = [-1]
+
+            def scraper_progress_handler(scraper_percent, jobs_count):
+                bucket = int(scraper_percent // 20)
+                if bucket == last_logged_bucket[0] and scraper_percent < 100:
+                    return
+                last_logged_bucket[0] = bucket
+
+                # Map 0-100% scraper progress to 10-80% workflow progress
+                workflow_percent = 10 + (scraper_percent * 0.7)
+                update_progress('scraping', workflow_percent, {
+                    'message': f'{iter_tag}Scraping... ({int(scraper_percent)}% done) - Found {jobs_count} jobs',
+                    'jobs_found': jobs_count
+                })
+
+            # Note: JobSpyScraper takes 'job_titles' argument but we pass search_terms
+            scraper = JobSpyScraper(
+                job_titles=search_terms,
+                sites=sites,
+                results_wanted=results_wanted,
+                hours_old=hours_old,
+                country_indeed=DEFAULT_COUNTRY,
+                location=location,
+                progress_callback=scraper_progress_handler,
+                countries=countries,
+                job_type=job_type,
+                offset=offset
+            )
+
+            scraper.run()
+            raw_jobs = scraper.all_jobs
+
+            results['steps']['scraping'] = {
+                'raw_jobs_count': len(raw_jobs),
+                'summary': scraper.get_summary()
+            }
+
+            logger.info(f"  Scraped {len(raw_jobs)} raw jobs")
+
+            if not raw_jobs:
+                logger.warning(f"{iter_tag}No jobs scraped this pass.")
+                return [], 0, []
+
+            # Step 3: Process and deduplicate data (in-batch, within and across job sites,
+            # by Title+Company — see data_processor.deduplicate_jobs)
+            update_progress('processing', 80, {'message': f'{iter_tag}Processing {len(raw_jobs)} raw jobs...'})
+            logger.info("Step 3: Processing and deduplicating data...")
+            processed_jobs = process_scraped_jobs(raw_jobs)
+            update_progress('processing', 82, {'message': f'{iter_tag}Deduplicated {len(raw_jobs)} → {len(processed_jobs)} unique jobs'})
+
+            results['steps']['processing'] = {
+                'processed_count': len(processed_jobs),
+                'statistics': get_job_statistics(processed_jobs)
+            }
+
+            logger.info(f"  Processed {len(processed_jobs)} unique jobs")
+
+            # Step 3.5: Drop jobs already tracked in the database (same Title+Company match as
+            # the in-batch dedup above), *before* fetching LinkedIn descriptions or running any
+            # LLM calls on them — those are the expensive steps this ordering is meant to protect.
+            # This is also what makes each iteration surface only *new* jobs vs. earlier passes.
+            from ..database.operations import get_existing_job_keys
+            existing_keys = get_existing_job_keys()
+            before_db_dedup = len(processed_jobs)
+            processed_jobs = [
+                j for j in processed_jobs
+                if (str(j.get('title', '')).strip().lower(), str(j.get('company', '')).strip().lower())
+                not in existing_keys
+            ]
+            removed_existing = before_db_dedup - len(processed_jobs)
+            results['steps']['db_dedup'] = {'removed': removed_existing, 'remaining': len(processed_jobs)}
+            update_progress('processing', 83, {
+                'message': f'{iter_tag}Removed {removed_existing} job(s) already in database · {len(processed_jobs)} remaining'
             })
+            logger.info(f"  Removed {removed_existing} already-tracked jobs, {len(processed_jobs)} remaining")
 
-        # Note: JobSpyScraper takes 'job_titles' argument but we pass search_terms
-        scraper = JobSpyScraper(
-            job_titles=search_terms,
-            sites=sites,
-            results_wanted=results_wanted,
-            hours_old=hours_old,
-            country_indeed=DEFAULT_COUNTRY,
-            location=location,
-            progress_callback=scraper_progress_handler,
-            countries=countries,
-            job_type=job_type
-        )
-        
-        scraper.run()
-        raw_jobs = scraper.all_jobs
-        
-        results['steps']['scraping'] = {
-            'raw_jobs_count': len(raw_jobs),
-            'summary': scraper.get_summary()
-        }
-        
-        logger.info(f"  Scraped {len(raw_jobs)} raw jobs")
-        
-        if not raw_jobs:
-            logger.warning("No jobs scraped. Workflow complete.")
-            results['success'] = True
-            update_progress('completed', 100, {'message': 'No jobs found', 'jobs_found': 0})
-            return results
-        
-        # Step 3: Process and deduplicate data (in-batch, within and across job sites,
-        # by Title+Company — see data_processor.deduplicate_jobs)
-        update_progress('processing', 80, {'message': f'Processing {len(raw_jobs)} raw jobs...'})
-        logger.info("Step 3: Processing and deduplicating data...")
-        processed_jobs = process_scraped_jobs(raw_jobs)
-        update_progress('processing', 82, {'message': f'Deduplicated {len(raw_jobs)} → {len(processed_jobs)} unique jobs'})
+            if not processed_jobs:
+                logger.info(f"{iter_tag}No new jobs remain after database dedup this pass.")
+                return [], len(raw_jobs), []
 
-        results['steps']['processing'] = {
-            'processed_count': len(processed_jobs),
-            'statistics': get_job_statistics(processed_jobs)
-        }
+            # Step 4: Fetch LinkedIn descriptions
+            # LinkedIn jobs from JobSpy don't have descriptions, so we fetch them
+            # via LinkedIn's guest API to enable description-based filtering.
+            # Optimization: Filter by title first to avoid fetching for irrelevant jobs.
+            raw_linkedin_jobs = [j for j in processed_jobs if str(j.get('site', '')).lower() == 'linkedin']
 
-        logger.info(f"  Processed {len(processed_jobs)} unique jobs")
+            if raw_linkedin_jobs:
+                # Load filter config to apply title filter
+                filter_config = load_filter_config()
+                allowed_titles = filter_config.get('job_titles', [])
 
-        # Step 3.5: Drop jobs already tracked in the database (same Title+Company match as
-        # the in-batch dedup above), *before* fetching LinkedIn descriptions or running any
-        # LLM calls on them — those are the expensive steps this ordering is meant to protect.
-        from ..database.operations import get_existing_job_keys
-        existing_keys = get_existing_job_keys()
-        before_db_dedup = len(processed_jobs)
-        processed_jobs = [
-            j for j in processed_jobs
-            if (str(j.get('title', '')).strip().lower(), str(j.get('company', '')).strip().lower())
-            not in existing_keys
-        ]
-        removed_existing = before_db_dedup - len(processed_jobs)
-        results['steps']['db_dedup'] = {'removed': removed_existing, 'remaining': len(processed_jobs)}
-        update_progress('processing', 83, {
-            'message': f'Removed {removed_existing} job(s) already in database · {len(processed_jobs)} remaining'
-        })
-        logger.info(f"  Removed {removed_existing} already-tracked jobs, {len(processed_jobs)} remaining")
+                # Filter LinkedIn jobs that pass title criteria
+                linkedin_jobs_to_scrape = [
+                    j for j in raw_linkedin_jobs
+                    if apply_title_filter(j, allowed_titles)
+                ]
 
-        if not processed_jobs:
-            logger.info("No new jobs remain after database dedup. Workflow complete.")
+                if linkedin_jobs_to_scrape:
+                    update_progress('fetching_descriptions', 84, {
+                        'message': f'{iter_tag}Fetching descriptions for {len(linkedin_jobs_to_scrape)} LinkedIn jobs...'
+                    })
+                    logger.info(f"Step 4: Fetching descriptions for {len(linkedin_jobs_to_scrape)} LinkedIn jobs (after title filtering)...")
+
+                    def linkedin_progress(current, total):
+                        # Map LinkedIn progress to 84-88% of overall workflow
+                        percent = 84 + (current / total) * 4
+                        update_progress('fetching_descriptions', percent, {
+                            'message': f'{iter_tag}Fetching LinkedIn descriptions ({current}/{total})...'
+                        })
+
+                    # We pass the full processed_jobs list but only describe-fetch for the ones we want
+                    # fetch_descriptions_for_jobs already handles identifying which ones to fetch
+                    # Let's modify the scrape-logic here to only update the specific ones.
+
+                    processed_jobs = fetch_descriptions_for_jobs(processed_jobs, linkedin_progress, only_these_jobs=linkedin_jobs_to_scrape)
+
+                    # Count how many got descriptions
+                    with_desc = sum(1 for j in processed_jobs
+                                  if str(j.get('site', '')).lower() == 'linkedin'
+                                  and j.get('description'))
+                    results['steps']['linkedin_descriptions'] = {
+                        'total_linkedin': len(raw_linkedin_jobs),
+                        'passed_title_filter': len(linkedin_jobs_to_scrape),
+                        'fetched': with_desc
+                    }
+                    logger.info(f"  Fetched {with_desc}/{len(linkedin_jobs_to_scrape)} LinkedIn descriptions")
+                else:
+                    logger.info("  No LinkedIn jobs passed title filtering. Skipping description fetching.")
+                    results['steps']['linkedin_descriptions'] = {
+                        'total_linkedin': len(raw_linkedin_jobs),
+                        'passed_title_filter': 0,
+                        'fetched': 0
+                    }
+
+            # Step 5: Save new jobs to database. Every job remaining here already passed the
+            # in-batch dedup (step 3) and the database dedup (step 3.5), so no per-job
+            # duplicate lookup is needed before inserting.
+            iter_job_ids = []
+            if save_to_database:
+                update_progress('saving', 88, {'message': f'{iter_tag}Saving to database...'})
+                logger.info("Step 5: Storing jobs in database...")
+                from ..database.operations import add_job
+
+                stored_count = 0
+
+                for job_data in processed_jobs:
+                    try:
+                        job_id = add_job(job_data)
+                        iter_job_ids.append(job_id)
+                        stored_count += 1
+                    except Exception as e:
+                        logger.error(f"Error storing job: {e}")
+                        results['errors'].append(f"Store error: {e}")
+
+                results['steps']['storage'] = {
+                    'stored_count': stored_count,
+                    'job_ids': iter_job_ids
+                }
+
+                update_progress('saving', 90, {'message': f'{iter_tag}Stored {stored_count} new job(s)'})
+                logger.info(f"  Stored {stored_count} jobs")
+            else:
+                logger.info("Step 5: Skipping database storage (disabled)")
+                results['steps']['storage'] = {'skipped': True}
+
+            return iter_job_ids, len(raw_jobs), processed_jobs
+
+        # Run the scrape/store block once per iteration, paging deeper each pass and
+        # accumulating the newly-saved job ids. Steps 6–7 run ONCE over the accumulation.
+        job_ids = []
+        total_raw = 0
+        processed_jobs = []
+        for _i in range(max_iterations):
+            _ids, _raw, _proc = _scrape_process_store(_i + 1, _i * results_wanted)
+            job_ids.extend(_ids)
+            total_raw += _raw
+            processed_jobs = _proc  # last pass' processed jobs (used by the non-DB filter path)
+            if max_iterations > 1:
+                update_progress('saving', 90, {'message': (
+                    f'Iteration {_i + 1}/{max_iterations} done · +{len(_ids)} new job(s) '
+                    f'(total {len(job_ids)})'
+                )})
+        if max_iterations > 1:
+            results['steps']['iterations'] = {
+                'count': max_iterations, 'total_raw': total_raw, 'total_new_stored': len(job_ids)
+            }
+
+        # No new jobs across all passes (DB mode): nothing to filter/analyze — complete here.
+        if save_to_database and not job_ids:
+            logger.info("No new jobs found across all iterations. Workflow complete.")
             results['success'] = True
             update_progress('completed', 100, {'message': 'No new jobs found', 'jobs_found': 0})
             return results
-
-        # Step 4: Fetch LinkedIn descriptions
-        # LinkedIn jobs from JobSpy don't have descriptions, so we fetch them
-        # via LinkedIn's guest API to enable description-based filtering.
-        # Optimization: Filter by title first to avoid fetching for irrelevant jobs.
-        raw_linkedin_jobs = [j for j in processed_jobs if str(j.get('site', '')).lower() == 'linkedin']
-
-        if raw_linkedin_jobs:
-            # Load filter config to apply title filter
-            filter_config = load_filter_config()
-            allowed_titles = filter_config.get('job_titles', [])
-
-            # Filter LinkedIn jobs that pass title criteria
-            linkedin_jobs_to_scrape = [
-                j for j in raw_linkedin_jobs
-                if apply_title_filter(j, allowed_titles)
-            ]
-
-            if linkedin_jobs_to_scrape:
-                update_progress('fetching_descriptions', 84, {
-                    'message': f'Fetching descriptions for {len(linkedin_jobs_to_scrape)} LinkedIn jobs...'
-                })
-                logger.info(f"Step 4: Fetching descriptions for {len(linkedin_jobs_to_scrape)} LinkedIn jobs (after title filtering)...")
-
-                def linkedin_progress(current, total):
-                    # Map LinkedIn progress to 84-88% of overall workflow
-                    percent = 84 + (current / total) * 4
-                    update_progress('fetching_descriptions', percent, {
-                        'message': f'Fetching LinkedIn descriptions ({current}/{total})...'
-                    })
-
-                # We pass the full processed_jobs list but only describe-fetch for the ones we want
-                # fetch_descriptions_for_jobs already handles identifying which ones to fetch
-                # Let's modify the scrape-logic here to only update the specific ones.
-
-                processed_jobs = fetch_descriptions_for_jobs(processed_jobs, linkedin_progress, only_these_jobs=linkedin_jobs_to_scrape)
-
-                # Count how many got descriptions
-                with_desc = sum(1 for j in processed_jobs
-                              if str(j.get('site', '')).lower() == 'linkedin'
-                              and j.get('description'))
-                results['steps']['linkedin_descriptions'] = {
-                    'total_linkedin': len(raw_linkedin_jobs),
-                    'passed_title_filter': len(linkedin_jobs_to_scrape),
-                    'fetched': with_desc
-                }
-                logger.info(f"  Fetched {with_desc}/{len(linkedin_jobs_to_scrape)} LinkedIn descriptions")
-            else:
-                logger.info("  No LinkedIn jobs passed title filtering. Skipping description fetching.")
-                results['steps']['linkedin_descriptions'] = {
-                    'total_linkedin': len(raw_linkedin_jobs),
-                    'passed_title_filter': 0,
-                    'fetched': 0
-                }
-
-        # Step 5: Save new jobs to database. Every job remaining here already passed the
-        # in-batch dedup (step 3) and the database dedup (step 3.5), so no per-job
-        # duplicate lookup is needed before inserting.
-        job_ids = []
-        if save_to_database:
-            update_progress('saving', 88, {'message': 'Saving to database...'})
-            logger.info("Step 5: Storing jobs in database...")
-            from ..database.operations import add_job
-
-            stored_count = 0
-
-            for job_data in processed_jobs:
-                try:
-                    job_id = add_job(job_data)
-                    job_ids.append(job_id)
-                    stored_count += 1
-                except Exception as e:
-                    logger.error(f"Error storing job: {e}")
-                    results['errors'].append(f"Store error: {e}")
-
-            results['steps']['storage'] = {
-                'stored_count': stored_count,
-                'job_ids': job_ids
-            }
-
-            update_progress('saving', 90, {'message': f'Stored {stored_count} new job(s)'})
-            logger.info(f"  Stored {stored_count} jobs")
-        else:
-            logger.info("Step 5: Skipping database storage (disabled)")
-            results['steps']['storage'] = {'skipped': True}
 
         # Step 6: Apply title/description keyword filters, marking non-matching jobs ignored
         update_progress('filtering', 91, {'message': 'Applying filters...'})
@@ -404,7 +452,9 @@ def execute_full_scraping_workflow(
         results['success'] = True
         update_progress('completed', 100, {
             'message': 'Completed',
-            'jobs_found': len(processed_jobs),
+            # New unique jobs saved across all iterations (DB mode); the last pass' processed
+            # count in the non-DB path where nothing is stored.
+            'jobs_found': len(job_ids) if save_to_database else len(processed_jobs),
             'jobs_kept': filter_results.get('kept', 0) if isinstance(filter_results, dict) else len(filter_results.get('kept', [])),
             'jobs_added': len(job_ids) if save_to_database else 0
         })

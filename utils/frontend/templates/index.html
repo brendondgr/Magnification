@@ -816,7 +816,10 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
               <div>
                 <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Max Results — {{ maxResults }}</label>
-                <input type="range" min="5" max="50" step="5" value="{{ maxResults }}" oninput="{{ onMax }}" style="{{ rangeStyle }}" style-hover="filter:brightness(1.1)">
+                <input type="range" min="5" max="100" step="5" value="{{ maxResults }}" oninput="{{ onMax }}" style="{{ rangeStyle }}" style-hover="filter:brightness(1.1)">
+                <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 10px">Max Iterations — {{ maxIterations }}</label>
+                <input type="range" min="1" max="5" step="1" value="{{ maxIterations }}" oninput="{{ onMaxIter }}" style="{{ rangeStyle }}" style-hover="filter:brightness(1.1)">
+                <div style="margin-top:7px;font:400 11px/1.4 var(--font-body);color:var(--muted)">Re-runs the search this many times, paging deeper each pass to surface more unique jobs.</div>
               </div>
               <div>
                 <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Job Type</label>
@@ -1119,7 +1122,7 @@ class Component extends DCLogic {
       sortByMatch:false, analyzing:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
-      groups:[], maxResults:25, useLLM:true, fromProfile:false,
+      groups:[], maxResults:25, maxIterations:1, useLLM:true, fromProfile:false,
       countries:{USA:true}, jobType:'', genBusy:false,
       termDraft:'', groupDrafts:{},
       percent:0, stage:'', statusMsg:'', found:0, saved:0, notHidden:0, scrapeDone:false, scrapeEvents:[],
@@ -1396,6 +1399,7 @@ class Component extends DCLogic {
     this.setState({
       terms:terms.slice(), groups, fromProfile,
       location:c.location||'', maxResults:c.results_wanted||this.state.maxResults,
+      maxIterations:c.max_iterations||this.state.maxIterations,
       ageIndex:this.hoursToAgeIndex(c.hours_old||24), sites:sitesObj,
       countries:countriesObj, jobType:c.job_type||'',
       useLLM:(typeof c.use_llm==='boolean')?c.use_llm:this.state.useLLM
@@ -1412,6 +1416,7 @@ class Component extends DCLogic {
       sites:this.sitesToConfig(),
       hours_old:Component.AGE_HOURS[s.ageIndex],
       results_wanted:s.maxResults,
+      max_iterations:s.maxIterations,
       location:s.location.trim(),
       countries:this.countriesToConfig(),
       job_type:s.jobType||null,
@@ -1908,6 +1913,7 @@ class Component extends DCLogic {
       terms, termDraft:s.termDraft, onTermDraft:(e)=>this.setState({termDraft:e.target.value}), onTermKey,
       location:s.location, onLocation:(e)=>this.setState({location:e.target.value}),
       maxResults:s.maxResults, onMax:(e)=>this.setState({maxResults:+e.target.value}),
+      maxIterations:s.maxIterations, onMaxIter:(e)=>this.setState({maxIterations:+e.target.value}),
       ageIndex:s.ageIndex, ageLabel:Component.AGES[s.ageIndex], onAge:(e)=>this.setState({ageIndex:+e.target.value}),
       siteList, keywordGroups, addGroup:()=>this.setState(st=>({groups:st.groups.concat([[]])})),
       countrySelected, countryOptions, countryOptionsShown, countryNoMatch,

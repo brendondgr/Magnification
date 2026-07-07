@@ -122,7 +122,8 @@ To include new fields:
   "description_keywords": [],
   "sites": [],
   "hours_old": 24,
-  "results_wanted": 20
+  "results_wanted": 20,
+  "max_iterations": 1
 }
 ```
 
@@ -132,7 +133,12 @@ To include new fields:
 - **description_keywords**: Array of strings used for filtering (what to KEEP based on description)
 - **sites**: Array of site identifiers to scrape (subset of SUPPORTED_SITES)
 - **hours_old**: Integer representing hours (24 = 1 day, 168 = 7 days, etc.)
-- **results_wanted**: Integer for number of results per search (default 20)
+- **results_wanted**: Integer for number of results per search (UI slider 5–100, default 20)
+- **max_iterations**: Integer 1–5 (default 1). Re-runs the whole search that many times, advancing
+  a jobspy page `offset` by `results_wanted` each pass so later iterations surface *new* jobs.
+  Cross-iteration uniqueness comes from the existing in-batch + database dedup; the keyword filter
+  and LLM analysis still run once over the accumulated new jobs. Non-DB scrapes ignore it (single
+  pass, since there is no store to dedup against).
 
 ### 2.2 Configuration Saving (Front-End)
 Create a new API endpoint that accepts POST requests with the modal form data.
@@ -472,6 +478,7 @@ When modal opens for the first time (empty config):
 - hours_old: 24 (1 day)
 - sites: All supported sites selected
 - results_wanted: 20
+- max_iterations: 1 (single search pass)
 - search_terms: Empty array
 - job_titles: Empty array (means NO title filtering, keep all)
 - description_keywords: Empty array (means NO keyword filtering, keep all)
@@ -480,7 +487,8 @@ When modal opens for the first time (empty config):
 - At least one search_term must be provided to start scraping
 - At least one site must be selected
 - hours_old must be one of the predefined values
-- results_wanted should be between 1 and 100
+- results_wanted should be between 1 and 100 (UI slider 5–100, step 5)
+- max_iterations must be between 1 and 5 (clamped server-side)
 - All keyword arrays can be empty (means no filtering)
 
 ### 9.4 Progress Tracking State Management
