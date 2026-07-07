@@ -360,6 +360,32 @@ the displayed match percentages update on the page automatically.
 - [x] Offline test subset green (`tests/recommend`, `tests/database`, `tests/test_frontend_wiring.py`),
   `import app` clean; rescore verified live against the real DB via the preview server
 
+## LLM Fit on All Searches (adjustable coverage) — Definition of Done
+
+Plan: `docs/plans/llm-fit-coverage.md`. Delivered on branch `llm-fit-coverage`
+(worktree), committed per phase, merged to `main`.
+
+Requirement: every job search — whether a **manual search from the Web UI** or the
+**automatic daily bot** — must run **all** of its final jobs through the LLM for a
+personalized fit, and this must be **adjustable** (default **1.0** = all) in the Options menu.
+
+- [x] (1/5) Worktree + plan doc
+- [x] (2/5) `llm_fraction` runtime knob (default `1.0` = every final job → LLM) in
+  `DEFAULT_RUNTIME_CONFIG`; `service._llm_rerank` keeps the top `ceil(fraction × N)` candidates
+  by semantic+bm25 and composes with the existing `top_n_llm` absolute cap. Both manual
+  (`/api/scrape/start`) and bot (`utils/backend/scheduler`) searches reach it via the shared
+  `execute_full_scraping_workflow → analyze_jobs`. 4 coverage tests added.
+- [x] (3/5) Options → Runtime "LLM coverage" slider (0–100%, default 100%) with a live percent
+  readout; `rtLlmFraction`/`onRtLlmFraction` wiring + `llm_fraction:1.0` embedded default +
+  updated "LLM re-rank" helper copy (verified: served template + API round-trip default 1.0 /
+  save 0.5 / restore 1.0)
+- [x] (4/5) Docs updated (`recommendation.md`, `data-flow.md`, `api-contract.md`, this checklist)
+- [x] (5/5) Offline suite green + `import app` clean; merged to `main`
+- [ ] **LLM fit live on all searches** — the coverage selection is covered by mocked-client
+  tests; issuing real verdicts for every job needs an enabled endpoint (Options → LLM Endpoint)
+  + "LLM re-rank" on. Note: `llm_fraction = 1.0` issues one LLM call **per final job** — lower it
+  (or set `top_n_llm` > 0) to cap cost.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

@@ -38,8 +38,11 @@ steps specifically so those expensive calls only ever touch jobs that are both n
 the keyword filter — not the full scraped batch. LinkedIn descriptions are fetched
 **serially** (one at a time) to avoid rate-limiting. The analysis stage runs over **only the
 keyword-filtered remainder** (non-ignored jobs): embed → rank by semantic+bm25 → LLM fit
-verdict on **all** of them by default (optional `top_n_llm` cap: `0` = all, `N>0` = top-N) →
-fold the `llm` signal into `rag_score` (renormalized when no verdict). See
+verdict on **all** of them by default (`llm_fraction` = `1.0`; lower it to send only the top
+share by semantic+bm25, and the optional `top_n_llm` cap composes on top: `0` = all, `N>0` =
+top-N) → fold the `llm` signal into `rag_score` (renormalized when no verdict). This holds for
+**both** manual Web-UI searches (`/api/scrape/start`) and the automatic daily bot
+(`utils/backend/scheduler`) — both run through the same `execute_full_scraping_workflow`. See
 `docs/recommendation.md`.
 
 ## Read Path (job display)
