@@ -40,7 +40,8 @@ class JobScrapeTask:
     country_indeed: str = DEFAULT_COUNTRY
     location: Optional[str] = None
     job_type: Optional[str] = None  # jobspy: fulltime|parttime|internship|contract
-    
+    offset: int = 0  # page offset into each site's results — advanced per search iteration
+
     # Results storage
     jobs_data: List[Dict[str, Any]] = field(default_factory=list, init=False)
     site_counts: Dict[str, int] = field(default_factory=dict, init=False)
@@ -67,6 +68,8 @@ class JobScrapeTask:
                     'country_indeed': self.country_indeed,
                     'location': self.location
                 }
+                if self.offset:
+                    scrape_args['offset'] = self.offset
                 if self.job_type:
                     scrape_args['job_type'] = self.job_type
 
