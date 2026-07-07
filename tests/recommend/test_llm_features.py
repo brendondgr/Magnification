@@ -91,3 +91,70 @@ def test_llm_rerank_disabled_is_noop(monkeypatch):
     analyses = [{"job_id": 1, "rag_score": 0.9}]
     service._llm_rerank([{"id": 1, "title": "x", "description": "x"}], analyses, {}, {"top_n_llm": 5})
     assert "llm_score" not in analyses[0]
+
+
+# ---- LLM coverage fraction (llm_fraction, default 1.0 = every final job) ----
+
+def _enable_fake(monkeypatch, many_result):
+    monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": True, "base_url": "x"})
+    monkeypatch.setattr(service.OpenAIClient, "from_config",
+                        classmethod(lambda cls, cfg, **kw: FakeClient(many_result=many_result)))
+
+
+def _four_jobs_analyses():
+    jobs = [{"id": i, "title": f"J{i}", "description": "d"} for i in range(1, 5)]
+    # Distinct semantic+bm25 so the top share is deterministic: job 4 > 3 > 2 > 1.
+    analyses = [
+        {"job_id": 1, "rag_score": 0.1, "semantic_score": 0.1, "bm25_score": 0.1},
+        {"job_id": 2, "rag_score": 0.2, "semantic_score": 0.3, "bm25_score": 0.3},
+        {"job_id": 3, "rag_score": 0.3, "semantic_score": 0.6, "bm25_score": 0.6},
+        {"job_id": 4, "rag_score": 0.4, "semantic_score": 0.9, "bm25_score": 0.9},
+    ]
+    return jobs, analyses
+
+
+def test_llm_fraction_default_covers_all(monkeypatch):
+    """llm_fraction absent / 1.0 → every candidate gets an LLM verdict (the default)."""
+    _enable_fake(monkeypatch, [{"score": 50, "rationale": "r"}] * 4)
+    jobs, analyses = _four_jobs_analyses()
+    n = service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"}, {"llm_workers": 2})
+    assert n == 4
+    assert all("llm_score" in a for a in analyses)
+
+    jobs2, analyses2 = _four_jobs_analyses()
+    n2 = service._llm_rerank(jobs2, analyses2, {"interests_paragraph": "ml"},
+                             {"llm_fraction": 1.0, "llm_workers": 2})
+    assert n2 == 4 and all("llm_score" in a for a in analyses2)
+
+
+def test_llm_fraction_half_keeps_top_share(monkeypatch):
+    """llm_fraction 0.5 of 4 candidates → the top 2 by semantic+bm25 (jobs 3 & 4)."""
+    _enable_fake(monkeypatch, [{"score": 77, "rationale": "r"}] * 2)
+    jobs, analyses = _four_jobs_analyses()
+    n = service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"},
+                            {"llm_fraction": 0.5, "llm_workers": 2})
+    assert n == 2
+    scored = {a["job_id"] for a in analyses if a.get("llm_score") is not None}
+    assert scored == {3, 4}  # highest semantic+bm25
+
+
+def test_llm_fraction_ceil_covers_at_least_one(monkeypatch):
+    """A tiny non-zero fraction still covers at least one job (ceil), the top candidate."""
+    _enable_fake(monkeypatch, [{"score": 60, "rationale": "r"}])
+    jobs, analyses = _four_jobs_analyses()
+    n = service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"},
+                            {"llm_fraction": 0.01, "llm_workers": 2})
+    assert n == 1
+    assert analyses[3].get("llm_score") == 60.0  # job 4, the top by semantic+bm25
+
+
+def test_llm_fraction_composes_with_top_n_cap(monkeypatch):
+    """llm_fraction selects the top share, then top_n_llm caps it further."""
+    _enable_fake(monkeypatch, [{"score": 88, "rationale": "r"}])
+    jobs, analyses = _four_jobs_analyses()
+    # fraction 0.75 → top 3 (jobs 2,3,4); top_n_llm 1 → just the single best (job 4).
+    n = service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"},
+                            {"llm_fraction": 0.75, "top_n_llm": 1, "llm_workers": 2})
+    assert n == 1
+    assert analyses[3].get("llm_score") == 88.0
+    assert all(analyses[i].get("llm_score") is None for i in (0, 1, 2))

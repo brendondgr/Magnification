@@ -696,7 +696,7 @@
           </button>
           <button onclick="{{ toggleRtRerank }}" style="{{ rtRerankRow }}" style-hover="border-color:var(--accent)">
             <span style="{{ rtRerankChk }}"><sc-if value="{{ rtEnableRerank }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
-            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM re-rank</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Add an LLM verdict + rationale to every analyzed job (set LLM top-N below to cap)</div></div>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM re-rank</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Add an LLM verdict + rationale to analyzed jobs (LLM coverage dials the share; LLM top-N caps the count)</div></div>
           </button>
           <button onclick="{{ toggleRtLlmSkills }}" style="{{ rtLlmSkillsRow }}" style-hover="border-color:var(--accent)">
             <span style="{{ rtLlmSkillsChk }}"><sc-if value="{{ rtEnableLlmSkills }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
@@ -713,6 +713,16 @@
             <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LinkedIn workers</label><input type="number" min="1" value="{{ rtLinkedinWorkers }}" oninput="{{ onRtLinkedinWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)"></div>
             <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LLM workers</label><input type="number" min="1" value="{{ rtLlmWorkers }}" oninput="{{ onRtLlmWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)"></div>
             <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LLM top-N (0 = all)</label><input type="number" min="0" value="{{ rtTopN }}" oninput="{{ onRtTopN }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)"></div>
+          </div>
+
+          <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">LLM coverage</div>
+          <div style="font:400 11px/1.4 var(--font-body);color:var(--muted);margin:-4px 0 2px">Share of each search's final jobs sent to the LLM for a personalized fit — applies to <b style="color:var(--text)">manual searches and the daily bot</b> alike. <b style="color:var(--text)">100% = every job</b>.</div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font:600 12px/1 var(--font-body);color:var(--text)">Jobs through the LLM</span>
+              <span style="font:700 12px/1 var(--font-mono);color:var(--accent-text)">{{ rtLlmFractionPct }}</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.05" value="{{ rtLlmFraction }}" oninput="{{ onRtLlmFraction }}" style="{{ rangeStyle }}" style-hover="filter:brightness(1.1)">
           </div>
 
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px">
@@ -1123,7 +1133,7 @@ class Component extends DCLogic {
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
-      runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,top_n_llm:0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
+      runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,llm_fraction:1.0,top_n_llm:0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
       jobs:[], loading:true
     };
     this.dragId=null;
@@ -1970,6 +1980,7 @@ class Component extends DCLogic {
       rtLinkedinWorkers:rt.linkedin_workers, onRtLinkedinWorkers:(e)=>this.rtSet({linkedin_workers:+e.target.value}),
       rtLlmWorkers:rt.llm_workers, onRtLlmWorkers:(e)=>this.rtSet({llm_workers:+e.target.value}),
       rtTopN:rt.top_n_llm, onRtTopN:(e)=>this.rtSet({top_n_llm:+e.target.value}),
+      rtLlmFraction:(rt.llm_fraction!=null?rt.llm_fraction:1.0), rtLlmFractionPct:Math.round((rt.llm_fraction!=null?rt.llm_fraction:1.0)*100)+'%', onRtLlmFraction:(e)=>this.rtSet({llm_fraction:+e.target.value}),
       weightSliders:[['semantic','Semantic'],['bm25','BM25'],['keyword','Keyword'],['skill','Skill'],['llm','LLM fit']].map(([key,label])=>{ const v=(w[key]!=null?w[key]:0); return {key,label,value:v,pct:Math.round(v*100)+'%',onInput:(e)=>this.rtWeightSet(key,+e.target.value)}; }),
       wTotalLabel:(wTotal.toFixed(2)+(wTotalOk?' ✓':' — must equal 1.00')), wTotalColor:(wTotalOk?'var(--c-offer-text)':'#E5484D'),
       saveRuntimeStyle:'display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;margin-top:4px;transition:transform .15s ease,filter .15s ease;color:var(--accent-ink);background:'+(wTotalOk?'var(--accent)':'var(--border2)')+';opacity:'+(wTotalOk?'1':'.7'),
