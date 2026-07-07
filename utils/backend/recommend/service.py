@@ -6,6 +6,7 @@ This is the glue between the pure helpers (embedder/bm25/ranker/skills) and the 
 LLM re-ranking (verdict + rationale on the top-N) is layered on in a later phase.
 """
 
+import math
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -325,9 +326,16 @@ def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True)
 
     When ``llm_only_missing`` is True, jobs that already carry a verdict (``llm_score`` set,
     e.g. seeded from a prior analysis) are skipped so "Analyze Matches" only fills the gaps.
-    ``top_n_llm`` is an optional cost cap on the remaining candidates: ``0`` (or
-    missing/negative) means no cap → all of them; a positive value limits the verdict to that
-    many top candidates by **semantic + bm25** (the lexical/vector relevance).
+
+    Coverage is controlled by two composing knobs, both read from ``runtime``:
+
+    * ``llm_fraction`` (default ``1.0``) — the share of candidates that receive a verdict.
+      ``1.0`` sends **every** final job to the LLM (the default: manual searches and the daily
+      bot alike get a personalized fit on all jobs); a value ``<1.0`` keeps the top
+      ``ceil(fraction × N)`` candidates by **semantic + bm25**. Clamped to ``[0, 1]``.
+    * ``top_n_llm`` — an optional absolute cost cap applied **after** the fraction: ``0`` (or
+      missing/negative) means no cap; a positive value limits the verdict to that many top
+      candidates by **semantic + bm25**.
     """
     cfg = load_llm_endpoint_config()
     if not cfg.get("enabled"):
@@ -338,15 +346,29 @@ def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True)
         i for i in range(len(analyses))
         if not (llm_only_missing and analyses[i].get("llm_score") is not None)
     ]
-    top_n = int(runtime.get("top_n_llm", 0) or 0)
-    if top_n > 0:
-        order = sorted(
-            candidates,
+
+    def _by_relevance(idxs):
+        return sorted(
+            idxs,
             key=lambda i: (analyses[i].get("semantic_score") or 0.0) + (analyses[i].get("bm25_score") or 0.0),
             reverse=True,
-        )[:top_n]
+        )
+
+    fraction = runtime.get("llm_fraction", 1.0)
+    try:
+        fraction = float(fraction)
+    except (TypeError, ValueError):
+        fraction = 1.0
+    fraction = max(0.0, min(1.0, fraction))
+    if fraction < 1.0 and candidates:
+        keep = math.ceil(fraction * len(candidates))
+        order = _by_relevance(candidates)[:keep]
     else:
         order = candidates
+
+    top_n = int(runtime.get("top_n_llm", 0) or 0)
+    if top_n > 0:
+        order = _by_relevance(order)[:top_n]
     if not order:
         return 0
     profile_summary = ranker.build_profile_query(profile)[:2000]
