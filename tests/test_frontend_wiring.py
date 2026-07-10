@@ -107,14 +107,20 @@ def test_index_has_documents_sidebar_wiring(client):
     assert "Document Templates" in html
 
 
-def test_index_has_document_generation_surface(client):
-    """The served page wires the job-detail Documents surface (generate / poll / view / approve)."""
+def test_index_has_application_mode(client):
+    """The served page wires Application Mode (Apply → intake / generate / review / refine)."""
     html = client.get("/").get_data(as_text=True)
-    for token in ("onGenCover", "onGenResume", "generateDoc", "pollGen", "viewDoc",
-                  "approveDoc", "docViewOpen", "docGenActive", "loadJobDocuments"):
-        assert token in html, f"missing generation token: {token}"
-    assert "Tailor Résumé" in html
-    assert "Cover Letter" in html
+    for token in ("openApply", "startApply", "appOpen", "appCards", "submitRefine",
+                  "approveAppDoc", "markAppliedAndClose", "onMarkApplied", "_pollApp"):
+        assert token in html, f"missing Application Mode token: {token}"
+    # Two buttons: Apply (opens the flow) + Applied (quick mark). Intake + review copy present.
+    assert "Apply to " in html          # intake header
+    assert "Tailor my résumé" in html
+    assert "Regenerate" in html
+    assert "Mark as Applied" in html
+    # The old side-panel Documents surface must be gone.
+    assert "docGenActive" not in html
+    assert "docViewOpen" not in html
 
 
 def test_generation_endpoints_registered(client):

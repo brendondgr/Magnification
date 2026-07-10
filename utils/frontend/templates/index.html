@@ -231,8 +231,12 @@
 
                 <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
 
-                <div style="display:flex;gap:8px;margin-top:auto">
-                  <button onclick="{{ job.onApply }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
+                <div style="display:flex;gap:8px;margin-top:auto;flex-wrap:wrap">
+                  <button onclick="{{ job.onApply }}" style="flex:1;min-width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    Apply
+                  </button>
+                  <button onclick="{{ job.onMarkApplied }}" title="Mark as applied (no docs)" style="display:flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 12px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     Applied
                   </button>
@@ -316,8 +320,12 @@
 
                 <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
 
-                <div style="display:flex;gap:8px;margin-top:auto">
-                  <button onclick="{{ job.onApply }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
+                <div style="display:flex;gap:8px;margin-top:auto;flex-wrap:wrap">
+                  <button onclick="{{ job.onApply }}" style="flex:1;min-width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    Apply
+                  </button>
+                  <button onclick="{{ job.onMarkApplied }}" title="Mark as applied (no docs)" style="display:flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 12px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     Applied
                   </button>
@@ -465,75 +473,20 @@
 
         <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Job Description</div>
         <div>{{ selectedJob.descNodes }}</div>
-
-        <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:30px 0 14px">Documents</div>
-        <div style="display:flex;gap:10px;margin-bottom:14px">
-          <button onclick="{{ selectedJob.onGenCover }}" style="{{ selectedJob.genCoverStyle }}" style-hover="filter:brightness(1.04);border-color:var(--border)" style-active="transform:scale(.98)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 8h10M7 12h10M7 16h6"></path></svg>
-            Cover Letter
-          </button>
-          <button onclick="{{ selectedJob.onGenResume }}" style="{{ selectedJob.genResumeStyle }}" style-hover="filter:brightness(1.04);border-color:var(--border)" style-active="transform:scale(.98)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 3v5h5"></path><path d="M8 13h8M8 17h5"></path></svg>
-            Tailor Résumé
-          </button>
-        </div>
-        <sc-if value="{{ docGenActive }}" hint-placeholder-val="">
-          <div style="padding:14px;border:var(--bw) solid var(--border);border-radius:var(--r-sm);background:var(--bg);margin-bottom:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
-              <span style="display:flex;align-items:center;gap:8px;font:600 13px/1 var(--font-body);color:var(--text)"><span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:var(--accent);animation:jf-pulse 1.6s ease-in-out infinite"></span>{{ docGenKind }} · {{ docGenStage }}</span>
-              <span style="font:600 12px/1 var(--font-mono);color:var(--muted)">{{ docGenPercent }}%</span>
-            </div>
-            <div style="height:6px;border-radius:99px;background:var(--border2);overflow:hidden"><div style="{{ docGenBar }}"></div></div>
-            <sc-if value="{{ docGenMessage }}" hint-placeholder-val=""><div style="margin-top:9px;font:400 12px/1.4 var(--font-body);color:var(--muted)">{{ docGenMessage }}</div></sc-if>
-          </div>
-        </sc-if>
-        <sc-if value="{{ selectedJob.hasDocs }}" hint-placeholder-val="">
-          <div style="display:flex;flex-direction:column;gap:9px">
-            <sc-for list="{{ selectedJob.docs }}" as="doc" hint-placeholder-count="2">
-              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:var(--bw) solid var(--border);border-radius:var(--r-sm);background:var(--card)">
-                <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span style="font:600 14px/1 var(--font-body);color:var(--text)">{{ doc.kindLabel }}</span>
-                    <span style="{{ doc.statusStyle }}">{{ doc.statusLabel }}</span>
-                  </div>
-                  <sc-if value="{{ doc.hasLift }}" hint-placeholder-val="">
-                    <div style="margin-top:6px;font:600 12px/1 var(--font-body);color:{{ doc.liftColor }}">{{ doc.liftLabel }}</div>
-                  </sc-if>
-                </div>
-                <button onclick="{{ doc.onView }}" style="height:34px;padding:0 12px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">View</button>
-                <button onclick="{{ doc.onApprove }}" style="{{ doc.approveStyle }}" style-hover="filter:brightness(1.05)">{{ doc.approveLabel }}</button>
-              </div>
-            </sc-for>
-          </div>
-        </sc-if>
       </div>
 
       <div style="display:flex;gap:10px;padding:18px 26px;border-top:var(--bw) solid var(--border)">
-        <button onclick="{{ closeDetail }}" style="flex:1;height:44px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Close</button>
-        <button onclick="{{ selectedJob.onLink }}" style="flex:2;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
-          Visit Job Post
+        <button onclick="{{ closeDetail }}" style="flex:0 0 auto;height:44px;padding:0 18px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Close</button>
+        <button onclick="{{ selectedJob.onLink }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">
+          Visit Post
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        </button>
+        <button onclick="{{ selectedJob.onApply }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          Apply
         </button>
       </div>
     </aside>
-  </sc-if>
-
-  <!-- ============ DOCUMENT VIEWER ============ -->
-  <sc-if value="{{ docViewOpen }}" hint-placeholder-val="">
-    <div onclick="{{ closeDocView }}" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);animation:jf-fade .2s ease"></div>
-    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:71;width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow);animation:jf-pop .3s cubic-bezier(.16,1,.3,1)">
-      <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
-        <h2 style="flex:1;margin:0;font:600 18px/1 var(--font-head)">{{ docViewTitle }}</h2>
-        <button onclick="{{ downloadDoc }}" style="height:36px;padding:0 14px;display:flex;align-items:center;gap:7px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="filter:brightness(1.06)" style-active="transform:scale(.97)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          Download
-        </button>
-        <button onclick="{{ closeDocView }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
-        </button>
-      </div>
-      <div style="padding:22px 24px;overflow:auto"><pre style="margin:0;white-space:pre-wrap;word-wrap:break-word;font:400 13px/1.6 var(--font-body);color:var(--text)">{{ docViewContent }}</pre></div>
-    </div>
   </sc-if>
 
   <!-- ============ PROFILE PANEL ============ -->
@@ -965,6 +918,141 @@
     </aside>
   </sc-if>
 
+  <!-- ============ APPLICATION MODE ============ -->
+  <sc-if value="{{ appOpen }}" hint-placeholder-val="">
+    <div onclick="{{ closeApply }}" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);animation:jf-fade .25s ease;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onclick="{{ stop }}" style="width:min(780px,100%);max-height:92vh;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;animation:jf-pop .32s cubic-bezier(.16,1,.3,1)">
+
+        <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink);flex:0 0 auto">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <h2 style="margin:0;font:600 18px/1 var(--font-head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Apply to {{ appCompany }}</h2>
+            <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ appTitle }}</div>
+          </div>
+          <button onclick="{{ closeApply }}" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color .15s ease,transform .15s ease" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <!-- INTAKE -->
+        <sc-if value="{{ appIntake }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:20px">
+            <div style="font:500 14px/1.5 var(--font-body);color:var(--text)">What should I tailor for this role?</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <button onclick="{{ toggleAppResume }}" style="{{ appResumeToggleStyle }}" style-hover="border-color:var(--accent)">
+                <span style="{{ appResumeCheck }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.4"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                <span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font:600 14px/1 var(--font-body);color:var(--text)">Tailor my résumé</span><span style="font:400 12px/1.4 var(--font-body);color:var(--muted)">Rewrite to mirror the JD — with a real match-lift score</span></span>
+              </button>
+              <button onclick="{{ toggleAppCover }}" style="{{ appCoverToggleStyle }}" style-hover="border-color:var(--accent)">
+                <span style="{{ appCoverCheck }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.4"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                <span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font:600 14px/1 var(--font-body);color:var(--text)">Write a cover letter</span><span style="font:400 12px/1.4 var(--font-body);color:var(--muted)">Research → angle → draft → voice → critique</span></span>
+              </button>
+            </div>
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Guidance <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+              <textarea value="{{ appGuidance }}" oninput="{{ onAppGuidance }}" placeholder="Anything to emphasize or avoid? e.g. lead with leadership, keep it to one page, mention the healthcare domain" style="width:100%;min-height:72px;resize:vertical;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 13px/1.5 var(--font-body);outline:none"></textarea>
+            </div>
+            <sc-if value="{{ appHasExisting }}" hint-placeholder-val="">
+              <button onclick="{{ reviewExisting }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;padding:8px 12px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--accent2);font:600 12px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Review existing drafts →</button>
+            </sc-if>
+          </div>
+          <div style="display:flex;gap:10px;padding:18px 24px;border-top:var(--bw) solid var(--border)">
+            <button onclick="{{ markAppliedAndClose }}" style="height:46px;padding:0 16px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease" style-hover="background:var(--surface2)">Just mark Applied</button>
+            <button onclick="{{ closeApply }}" style="margin-left:auto;height:46px;padding:0 18px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease" style-hover="background:var(--surface2)">Cancel</button>
+            <button onclick="{{ startApply }}" style="height:46px;padding:0 22px;display:flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Start<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>
+          </div>
+        </sc-if>
+
+        <!-- GENERATING -->
+        <sc-if value="{{ appGenerating }}" hint-placeholder-val="">
+          <div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px">
+            <sc-for list="{{ appCards }}" as="c" hint-placeholder-count="2">
+              <div style="padding:16px 18px;border:var(--bw) solid var(--border);border-radius:var(--r-sm);background:var(--bg)">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+                  <span style="display:flex;align-items:center;gap:9px;font:600 14px/1 var(--font-body);color:var(--text)"><span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:var(--accent);animation:jf-pulse 1.6s ease-in-out infinite"></span>{{ c.label }}</span>
+                  <span style="font:600 12px/1 var(--font-mono);color:var(--muted)">{{ c.stage }} · {{ c.percent }}%</span>
+                </div>
+                <div style="height:7px;border-radius:99px;background:var(--border2);overflow:hidden"><div style="{{ c.bar }}"></div></div>
+                <sc-if value="{{ c.message }}" hint-placeholder-val=""><div style="margin-top:10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">{{ c.message }}</div></sc-if>
+              </div>
+            </sc-for>
+            <div style="font:400 12px/1.5 var(--font-body);color:var(--muted);text-align:center;padding-top:4px">Watching the agents work through each stage — this can take a minute.</div>
+          </div>
+          <div style="display:flex;gap:10px;padding:18px 24px;border-top:var(--bw) solid var(--border)">
+            <button onclick="{{ closeApply }}" style="margin-left:auto;height:44px;padding:0 20px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Run in background</button>
+          </div>
+        </sc-if>
+
+        <!-- REVIEW -->
+        <sc-if value="{{ appReview }}" hint-placeholder-val="">
+          <div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:22px">
+            <sc-for list="{{ appCards }}" as="c" hint-placeholder-count="2">
+              <div style="border:var(--bw) solid var(--border);border-radius:var(--r-sm);background:var(--card);overflow:hidden">
+                <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:var(--bw) solid var(--border);flex-wrap:wrap">
+                  <span style="font:600 15px/1 var(--font-head);color:var(--text)">{{ c.label }}</span>
+                  <span style="{{ c.statusStyle }}">{{ c.statusLabel }}</span>
+                  <sc-if value="{{ c.hasLift }}" hint-placeholder-val=""><span style="font:600 12px/1 var(--font-body);color:{{ c.liftColor }}">{{ c.liftLabel }}</span></sc-if>
+                  <sc-if value="{{ c.active }}" hint-placeholder-val=""><span style="margin-left:auto;display:flex;align-items:center;gap:7px;font:600 12px/1 var(--font-mono);color:var(--accent-text)"><span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:var(--accent);animation:jf-pulse 1.6s ease-in-out infinite"></span>{{ c.stage }} · {{ c.percent }}%</span></sc-if>
+                </div>
+
+                <sc-if value="{{ c.active }}" hint-placeholder-val="">
+                  <div style="padding:0 16px"><div style="height:5px;margin-top:12px;border-radius:99px;background:var(--border2);overflow:hidden"><div style="{{ c.bar }}"></div></div></div>
+                </sc-if>
+
+                <sc-if value="{{ c.noDoc }}" hint-placeholder-val="">
+                  <div style="padding:20px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                    <span style="font:400 13px/1.5 var(--font-body);color:var(--muted)">Couldn’t generate this document.</span>
+                    <button onclick="{{ c.onRetry }}" style="height:34px;padding:0 14px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 12px/1 var(--font-body);cursor:pointer">Try again</button>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ c.editing }}" hint-placeholder-val="">
+                  <div style="padding:16px">
+                    <textarea value="{{ c.editText }}" oninput="{{ c.onEditInput }}" style="width:100%;min-height:280px;resize:vertical;padding:14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 13px/1.6 var(--font-body);outline:none"></textarea>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+                      <button onclick="{{ c.onCancelEdit }}" style="height:36px;padding:0 14px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Cancel</button>
+                      <button onclick="{{ c.onSaveEdit }}" style="height:36px;padding:0 16px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="filter:brightness(1.06)">Save changes</button>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ c.viewing }}" hint-placeholder-val="">
+                  <div style="padding:16px 16px 0;max-height:320px;overflow:auto"><pre style="margin:0;white-space:pre-wrap;word-wrap:break-word;font:400 13px/1.6 var(--font-body);color:var(--text)">{{ c.content }}</pre></div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:16px;flex-wrap:wrap">
+                    <button onclick="{{ c.onEdit }}" style="height:36px;padding:0 14px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Edit</button>
+                    <button onclick="{{ c.onDownload }}" style="height:36px;padding:0 14px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Download</button>
+                    <button onclick="{{ c.onApprove }}" style="{{ c.approveStyle }}" style-hover="filter:brightness(1.05)">{{ c.approveLabel }}</button>
+                  </div>
+                  <sc-if value="{{ c.canRefine }}" hint-placeholder-val="">
+                    <div style="padding:0 16px 16px">
+                      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                        <button onclick="{{ c.onWarmer }}" style="padding:6px 11px;border-radius:99px;border:var(--bw) solid var(--border2);background:var(--bg);color:var(--text);font:500 12px/1 var(--font-body);cursor:pointer" style-hover="border-color:var(--accent2);color:var(--accent2)">Warmer tone</button>
+                        <button onclick="{{ c.onConcise }}" style="padding:6px 11px;border-radius:99px;border:var(--bw) solid var(--border2);background:var(--bg);color:var(--text);font:500 12px/1 var(--font-body);cursor:pointer" style-hover="border-color:var(--accent2);color:var(--accent2)">More concise</button>
+                        <button onclick="{{ c.onAngle }}" style="padding:6px 11px;border-radius:99px;border:var(--bw) solid var(--border2);background:var(--bg);color:var(--text);font:500 12px/1 var(--font-body);cursor:pointer" style-hover="border-color:var(--accent2);color:var(--accent2)">Different angle</button>
+                        <button onclick="{{ c.onStronger }}" style="padding:6px 11px;border-radius:99px;border:var(--bw) solid var(--border2);background:var(--bg);color:var(--text);font:500 12px/1 var(--font-body);cursor:pointer" style-hover="border-color:var(--accent2);color:var(--accent2)">Stronger opening</button>
+                      </div>
+                      <div style="display:flex;gap:10px;align-items:flex-end">
+                        <textarea value="{{ c.refineText }}" oninput="{{ c.onRefineInput }}" placeholder="Tell the agent what to change, then regenerate…" style="flex:1;min-height:44px;resize:vertical;padding:11px 13px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 13px/1.5 var(--font-body);outline:none"></textarea>
+                        <button onclick="{{ c.onRefineSubmit }}" style="height:44px;padding:0 18px;display:flex;align-items:center;gap:7px;background:var(--accent2);color:#fff;border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;white-space:nowrap" style-hover="filter:brightness(1.06)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>Regenerate</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:10px;padding:18px 24px;border-top:var(--bw) solid var(--border)">
+            <button onclick="{{ closeApply }}" style="height:46px;padding:0 18px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Close</button>
+            <button onclick="{{ markAppliedAndClose }}" style="margin-left:auto;height:46px;padding:0 22px;display:flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>Mark as Applied</button>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </sc-if>
+
   <!-- ============ FIND JOBS MODAL ============ -->
   <sc-if value="{{ findOpen }}" hint-placeholder-val="">
     <div onclick="{{ closeFind }}" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);animation:jf-fade .25s ease;display:flex;align-items:center;justify-content:center;padding:24px">
@@ -1354,9 +1442,14 @@ class Component extends DCLogic {
       wri:{tone:'',formality:'',sentence_length:'',sample_text:'',dos:[],donts:[],source_filename:''},
       wriStatus:'', wriBusy:false, wriDoDraft:'', wriDontDraft:'', wriUpload:null,
       templates:[], tplSelId:null, tplStatus:'', uploadedDocs:[],
-      // ---- Per-job document generation (cover letter / résumé) ----
-      docGen:{active:false, kind:'', taskId:null, percent:0, stage:'', message:''},
-      docsByJob:{}, docView:{open:false, title:'', content:'', id:null},
+      // ---- Application Mode (Apply → tailor résumé/cover letter, iterate) ----
+      app:{open:false, jobId:null, company:'', title:'', stage:'intake',
+           wantCover:true, wantResume:true, guidance:'',
+           gen:{cover_letter:{active:false,taskId:null,percent:0,stage:'',message:''},
+                resume:{active:false,taskId:null,percent:0,stage:'',message:''}},
+           docs:{cover_letter:null, resume:null},
+           edit:{cover_letter:null, resume:null},
+           refine:{cover_letter:'', resume:''}},
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
@@ -1367,7 +1460,7 @@ class Component extends DCLogic {
     this._scrapeJobId=null;
   }
   componentDidMount(){ this.loadJobs(); }
-  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); clearInterval(this._gpoll); }
+  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); this._clearAppPollers(); }
 
   // ---------- API: reads ----------
   async loadJobs(){
@@ -1763,69 +1856,158 @@ class Component extends DCLogic {
   closeAnalyze(){ clearInterval(this._apoll); this.setState({analyzeOpen:false, analyzing:false}); }
 
   // ---------- per-job document generation (cover letter / résumé) ----------
-  async loadJobDocuments(jobId){
+  // ---------- Application Mode (Apply → tailor résumé / cover letter, iterate) ----------
+  openApply(job){
+    if(!job) return;
+    this._clearAppPollers();
+    this.setState({app:{open:true, jobId:job.id, company:job.company||'', title:job.title||'',
+      stage:'intake', wantCover:true, wantResume:true, guidance:'',
+      gen:{cover_letter:this._blankGen(), resume:this._blankGen()},
+      docs:{cover_letter:null, resume:null}, edit:{cover_letter:null, resume:null},
+      refine:{cover_letter:'', resume:''}}});
+    this.loadAppDocs(job.id);   // surface any existing drafts for "review existing"
+  }
+  _blankGen(){ return {active:false,taskId:null,percent:0,stage:'',message:''}; }
+  closeApply(){ this._clearAppPollers(); this.setApp({open:false}); }
+  _clearAppPollers(){ Object.values(this._appPollers||{}).forEach(clearInterval); this._appPollers={}; }
+  setApp(patch){ this.setState(st=>({app:Object.assign({},st.app,patch)})); }
+  _setAppNested(group, kind, value){
+    this.setState(st=>({app:Object.assign({},st.app,{[group]:Object.assign({},st.app[group],{[kind]:value})})}));
+  }
+  toggleAppKind(kind){ const key=kind==='resume'?'wantResume':'wantCover';
+    this.setState(st=>({app:Object.assign({},st.app,{[key]:!st.app[key]})})); }
+  setGuidance(e){ const v=e.target.value; this.setApp({guidance:v}); }
+  async loadAppDocs(jobId){
     try{
-      const res=await fetch('/api/documents?job_id='+jobId);
-      if(!res.ok) return;
-      const data=await res.json();
-      this.setState(st=>({docsByJob:Object.assign({},st.docsByJob,{[jobId]:data.documents||[]})}));
+      const res=await fetch('/api/documents?job_id='+jobId); if(!res.ok) return;
+      const data=await res.json(); const docs={cover_letter:null, resume:null};
+      (data.documents||[]).forEach(d=>{ if(d.kind in docs && !docs[d.kind]) docs[d.kind]=d; });  // newest first
+      this.setState(st=>(st.app.jobId===jobId?{app:Object.assign({},st.app,{docs:Object.assign({},st.app.docs,docs)})}:{}));
     }catch(e){ console.error(e); }
   }
-  generateDoc(kind){
-    const jobId=this.state.selectedId;
-    if(jobId==null || this.state.docGen.active) return;
-    const path=kind==='resume'?'/api/documents/resume/start':'/api/documents/cover-letter/start';
-    this.setState({docGen:{active:true, kind, taskId:null, percent:0, stage:'Starting', message:'Preparing…'}});
-    fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jobId})})
-      .then(r=>r.json()).then(d=>{
-        if(d.success && d.task_id){ this.pollGen(d.task_id, jobId); }
-        else { this.setState({docGen:{active:false,kind,taskId:null,percent:0,stage:'Failed',message:d.message||''}}); this.showToast(d.message||'Generation failed'); }
-      })
-      .catch(e=>{ console.error(e); this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false,stage:'Failed'})})); this.showToast('Generation failed'); });
+  reviewExisting(){ this.setApp({stage:'review'}); }
+  startApply(){
+    const a=this.state.app; const kinds=[];
+    if(a.wantResume) kinds.push('resume');
+    if(a.wantCover) kinds.push('cover_letter');
+    if(!kinds.length){ this.showToast('Pick at least one document'); return; }
+    const gen=Object.assign({}, a.gen);
+    kinds.forEach(k=>{ gen[k]={active:true,taskId:null,percent:0,stage:'Starting',message:'Preparing…'}; });
+    this.setApp({stage:'generating', gen});
+    kinds.forEach(k=>this._startGen(k, {instructions:a.guidance}));
   }
-  pollGen(taskId, jobId){
-    clearInterval(this._gpoll);
-    this._gpoll=setInterval(async()=>{
+  _startGen(kind, opts){
+    opts=opts||{}; const jobId=this.state.app.jobId;
+    const path=kind==='resume'?'/api/documents/resume/start':'/api/documents/cover-letter/start';
+    const body={job_id:jobId};
+    if(opts.instructions) body.instructions=opts.instructions;
+    if(opts.revise_from!=null) body.revise_from=opts.revise_from;
+    this._setAppNested('gen', kind, {active:true,taskId:null,percent:0,stage:'Starting',message:'Preparing…'});
+    fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(r=>r.json()).then(d=>{ if(d.success && d.task_id){ this._pollApp(kind, d.task_id); }
+        else { this._genFail(kind, d.message); } })
+      .catch(e=>{ console.error(e); this._genFail(kind, 'Failed to start'); });
+  }
+  _pollApp(kind, taskId){
+    this._appPollers=this._appPollers||{}; clearInterval(this._appPollers[kind]);
+    this._appPollers[kind]=setInterval(async()=>{
       try{
         const res=await fetch('/api/documents/status/'+taskId);
-        if(!res.ok){ clearInterval(this._gpoll); this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false,stage:'Failed'})})); return; }
-        const data=await res.json();
-        const prog=data.progress||{}; const details=prog.details||{};
-        this.setState(st=>({docGen:Object.assign({},st.docGen,{taskId, percent:Math.round(prog.percent||0), stage:this.formatStage(prog.stage), message:details.message||''})}));
+        if(!res.ok){ clearInterval(this._appPollers[kind]); this._genFail(kind, 'status error'); return; }
+        const data=await res.json(); const prog=data.progress||{}; const details=prog.details||{};
+        this._setAppNested('gen', kind, {active:true, taskId, percent:Math.round(prog.percent||0),
+          stage:this.formatStage(prog.stage), message:details.message||''});
         if(data.status==='completed'){
-          clearInterval(this._gpoll);
-          this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false, percent:100, stage:'Completed'})}));
-          this.loadJobDocuments(jobId);
-          const r=data.results||{};
-          this.showToast(r.needs_review?'Draft ready — review it':'Document ready');
+          clearInterval(this._appPollers[kind]);
+          await this._fetchAppDoc(kind, (data.results||{}).document_id);
+          this._finishGen(kind, true);
         } else if(data.status==='failed'){
-          clearInterval(this._gpoll);
-          this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false, stage:'Failed', message:data.error||''})}));
-          this.showToast('Generation failed');
+          clearInterval(this._appPollers[kind]); this._genFail(kind, data.error);
         }
-      }catch(e){ console.error(e); clearInterval(this._gpoll); this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false})})); }
+      }catch(e){ console.error(e); clearInterval(this._appPollers[kind]); this._genFail(kind, 'poll error'); }
     }, 700);
   }
-  async viewDoc(docId){
-    try{
-      const res=await fetch('/api/documents/'+docId);
-      if(!res.ok) return;
-      const d=await res.json();
-      if(d && d.id!=null){ this.setState({docView:{open:true, title:(d.kind==='resume'?'Tailored Résumé':'Cover Letter'), content:d.content||'', id:d.id}}); }
+  async _fetchAppDoc(kind, docId){
+    if(docId==null) return;
+    try{ const res=await fetch('/api/documents/'+docId); if(!res.ok) return; const doc=await res.json();
+      this.setState(st=>({app:Object.assign({},st.app,{docs:Object.assign({},st.app.docs,{[kind]:doc})})}));
     }catch(e){ console.error(e); }
   }
-  closeDocView(){ this.setState({docView:{open:false, title:'', content:'', id:null}}); }
-  async approveDoc(docId, jobId){
-    try{
-      await fetch('/api/documents/'+docId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'approved'})});
-      this.loadJobDocuments(jobId); this.showToast('Approved');
-    }catch(e){ console.error(e); this.showToast('Could not approve'); }
+  _finishGen(kind, ok){
+    this.setState(st=>{
+      const gen=Object.assign({}, st.app.gen);
+      gen[kind]=Object.assign({}, gen[kind], {active:false, percent:ok?100:gen[kind].percent, stage:ok?'Completed':'Failed'});
+      const app=Object.assign({}, st.app, {gen});
+      if(app.stage==='generating'){  // first-pass batch: advance to review once nothing is active
+        const kinds=[]; if(app.wantResume)kinds.push('resume'); if(app.wantCover)kinds.push('cover_letter');
+        if(!kinds.some(k=>gen[k] && gen[k].active)) app.stage='review';
+      }
+      return {app};
+    });
   }
-  downloadDoc(){
-    const v=this.state.docView; if(!v.content) return;
-    const blob=new Blob([v.content],{type:'text/markdown'}); const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=(v.title||'document').replace(/\s+/g,'_').toLowerCase()+'.md';
+  _genFail(kind, msg){ this._finishGen(kind, false); this.showToast(msg||'Generation failed'); }
+  // review-screen actions
+  editDoc(kind){ const d=this.state.app.docs[kind]; this._setAppNested('edit', kind, d?d.content||'':''); }
+  editInput(kind, e){ this._setAppNested('edit', kind, e.target.value); }
+  cancelEdit(kind){ this._setAppNested('edit', kind, null); }
+  async saveEdit(kind){
+    const text=this.state.app.edit[kind]; const doc=this.state.app.docs[kind]; if(!doc) return;
+    try{ await fetch('/api/documents/'+doc.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:text})});
+      this.setState(st=>({app:Object.assign({},st.app,{
+        docs:Object.assign({},st.app.docs,{[kind]:Object.assign({},st.app.docs[kind],{content:text})}),
+        edit:Object.assign({},st.app.edit,{[kind]:null})})}));
+      this.showToast('Saved'); }catch(e){ console.error(e); this.showToast('Could not save'); }
+  }
+  refineInput(kind, e){ this._setAppNested('refine', kind, e.target.value); }
+  quickRefine(kind, txt){ this._setAppNested('refine', kind, txt); }
+  submitRefine(kind){
+    const fb=(this.state.app.refine[kind]||'').trim(); const doc=this.state.app.docs[kind]; if(!doc) return;
+    this._setAppNested('refine', kind, '');
+    this._startGen(kind, {instructions:fb, revise_from:doc.id});
+  }
+  approveAppDoc(kind){
+    const doc=this.state.app.docs[kind]; if(!doc) return;
+    fetch('/api/documents/'+doc.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'approved'})})
+      .then(()=>{ this.setState(st=>({app:Object.assign({},st.app,{docs:Object.assign({},st.app.docs,{[kind]:Object.assign({},st.app.docs[kind],{status:'approved'})})})})); this.showToast('Approved'); })
+      .catch(e=>{ console.error(e); this.showToast('Could not approve'); });
+  }
+  downloadAppDoc(kind){
+    const doc=this.state.app.docs[kind]; if(!doc || !doc.content) return;
+    const blob=new Blob([doc.content],{type:'text/markdown'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=(kind==='resume'?'resume':'cover_letter')+'.md';
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+  markAppliedAndClose(){ const id=this.state.app.jobId; if(id!=null) this.markApplied(id); this.closeApply(); }
+  appToggleStyle(on){ return 'flex:1;display:flex;align-items:flex-start;gap:12px;padding:15px;border-radius:var(--r-sm);cursor:pointer;text-align:left;transition:border-color .15s ease,background-color .15s ease;border:var(--bw) solid '+(on?'var(--accent)':'var(--border)')+';background:'+(on?'color-mix(in srgb,var(--accent) 8%,transparent)':'var(--bg)'); }
+  appCheckStyle(on){ return 'width:20px;height:20px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:background-color .15s ease,border-color .15s ease;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent'); }
+  appCard(kind){
+    const A=this.state.app; const g=A.gen[kind]||{}; const doc=A.docs[kind]||null; const isResume=kind==='resume';
+    const approved=!!(doc && doc.status==='approved'); const editing=A.edit[kind]!==null && A.edit[kind]!==undefined;
+    const pct=(x)=>Math.round((x||0)*100);
+    const hasLift=!!(doc && isResume && doc.match_before!=null && doc.match_after!=null);
+    return {
+      key:kind, kind, label:isResume?'Tailored Résumé':'Cover Letter',
+      active:!!g.active, percent:g.percent||0, stage:g.stage||'', message:g.message||'',
+      bar:'height:100%;width:'+(g.percent||0)+'%;background:var(--accent);border-radius:99px;transition:width .3s ease',
+      hasDoc:!!doc, content:doc?(doc.content||''):'',
+      statusLabel:approved?'Approved':'Draft', approved,
+      statusStyle:'font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:99px;border:var(--bw) solid '+(approved?'var(--c-offer)':'var(--border2)')+';color:'+(approved?'var(--c-offer-text)':'var(--muted)'),
+      hasLift, liftLabel:hasLift?(pct(doc.match_before)+'% → '+pct(doc.match_after)+'% match'):'',
+      liftColor:hasLift?this.matchColorFor(pct(doc.match_after)):'var(--muted)',
+      editing, editText:editing?(A.edit[kind]||''):'', refineText:A.refine[kind]||'',
+      onEdit:()=>this.editDoc(kind), onEditInput:(e)=>this.editInput(kind,e),
+      onSaveEdit:()=>this.saveEdit(kind), onCancelEdit:()=>this.cancelEdit(kind),
+      onRefineInput:(e)=>this.refineInput(kind,e), onRefineSubmit:()=>this.submitRefine(kind),
+      onWarmer:()=>this.quickRefine(kind,'Use a warmer, more personable tone.'),
+      onConcise:()=>this.quickRefine(kind,'Make it more concise and punchy.'),
+      onAngle:()=>this.quickRefine(kind,'Try a different angle — lead with a different strength.'),
+      onStronger:()=>this.quickRefine(kind,'Make the opening stronger and more specific to this role.'),
+      onApprove:()=>this.approveAppDoc(kind), onDownload:()=>this.downloadAppDoc(kind),
+      approveLabel:approved?'Approved':'Approve',
+      approveStyle:'height:36px;padding:0 14px;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:'+(approved?'default':'pointer')+';border:var(--bw) solid '+(approved?'var(--border2)':'var(--accent2)')+';background:transparent;color:'+(approved?'var(--muted)':'var(--accent2)'),
+      canRefine:!!doc && !g.active, viewing:!!doc && !editing, noDoc:!doc && !g.active,
+      onRetry:()=>this._startGen(kind, {instructions:A.guidance})
+    };
   }
   // Fast, on-page match-% refresh: recomputes scores from stored analysis artifacts (no
   // re-embed / no LLM) against the current weights + profile, then reloads the feed. Used
@@ -2059,7 +2241,7 @@ class Component extends DCLogic {
       avatar:Object.entries(av(40)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       avatarLg:Object.entries(av(52)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       siteBadge:'font:600 10px/1 var(--font-mono);letter-spacing:.04em;color:#fff;background:'+sc+';padding:5px 8px;border-radius:6px',
-      onOpen:()=>{ this.setState({selectedId:j.id}); this.loadJobDocuments(j.id); },
+      onOpen:()=>this.setState({selectedId:j.id}),
       onDragStart:()=>{ this.dragId=j.id; },
       onDragEnd:()=>{ this.dragId=null; if(this.state.dragOverCol) this.setState({dragOverCol:null}); },
       onIgnore:(e)=>{ stop(e); this.toggleIgnore(j.id); },
@@ -2068,7 +2250,8 @@ class Component extends DCLogic {
       saveBtn:'display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .15s ease;border:var(--bw) solid '+(j.saved?'var(--accent2)':'var(--border2)')+';background:'+(j.saved?'color-mix(in srgb,var(--accent2) 14%,transparent)':'transparent')+';color:'+(j.saved?'var(--accent2)':'var(--muted)'),
       onBlock:(e)=>{ stop(e); this.blockCompany(j.company); },
       blockBtn:'display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .15s ease;border:var(--bw) solid var(--border2);background:transparent;color:var(--muted)',
-      onApply:(e)=>{ stop(e); this.markApplied(j.id); },
+      onApply:(e)=>{ stop(e); this.openApply(j); },
+      onMarkApplied:(e)=>{ stop(e); this.markApplied(j.id); },
       onLink:(e)=>{ stop(e); const url=j.link||('https://www.google.com/search?q='+encodeURIComponent(j.title+' '+j.company)); window.open(url,'_blank'); },
       ignoreBtn:'display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .15s ease;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border2)')+';background:'+(j.ignore?'rgba(229,72,77,.12)':'transparent')+';color:'+(j.ignore?'#E5484D':'var(--muted)'),
       cardStyle:'display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius);padding:18px;animation:jf-rise .35s ease;transition:transform .15s,box-shadow .15s;border:var(--bw) solid '+(j.ignore?'#E5484D':'var(--border)')+';opacity:'+(j.ignore?'.62':'1')
@@ -2142,25 +2325,8 @@ class Component extends DCLogic {
       const an=sj.analysis||null;
       d.hasAnalysis=!!an;
       if(an){ Object.assign(d, this.buildBreakdown(an, d.match, sj.id)); }
-      // ---- generated documents for this job ----
-      const busy=s.docGen.active;
-      const genBtn='flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:40px;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:'+(busy?'default':'pointer')+';border:var(--bw) solid var(--border2);background:var(--surface2);color:var(--text);opacity:'+(busy?'.5':'1')+';transition:transform .15s ease,filter .15s ease';
-      d.genCoverStyle=genBtn; d.genResumeStyle=genBtn;
-      d.onGenCover=()=>this.generateDoc('cover_letter');
-      d.onGenResume=()=>this.generateDoc('resume');
-      const jdocs=s.docsByJob[sj.id]||[];
-      d.hasDocs=jdocs.length>0;
-      const pct=(x)=>Math.round((x||0)*100);
-      d.docs=jdocs.map(doc=>{ const isResume=doc.kind==='resume'; const approved=doc.status==='approved';
-        const hasLift=isResume && doc.match_before!=null && doc.match_after!=null;
-        return {key:doc.id, kindLabel:isResume?'Résumé':'Cover Letter', statusLabel:approved?'Approved':'Draft',
-          statusStyle:'font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;border:var(--bw) solid '+(approved?'var(--c-offer)':'var(--border2)')+';color:'+(approved?'var(--c-offer-text)':'var(--muted)'),
-          hasLift, liftLabel:hasLift?(pct(doc.match_before)+'% → '+pct(doc.match_after)+'% match'):'',
-          liftColor:hasLift?this.matchColorFor(pct(doc.match_after)):'var(--muted)',
-          onView:()=>this.viewDoc(doc.id), onApprove:()=>this.approveDoc(doc.id, sj.id),
-          approveLabel:approved?'Approved':'Approve',
-          approveStyle:'height:34px;padding:0 12px;border-radius:var(--r-sm);font:600 12px/1 var(--font-body);cursor:'+(approved?'default':'pointer')+';border:var(--bw) solid '+(approved?'var(--border2)':'var(--accent2)')+';background:transparent;color:'+(approved?'var(--muted)':'var(--accent2)')};
-      });
+      d.onApply=()=>this.openApply(sj);
+      d.onMarkApplied=()=>this.markApplied(sj.id);
       selectedJob=d;
     }
 
@@ -2171,7 +2337,7 @@ class Component extends DCLogic {
       if(mj && mj.analysis){
         matchPopup=Object.assign({}, this.buildBreakdown(mj.analysis, mj.match, mj.id), {
           title:mj.title||mj.company||'', matchLabel:(mj.match==null?'':mj.match+'% match'),
-          onOpenDetail:()=>{ this.setState({matchInfoId:null,selectedId:mj.id}); this.loadJobDocuments(mj.id); }
+          onOpenDetail:()=>this.setState({matchInfoId:null,selectedId:mj.id})
         });
       }
     }
@@ -2309,12 +2475,19 @@ class Component extends DCLogic {
       selectedJob, closeDetail:()=>this.setState({selectedId:null}),
       matchPopup, closeMatchPopup:()=>this.setState({matchInfoId:null}),
 
-      // ---- per-job document generation ----
-      docGenActive:s.docGen.active, docGenKind:(s.docGen.kind==='resume'?'Résumé':'Cover Letter'),
-      docGenPercent:s.docGen.percent, docGenStage:s.docGen.stage, docGenMessage:s.docGen.message,
-      docGenBar:'height:100%;width:'+(s.docGen.percent||0)+'%;background:var(--accent);border-radius:99px;transition:width .3s ease',
-      docViewOpen:s.docView.open, docViewTitle:s.docView.title, docViewContent:s.docView.content,
-      closeDocView:()=>this.closeDocView(), downloadDoc:()=>this.downloadDoc(),
+      // ---- Application Mode (Apply → tailor / iterate) ----
+      appOpen:s.app.open,
+      appIntake:s.app.stage==='intake', appGenerating:s.app.stage==='generating', appReview:s.app.stage==='review',
+      appCompany:s.app.company, appTitle:s.app.title,
+      appWantCover:s.app.wantCover, appWantResume:s.app.wantResume, appGuidance:s.app.guidance,
+      appHasExisting:!!(s.app.docs.cover_letter||s.app.docs.resume),
+      appCoverToggleStyle:this.appToggleStyle(s.app.wantCover), appResumeToggleStyle:this.appToggleStyle(s.app.wantResume),
+      appCoverCheck:this.appCheckStyle(s.app.wantCover), appResumeCheck:this.appCheckStyle(s.app.wantResume),
+      appStartDisabled:!(s.app.wantCover||s.app.wantResume),
+      closeApply:()=>this.closeApply(), startApply:()=>this.startApply(), reviewExisting:()=>this.reviewExisting(),
+      toggleAppCover:()=>this.toggleAppKind('cover_letter'), toggleAppResume:()=>this.toggleAppKind('resume'),
+      onAppGuidance:(e)=>this.setGuidance(e), markAppliedAndClose:()=>this.markAppliedAndClose(),
+      appCards:(()=>{ const out=[]; if(s.app.wantResume||s.app.docs.resume) out.push(this.appCard('resume')); if(s.app.wantCover||s.app.docs.cover_letter) out.push(this.appCard('cover_letter')); return out; })(),
 
       findOpen:s.findOpen, findConfig:s.findView==='config', findProgress:s.findView==='progress',
       closeFind:()=>this.closeFind(), stop:(e)=>e.stopPropagation(),
