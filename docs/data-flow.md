@@ -165,8 +165,63 @@ Read: GET /api/documents/uploaded → uploaded_documents log (traces each file t
 talking_points) is a separate 1:1-per-job table from `JobAnalysis` — it is conceptually seeded
 from a `JobAnalysis` verdict but written independently via `GET/POST /api/job-evaluation/<job_id>`;
 it is not produced by the ingestion agent above. `document_templates` (cover_letter/resume/
-job_evaluation, default-per-kind) and the dormant `generated_documents` table are unrelated to
-ingestion and exist as substrate for the deferred cover-letter/résumé generation phase.
+job_evaluation, default-per-kind) and `generated_documents` are unrelated to ingestion; they are
+the substrate for the cover-letter/résumé generation graphs below.
+
+## Document Generation Flow
+
+Cover letters and tailored résumés are produced by two in-house, plain-Python agent graphs
+(no LangGraph) under `utils/backend/agents/`. Their "ingestion" is a DB read, not a scrape —
+loading the job's existing analysis rather than fetching anything new:
+
+```
+utils/backend/agents/context.py load_context(job_id, kind, template_id)
+   → Job + JobAnalysis (skill_match, keyword hits, llm_rationale, stored embedding)
+   → active Profile + active BehavioralProfile + active WritingStyleProfile
+   → chosen DocumentTemplate
+```
+
+**Cover Letter graph** (`utils/backend/agents/cover_letter.py`):
+
+```
+research_company → evaluate_fit → strategize
+   → [Checkpoint 1: approve angle — only when interactive & low confidence]
+   → (write → style → critique + truthfulness) looped up to 2 revisions
+   → finalize
+```
+
+`evaluate_fit` persists a `job_evaluations` row (the job evaluation system described above),
+seeded from `JobAnalysis.skill_match` + `llm_rationale` and refined by the LLM. `finalize`
+persists `generated_documents(kind='cover_letter')`.
+
+**Résumé fine-tuner graph** (`utils/backend/agents/resume.py`):
+
+```
+evaluate_gap → plan_edits
+   → [Checkpoint 1: approve plan — only when interactive & large cuts]
+   → (rewrite → ats_format → score → truthfulness) looped up to 2 revisions
+   → finalize(kind='resume', match_before, match_after)
+```
+
+`score` is the differentiator: it treats the tailored résumé as a throwaway profile and
+reuses the recommender (`recommend/ranker.py`) against the single target job to produce an
+objective `match_before` → `match_after` lift — the loop's stop criterion and headline
+metric. Offline-safe: bm25 + keyword + skill sub-scores are pure Python and the ranker
+renormalizes over whichever signals are present, so a real lift is measurable even without
+the embedding model; semantic scoring folds in when embeddings exist. The LLM fit verdict is
+excluded from the lift score. Rewrites are truth-preserving — never fabricate skills the
+candidate lacks.
+
+**Execution/runtime** (`utils/backend/agents/service.py`): each graph runs in a daemon thread
+via an in-memory `generation_tasks` store, emitting staged progress events in the
+`{status, progress: {stage, percent, details}, events}` shape the frontend polls — the same
+pattern as the recommend analyze background task. Semi-auto checkpoints pause the worker on a
+`threading.Event` until the `/resume` route delivers a decision; the paused state is also
+snapshotted to `generated_documents.checkpoint_state`. Every node degrades to a deterministic
+fallback when no LLM endpoint is configured.
+
+Application Mode (the interactive Apply-button flow meant to drive these graphs from the job
+detail panel) is designed but deferred — not built.
 
 ## State Ownership
 

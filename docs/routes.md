@@ -91,7 +91,7 @@ RAG scoring of jobs against the active profile (see `docs/recommendation.md`).
 
 ## Documents API (`documents_bp`)
 
-Agentic ingestion of supporting documents (résumé/behavioral/writing-style/reference uploads), template management, per-job application-fit evaluations, and the (dormant) generated-document store — the data + ingestion foundation described in `docs/plans/agentic-documents-system.md` (§8.1–§8.2). Registered in `app.py`.
+Agentic ingestion of supporting documents (résumé/behavioral/writing-style/reference uploads), template management, per-job application-fit evaluations, and the generated-document store — the data + ingestion foundation described in `docs/plans/agentic-documents-system.md` (§8.1–§8.2). Registered in `app.py`.
 
 **Ingestion**
 
@@ -124,7 +124,20 @@ Agentic ingestion of supporting documents (résumé/behavioral/writing-style/ref
 
 | Path | Method | Purpose |
 | --- | --- | --- |
-| `/api/documents` | GET | List generated documents for a job (query: `job_id`) → `{documents: [...]}` — dormant until the cover-letter/résumé generators land |
+| `/api/documents` | GET | List generated documents for a job (query: `job_id`) → `{documents: [...]}` — populated by the Document Generation API below |
+
+## Document Generation API (`generation_bp`)
+
+Runs the in-house cover-letter and résumé agent graphs as background tasks (same async task+poll pattern as `recommend_bp`'s analyze routes). Registered in `app.py` alongside `documents_bp`; see `docs/plans/agentic-documents-system.md`.
+
+| Path | Method | Purpose |
+| --- | --- | --- |
+| `/api/documents/cover-letter/start` | POST | Start the cover-letter graph in a daemon thread (body: `{job_id, template_id?, interactive?}` → `{success, task_id, kind, job_id}`) |
+| `/api/documents/resume/start` | POST | Start the résumé fine-tuner graph (same body/response shape) |
+| `/api/documents/status/<task_id>` | GET | Poll a generation task: `{status, kind, job_id, progress:{stage, percent, details}, events:[{t, stage, percent, message}], results, checkpoint}` (`status` ∈ `pending`\|`running`\|`paused`\|`completed`\|`failed`) |
+| `/api/documents/<task_id>/resume` | POST | Resume a graph paused at a semi-auto checkpoint (body: `{decision: approve\|edit\|reject, edits?}` — cover letter edits `{thesis, hooks}`, résumé edits `{plan}`) → `{success, task}` |
+| `/api/documents/<int:doc_id>` | GET | Fetch a single generated document |
+| `/api/documents/<int:doc_id>` | PATCH | Edit/approve a generated document (body: `{content?, status?, format?}` → `{success, document}`) |
 
 ## UI States (per view)
 

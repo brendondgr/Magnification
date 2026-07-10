@@ -29,6 +29,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 | Area | State keys | Key methods |
 | --- | --- | --- |
 | Jobs / Tracker / Saved | `jobs, tab, selectedId, search, page, dragOverCol` | `loadJobs`, `mapDbJob`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `moveTo`, `toggleStatus` |
+| **Job Detail — Documents** | `docGen{active,kind,taskId,percent,stage,message}, docsByJob{jobId->[docs]}, docView{open,title,content,id}` | `loadJobDocuments`, `generateDoc`, `pollGen`, `viewDoc`, `approveDoc`, `downloadDoc`, `closeDocView` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, useLLM` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
 | **Profile & Documents** | `profileOpen, docsTab, profile{llm_instructions,interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy, pfSkillsExpanded, beh{...}, wri{...}, behTraitsText, templates, tplSelId, uploadedDocs` | `openProfile` (now also calls `loadDocuments`), `loadProfile`, `saveProfile`, `blockCompany`, `addSkillToProfile`, `onResumeFile`, `rebuildProfile` (unions `skills` + `blocked_companies`), `pfSet`; docs: `loadDocuments`, `loadTemplates`, `loadUploadedDocs`, `behSet`/`wriSet`, `onBehFile`/`onWriFile`, `ingestDoc`, `saveBehavioral`, `saveWriting`, `tplSet`/`addTemplate`/`saveTemplate`/`deleteTemplate` |
@@ -43,6 +44,23 @@ the right of the Hide (Ignore) button on each card and in the job detail panel (
 Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options** (Profile left of Find
 Jobs, Options right). Profile + Options are right-side slide-over panels mirroring the job
 detail panel; Find Jobs is a centered modal.
+
+### Job detail — Documents section
+
+The job-detail slide-over (`selectedJob`) has a **Documents** section below the Job Description:
+**Cover Letter** and **Tailor Résumé** buttons call `generateDoc(kind)` (`POST
+/api/documents/cover-letter/start` or `/resume/start`), tracked in `docGen` and polled by
+`pollGen` (`GET /api/documents/status/<task_id>` every 700ms, reusing the progress-bar/activity
+idiom from Find Jobs/Analyze). While active, an inline progress card shows the node stage,
+percent bar, and live message; `formatStage()` gained labels for the generation stages
+(`research, evaluate, strategize, write, style, critique, truthfulness, finalize, evaluate_gap,
+plan_edits, rewrite, ats_format, score`). Below it, `docsByJob[jobId]` (loaded via
+`loadJobDocuments`, called when a job is opened) lists each generated document with its kind, a
+Draft/Approved status chip, a match-lift badge for résumés (e.g. "42% → 61% match", colored via
+`this.matchColorFor`), and **View**/**Approve** buttons (`viewDoc` → `GET /api/documents/<id>`;
+`approveDoc` → `PATCH /api/documents/<id>` `status=approved`). **View** opens a centered
+**Document viewer** modal (`docView`) rendering the markdown in a `<pre>` with a **Download**
+button (`downloadDoc`, Blob-based `.md` download) and `closeDocView` to dismiss.
 
 ### Profile & Documents sidebar tabs
 

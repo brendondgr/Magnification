@@ -107,6 +107,22 @@ def test_index_has_documents_sidebar_wiring(client):
     assert "Document Templates" in html
 
 
+def test_index_has_document_generation_surface(client):
+    """The served page wires the job-detail Documents surface (generate / poll / view / approve)."""
+    html = client.get("/").get_data(as_text=True)
+    for token in ("onGenCover", "onGenResume", "generateDoc", "pollGen", "viewDoc",
+                  "approveDoc", "docViewOpen", "docGenActive", "loadJobDocuments"):
+        assert token in html, f"missing generation token: {token}"
+    assert "Tailor Résumé" in html
+    assert "Cover Letter" in html
+
+
+def test_generation_endpoints_registered(client):
+    """The generation blueprint is mounted (status of an unknown task 404s, not 405/500)."""
+    assert client.get("/api/documents/status/does_not_exist").status_code == 404
+    assert client.post("/api/documents/cover-letter/start", json={}).status_code == 400
+
+
 def test_documents_endpoints_served(client):
     """The documents blueprint is registered and its read endpoints return the seeds."""
     templates = client.get("/api/templates").get_json()["templates"]

@@ -465,6 +465,47 @@
 
         <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Job Description</div>
         <div>{{ selectedJob.descNodes }}</div>
+
+        <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:30px 0 14px">Documents</div>
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <button onclick="{{ selectedJob.onGenCover }}" style="{{ selectedJob.genCoverStyle }}" style-hover="filter:brightness(1.04);border-color:var(--border)" style-active="transform:scale(.98)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 8h10M7 12h10M7 16h6"></path></svg>
+            Cover Letter
+          </button>
+          <button onclick="{{ selectedJob.onGenResume }}" style="{{ selectedJob.genResumeStyle }}" style-hover="filter:brightness(1.04);border-color:var(--border)" style-active="transform:scale(.98)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 3v5h5"></path><path d="M8 13h8M8 17h5"></path></svg>
+            Tailor Résumé
+          </button>
+        </div>
+        <sc-if value="{{ docGenActive }}" hint-placeholder-val="">
+          <div style="padding:14px;border:var(--bw) solid var(--border);border-radius:var(--r-sm);background:var(--bg);margin-bottom:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
+              <span style="display:flex;align-items:center;gap:8px;font:600 13px/1 var(--font-body);color:var(--text)"><span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:var(--accent);animation:jf-pulse 1.6s ease-in-out infinite"></span>{{ docGenKind }} · {{ docGenStage }}</span>
+              <span style="font:600 12px/1 var(--font-mono);color:var(--muted)">{{ docGenPercent }}%</span>
+            </div>
+            <div style="height:6px;border-radius:99px;background:var(--border2);overflow:hidden"><div style="{{ docGenBar }}"></div></div>
+            <sc-if value="{{ docGenMessage }}" hint-placeholder-val=""><div style="margin-top:9px;font:400 12px/1.4 var(--font-body);color:var(--muted)">{{ docGenMessage }}</div></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ selectedJob.hasDocs }}" hint-placeholder-val="">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <sc-for list="{{ selectedJob.docs }}" as="doc" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:var(--bw) solid var(--border);border-radius:var(--r-sm);background:var(--card)">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font:600 14px/1 var(--font-body);color:var(--text)">{{ doc.kindLabel }}</span>
+                    <span style="{{ doc.statusStyle }}">{{ doc.statusLabel }}</span>
+                  </div>
+                  <sc-if value="{{ doc.hasLift }}" hint-placeholder-val="">
+                    <div style="margin-top:6px;font:600 12px/1 var(--font-body);color:{{ doc.liftColor }}">{{ doc.liftLabel }}</div>
+                  </sc-if>
+                </div>
+                <button onclick="{{ doc.onView }}" style="height:34px;padding:0 12px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">View</button>
+                <button onclick="{{ doc.onApprove }}" style="{{ doc.approveStyle }}" style-hover="filter:brightness(1.05)">{{ doc.approveLabel }}</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
       </div>
 
       <div style="display:flex;gap:10px;padding:18px 26px;border-top:var(--bw) solid var(--border)">
@@ -475,6 +516,24 @@
         </button>
       </div>
     </aside>
+  </sc-if>
+
+  <!-- ============ DOCUMENT VIEWER ============ -->
+  <sc-if value="{{ docViewOpen }}" hint-placeholder-val="">
+    <div onclick="{{ closeDocView }}" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);animation:jf-fade .2s ease"></div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:71;width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow);animation:jf-pop .3s cubic-bezier(.16,1,.3,1)">
+      <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
+        <h2 style="flex:1;margin:0;font:600 18px/1 var(--font-head)">{{ docViewTitle }}</h2>
+        <button onclick="{{ downloadDoc }}" style="height:36px;padding:0 14px;display:flex;align-items:center;gap:7px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="filter:brightness(1.06)" style-active="transform:scale(.97)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download
+        </button>
+        <button onclick="{{ closeDocView }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
+      <div style="padding:22px 24px;overflow:auto"><pre style="margin:0;white-space:pre-wrap;word-wrap:break-word;font:400 13px/1.6 var(--font-body);color:var(--text)">{{ docViewContent }}</pre></div>
+    </div>
   </sc-if>
 
   <!-- ============ PROFILE PANEL ============ -->
@@ -1295,6 +1354,9 @@ class Component extends DCLogic {
       wri:{tone:'',formality:'',sentence_length:'',sample_text:'',dos:[],donts:[],source_filename:''},
       wriStatus:'', wriBusy:false, wriDoDraft:'', wriDontDraft:'', wriUpload:null,
       templates:[], tplSelId:null, tplStatus:'', uploadedDocs:[],
+      // ---- Per-job document generation (cover letter / résumé) ----
+      docGen:{active:false, kind:'', taskId:null, percent:0, stage:'', message:''},
+      docsByJob:{}, docView:{open:false, title:'', content:'', id:null},
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
@@ -1305,7 +1367,7 @@ class Component extends DCLogic {
     this._scrapeJobId=null;
   }
   componentDidMount(){ this.loadJobs(); }
-  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); }
+  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); clearInterval(this._gpoll); }
 
   // ---------- API: reads ----------
   async loadJobs(){
@@ -1605,7 +1667,8 @@ class Component extends DCLogic {
   }
   formatStage(stage){
     if(!stage) return 'Processing…';
-    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',extracting_compensation:'Extracting Compensation',analyzing:'Scoring Matches',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed',embedding:'Embedding Jobs',compensation:'Recovering Compensation',skills:'Extracting Skills',scoring:'Scoring Matches',llm:'LLM Fit Verdict'};
+    const m={init:'Initializing',scraping:'Scraping Jobs',processing:'Processing Data',fetching_descriptions:'Gathering Descriptions',extracting_compensation:'Extracting Compensation',analyzing:'Scoring Matches',saving:'Saving to Database',filtering:'Applying Filters',completed:'Completed',complete:'Completed',pending:'Starting',failed:'Scraping Failed',embedding:'Embedding Jobs',compensation:'Recovering Compensation',skills:'Extracting Skills',scoring:'Scoring Matches',llm:'LLM Fit Verdict',
+      research:'Researching Company',evaluate:'Evaluating Fit',strategize:'Choosing Angle',write:'Writing Draft',style:'Applying Voice',critique:'Critiquing',truthfulness:'Checking Claims',finalize:'Finalizing',evaluate_gap:'Finding Gaps',plan_edits:'Planning Edits',rewrite:'Rewriting',ats_format:'Formatting (ATS)',score:'Scoring Match-Lift'};
     return m[stage]||(stage.charAt(0).toUpperCase()+stage.slice(1));
   }
 
@@ -1698,6 +1761,72 @@ class Component extends DCLogic {
     },1000);
   }
   closeAnalyze(){ clearInterval(this._apoll); this.setState({analyzeOpen:false, analyzing:false}); }
+
+  // ---------- per-job document generation (cover letter / résumé) ----------
+  async loadJobDocuments(jobId){
+    try{
+      const res=await fetch('/api/documents?job_id='+jobId);
+      if(!res.ok) return;
+      const data=await res.json();
+      this.setState(st=>({docsByJob:Object.assign({},st.docsByJob,{[jobId]:data.documents||[]})}));
+    }catch(e){ console.error(e); }
+  }
+  generateDoc(kind){
+    const jobId=this.state.selectedId;
+    if(jobId==null || this.state.docGen.active) return;
+    const path=kind==='resume'?'/api/documents/resume/start':'/api/documents/cover-letter/start';
+    this.setState({docGen:{active:true, kind, taskId:null, percent:0, stage:'Starting', message:'Preparing…'}});
+    fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jobId})})
+      .then(r=>r.json()).then(d=>{
+        if(d.success && d.task_id){ this.pollGen(d.task_id, jobId); }
+        else { this.setState({docGen:{active:false,kind,taskId:null,percent:0,stage:'Failed',message:d.message||''}}); this.showToast(d.message||'Generation failed'); }
+      })
+      .catch(e=>{ console.error(e); this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false,stage:'Failed'})})); this.showToast('Generation failed'); });
+  }
+  pollGen(taskId, jobId){
+    clearInterval(this._gpoll);
+    this._gpoll=setInterval(async()=>{
+      try{
+        const res=await fetch('/api/documents/status/'+taskId);
+        if(!res.ok){ clearInterval(this._gpoll); this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false,stage:'Failed'})})); return; }
+        const data=await res.json();
+        const prog=data.progress||{}; const details=prog.details||{};
+        this.setState(st=>({docGen:Object.assign({},st.docGen,{taskId, percent:Math.round(prog.percent||0), stage:this.formatStage(prog.stage), message:details.message||''})}));
+        if(data.status==='completed'){
+          clearInterval(this._gpoll);
+          this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false, percent:100, stage:'Completed'})}));
+          this.loadJobDocuments(jobId);
+          const r=data.results||{};
+          this.showToast(r.needs_review?'Draft ready — review it':'Document ready');
+        } else if(data.status==='failed'){
+          clearInterval(this._gpoll);
+          this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false, stage:'Failed', message:data.error||''})}));
+          this.showToast('Generation failed');
+        }
+      }catch(e){ console.error(e); clearInterval(this._gpoll); this.setState(st=>({docGen:Object.assign({},st.docGen,{active:false})})); }
+    }, 700);
+  }
+  async viewDoc(docId){
+    try{
+      const res=await fetch('/api/documents/'+docId);
+      if(!res.ok) return;
+      const d=await res.json();
+      if(d && d.id!=null){ this.setState({docView:{open:true, title:(d.kind==='resume'?'Tailored Résumé':'Cover Letter'), content:d.content||'', id:d.id}}); }
+    }catch(e){ console.error(e); }
+  }
+  closeDocView(){ this.setState({docView:{open:false, title:'', content:'', id:null}}); }
+  async approveDoc(docId, jobId){
+    try{
+      await fetch('/api/documents/'+docId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'approved'})});
+      this.loadJobDocuments(jobId); this.showToast('Approved');
+    }catch(e){ console.error(e); this.showToast('Could not approve'); }
+  }
+  downloadDoc(){
+    const v=this.state.docView; if(!v.content) return;
+    const blob=new Blob([v.content],{type:'text/markdown'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=(v.title||'document').replace(/\s+/g,'_').toLowerCase()+'.md';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
   // Fast, on-page match-% refresh: recomputes scores from stored analysis artifacts (no
   // re-embed / no LLM) against the current weights + profile, then reloads the feed. Used
   // after a score-weight change or a profile/skill edit. Silent no-op when there's no
@@ -1930,7 +2059,7 @@ class Component extends DCLogic {
       avatar:Object.entries(av(40)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       avatarLg:Object.entries(av(52)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       siteBadge:'font:600 10px/1 var(--font-mono);letter-spacing:.04em;color:#fff;background:'+sc+';padding:5px 8px;border-radius:6px',
-      onOpen:()=>this.setState({selectedId:j.id}),
+      onOpen:()=>{ this.setState({selectedId:j.id}); this.loadJobDocuments(j.id); },
       onDragStart:()=>{ this.dragId=j.id; },
       onDragEnd:()=>{ this.dragId=null; if(this.state.dragOverCol) this.setState({dragOverCol:null}); },
       onIgnore:(e)=>{ stop(e); this.toggleIgnore(j.id); },
@@ -2013,6 +2142,25 @@ class Component extends DCLogic {
       const an=sj.analysis||null;
       d.hasAnalysis=!!an;
       if(an){ Object.assign(d, this.buildBreakdown(an, d.match, sj.id)); }
+      // ---- generated documents for this job ----
+      const busy=s.docGen.active;
+      const genBtn='flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:40px;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:'+(busy?'default':'pointer')+';border:var(--bw) solid var(--border2);background:var(--surface2);color:var(--text);opacity:'+(busy?'.5':'1')+';transition:transform .15s ease,filter .15s ease';
+      d.genCoverStyle=genBtn; d.genResumeStyle=genBtn;
+      d.onGenCover=()=>this.generateDoc('cover_letter');
+      d.onGenResume=()=>this.generateDoc('resume');
+      const jdocs=s.docsByJob[sj.id]||[];
+      d.hasDocs=jdocs.length>0;
+      const pct=(x)=>Math.round((x||0)*100);
+      d.docs=jdocs.map(doc=>{ const isResume=doc.kind==='resume'; const approved=doc.status==='approved';
+        const hasLift=isResume && doc.match_before!=null && doc.match_after!=null;
+        return {key:doc.id, kindLabel:isResume?'Résumé':'Cover Letter', statusLabel:approved?'Approved':'Draft',
+          statusStyle:'font:600 10px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;border:var(--bw) solid '+(approved?'var(--c-offer)':'var(--border2)')+';color:'+(approved?'var(--c-offer-text)':'var(--muted)'),
+          hasLift, liftLabel:hasLift?(pct(doc.match_before)+'% → '+pct(doc.match_after)+'% match'):'',
+          liftColor:hasLift?this.matchColorFor(pct(doc.match_after)):'var(--muted)',
+          onView:()=>this.viewDoc(doc.id), onApprove:()=>this.approveDoc(doc.id, sj.id),
+          approveLabel:approved?'Approved':'Approve',
+          approveStyle:'height:34px;padding:0 12px;border-radius:var(--r-sm);font:600 12px/1 var(--font-body);cursor:'+(approved?'default':'pointer')+';border:var(--bw) solid '+(approved?'var(--border2)':'var(--accent2)')+';background:transparent;color:'+(approved?'var(--muted)':'var(--accent2)')};
+      });
       selectedJob=d;
     }
 
@@ -2023,7 +2171,7 @@ class Component extends DCLogic {
       if(mj && mj.analysis){
         matchPopup=Object.assign({}, this.buildBreakdown(mj.analysis, mj.match, mj.id), {
           title:mj.title||mj.company||'', matchLabel:(mj.match==null?'':mj.match+'% match'),
-          onOpenDetail:()=>this.setState({matchInfoId:null,selectedId:mj.id})
+          onOpenDetail:()=>{ this.setState({matchInfoId:null,selectedId:mj.id}); this.loadJobDocuments(mj.id); }
         });
       }
     }
@@ -2160,6 +2308,13 @@ class Component extends DCLogic {
 
       selectedJob, closeDetail:()=>this.setState({selectedId:null}),
       matchPopup, closeMatchPopup:()=>this.setState({matchInfoId:null}),
+
+      // ---- per-job document generation ----
+      docGenActive:s.docGen.active, docGenKind:(s.docGen.kind==='resume'?'Résumé':'Cover Letter'),
+      docGenPercent:s.docGen.percent, docGenStage:s.docGen.stage, docGenMessage:s.docGen.message,
+      docGenBar:'height:100%;width:'+(s.docGen.percent||0)+'%;background:var(--accent);border-radius:99px;transition:width .3s ease',
+      docViewOpen:s.docView.open, docViewTitle:s.docView.title, docViewContent:s.docView.content,
+      closeDocView:()=>this.closeDocView(), downloadDoc:()=>this.downloadDoc(),
 
       findOpen:s.findOpen, findConfig:s.findView==='config', findProgress:s.findView==='progress',
       closeFind:()=>this.closeFind(), stop:(e)=>e.stopPropagation(),

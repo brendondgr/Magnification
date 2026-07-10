@@ -89,6 +89,17 @@ Data + ingestion foundation for the agentic documents system (see `docs/plans/ag
 - `POST /api/job-evaluation/<int:job_id>` — body: `{verdict, fit_score, emphasize, gaps, risks, talking_points}` → upserts by `job_id` (unique). Returns `{success, evaluation}`, or `404` if the job doesn't exist.
 - `GET /api/documents` — query `job_id` → `{documents:[...]}`, the `generated_documents` rows (kind `cover_letter|resume`) for that job. Empty until the deferred generation graphs land; the table (content, format, status `draft|approved`, match_before, match_after, revision, checkpoint_state) exists as dormant substrate.
 
+## Document Generation (`generation_bp`)
+
+Runs the cover-letter and résumé agent graphs as background tasks, using the same async task+poll pattern as `/api/recommend/analyze/start` — plus a resume path for human-in-the-loop checkpoints.
+
+- `POST /api/documents/cover-letter/start` — body: `{job_id, template_id?, interactive?}` (`template_id` and `interactive` optional) → starts the cover-letter agent graph in the background. Returns immediately: `{success, task_id, kind: "cover_letter", job_id}`.
+- `POST /api/documents/resume/start` — same request/response shape as above, with `kind: "resume"`.
+- `GET /api/documents/status/<task_id>` — poll a background generation task → `{status, kind, job_id, progress:{stage, percent, details:{message}}, events:[{t, stage, percent, message}], results, checkpoint}`. `results` is `null` until the task finishes. On completion: cover letter → `{success, document_id, job_id, kind: "cover_letter", content, needs_review, evaluation, critique}`; résumé → `{success, document_id, kind: "resume", content, needs_review, match_before, match_after, lift}`. When the graph pauses at a human-in-the-loop checkpoint, `status` is `"paused"` and `checkpoint` is `{name: "angle" | "plan", payload:{...}}`.
+- `POST /api/documents/<task_id>/resume` — body: `{decision: "approve" | "edit" | "reject"}` (`"edit"` also carries `edits`: `{thesis}` for the cover-letter graph or `{plan}` for the résumé graph) → resumes the paused graph from its checkpoint. Returns `{success, task: {...same shape as the status endpoint...}}`.
+- `GET /api/documents/<int:doc_id>` → a single `generated_documents` row: `{id, job_id, kind, content, format, status, match_before, match_after, revision, checkpoint_state, created_at, updated_at}`.
+- `PATCH /api/documents/<int:doc_id>` — body: any subset of `{status, content, format}` → updates the document record. Returns `{success, document: {...updated row...}}`.
+
 ## Shared Schema
 
 Job and related records are defined as SQLAlchemy models in `utils/backend/database/models.py`. See `docs/database.md` for the schema deep-dive.

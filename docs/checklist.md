@@ -447,8 +447,52 @@ graphs (§8.3/§8.4) are the **next phase** (checked in with the user before bui
 - [ ] **Ingestion live with a real LLM endpoint** — the agent is covered by mocked-client tests; real
   summarization needs an enabled endpoint (Options → LLM Endpoint). Without one it degrades to an
   empty editable draft.
-- [ ] **Next phase (deferred, pending user check-in):** cover-letter graph (§2) + résumé fine-tuner
-  with recommender match-lift (§3); then Application Mode (§4) as a separate large effort.
+- [x] **Next phase — DELIVERED:** cover-letter graph (§2) + résumé fine-tuner with recommender
+  match-lift (§3) — see the section below. Application Mode (§4) remains the deferred large effort.
+
+## Agentic Documents — Graphs — Definition of Done
+
+Design: `docs/plans/agentic-documents-system.md` (§2/§3). Plan: `docs/plans/agentic-documents-graphs.md`.
+Delivered on branch `agentic-documents-foundation` (worktree), committed per phase.
+
+Scope: the two **per-job generation graphs** (design build-order §8.3 Cover Letter + §8.4 Résumé
+fine-tuner). Orchestration is **in-house plain Python (no LangGraph)** — an explicit node pipeline,
+an in-memory task store mirroring `recommend_routes`, `threading.Event` checkpoint pause/resume, and
+a persisted `generated_documents.checkpoint_state` snapshot; zero new dependencies. **Application Mode
+(§4) and the browser-automation adapter (§4.3) remain out of scope.**
+
+- [x] (1/6) Part-2 plan doc (`docs/plans/agentic-documents-graphs.md`)
+- [x] (2/6) In-house orchestrator (`agents/orchestrator.py`: progress + semi-auto checkpoints),
+  context loader (`agents/context.py`: Ingestion = a DB read), recommender-reuse match-lift
+  (`agents/scoring.py`), prompts + normalizers + slot helpers (`agents/prompts.py`); 8 tests
+- [x] (3/6) Cover-letter graph — `nodes_shared.py` (research_company, evaluate_fit persisting
+  `job_evaluations`, truthfulness_check) + `nodes_cover_letter.py` (strategize/write/style/critique) +
+  `cover_letter.py` (pipeline + revision loop + angle checkpoint); every node degrades with no LLM;
+  3 tests (offline fallback + persisted evaluation, full LLM path, interactive checkpoint)
+- [x] (4/6) Résumé fine-tuner graph — `nodes_resume.py` (evaluate_gap/plan_edits/rewrite/ats_format,
+  strictly truth-preserving fallbacks) + `resume.py` whose `score` node reuses `recommend/ranker`
+  on a throwaway profile for an objective `match_before → match_after` lift; 3 tests (offline
+  truth-preserving lift, non-fabrication of an un-owned JD skill, LLM path, plan checkpoint)
+- [x] (5/6) Generation service (`agents/service.py`: daemon-thread runner + async task+poll +
+  persistence) and `generation_bp` routes (`routes/document_generation_routes.py`:
+  cover-letter/résumé start, status, resume, GET/PATCH generated doc) registered in `app.py`;
+  5 test-client tests (start→poll→completed both kinds, résumé match-lift, PATCH approve,
+  interactive pause→resume, 400/404 guards)
+- [x] (6/6) Job-detail **Documents** surface in `index.html` (Cover Letter / Tailor Résumé buttons,
+  inline node-stage progress, generated-docs list with the match-lift badge using the recommendation
+  color grading, View / Approve, a document-viewer modal with Download) + docs (`routes.md`,
+  `api-contract.md`, `data-flow.md`, `component-map.md`, `structure.md`, this checklist) + validation
+- [x] Offline suite green (`tests/agents`, `tests/documents`, `tests/test_frontend_wiring.py`, + prior
+  suites), `import app` clean, all six `/api/documents/*` generation routes registered without
+  collision; UI verified live on the preview (page renders, Documents section + buttons present, no
+  console errors; a full live generation produced + persisted a real cover letter, then the test rows
+  were removed so the shared DB was left untouched — DOM inspection used; screenshot tooling flaky)
+- [ ] **Full-quality output needs a real LLM endpoint** — the graphs are covered by mocked-client +
+  offline-fallback tests; a live generation on this env's (hanging) endpoint completed with mixed
+  real-LLM + fallback content and `needs_review=true`. Prose quality + the angle/plan checkpoints are
+  best exercised with an enabled, responsive endpoint (Options → LLM Endpoint).
+- [ ] **Application Mode (§4)** — the Apply-button intent/status split, `application_sessions`, the
+  intake wizard, and the manual/browser submission adapters remain the deferred large effort.
 
 ## Deferred / Follow-up Work
 
