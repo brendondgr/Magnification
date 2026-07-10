@@ -8,16 +8,22 @@ Kept in its own blueprint (``generation_bp``) so ``documents_routes`` stays focu
 results}``; ``/<task_id>/resume`` delivers a checkpoint decision to a paused graph.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from loguru import logger
 
 from utils.backend.database import operations as db_ops
 from utils.backend.database import documents_ops as docs_ops
 from utils.backend.agents import service
+from utils.backend.pdf_compile import compile_pdf, LatexCompileError
 
 generation_bp = Blueprint("generation_bp", __name__)
 
 _UPDATABLE_DOC_FIELDS = ("content", "status", "format")
+
+
+def _is_latex(row) -> bool:
+    fmt = (row.get("format") or "").lower()
+    return fmt == "latex" or (row.get("content") or "").lstrip().startswith("\\documentclass")
 
 
 def _start(kind: str):
@@ -97,6 +103,42 @@ def get_generated_document(doc_id):
     if row is None:
         return jsonify({"success": False, "message": "Document not found"}), 404
     return jsonify(row)
+
+
+@generation_bp.route("/api/documents/<int:doc_id>/pdf", methods=["GET"])
+def get_generated_document_pdf(doc_id):
+    """Compile the document's LaTeX source to a PDF and stream it.
+
+    Served inline for the review-pane preview; ``?download=1`` sets an attachment disposition.
+    Returns 404 (no doc), 415 (not a LaTeX doc), or 422 (compile failed, with the log tail).
+    """
+    row = docs_ops.get_generated_document(doc_id)
+    if row is None:
+        return jsonify({"success": False, "message": "Document not found"}), 404
+    if not _is_latex(row):
+        return jsonify({"success": False, "message": "Document is not LaTeX; no PDF preview."}), 415
+    try:
+        pdf_path = compile_pdf(doc_id, row.get("content") or "")
+    except LatexCompileError as e:
+        return jsonify({"success": False, "message": str(e), "log": getattr(e, "log", "")}), 422
+
+    download = request.args.get("download") in ("1", "true", "yes")
+    name = ("resume" if row.get("kind") == "resume" else "cover_letter") + f"_{doc_id}.pdf"
+    return send_file(str(pdf_path), mimetype="application/pdf",
+                     as_attachment=download, download_name=name, max_age=0)
+
+
+@generation_bp.route("/api/documents/<int:doc_id>/tex", methods=["GET"])
+def get_generated_document_tex(doc_id):
+    """Download the raw LaTeX source of a generated document."""
+    row = docs_ops.get_generated_document(doc_id)
+    if row is None:
+        return jsonify({"success": False, "message": "Document not found"}), 404
+    name = ("resume" if row.get("kind") == "resume" else "cover_letter") + f"_{doc_id}.tex"
+    return (row.get("content") or ""), 200, {
+        "Content-Type": "application/x-tex; charset=utf-8",
+        "Content-Disposition": f'attachment; filename="{name}"',
+    }
 
 
 @generation_bp.route("/api/documents/<int:doc_id>", methods=["PATCH"])
