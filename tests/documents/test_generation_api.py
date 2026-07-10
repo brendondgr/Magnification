@@ -136,6 +136,27 @@ def test_interactive_checkpoint_pause_resume(client):
     assert done["status"] == "completed"
 
 
+def test_refine_updates_in_place(client):
+    job_id = _seed()
+    start = client.post("/api/documents/cover-letter/start", json={"job_id": job_id}).get_json()
+    rec = _poll(client, start["task_id"], until={"completed", "failed"})
+    doc_id = rec["results"]["document_id"]
+    rev0 = client.get(f"/api/documents/{doc_id}").get_json()["revision"]
+
+    # Refine with guidance + revise_from → same doc id, revision bumped, no new row accumulated.
+    start2 = client.post("/api/documents/cover-letter/start",
+                         json={"job_id": job_id, "instructions": "Warmer tone.",
+                               "revise_from": doc_id}).get_json()
+    rec2 = _poll(client, start2["task_id"], until={"completed", "failed"})
+    assert rec2["status"] == "completed"
+    assert rec2["results"]["document_id"] == doc_id
+    assert client.get(f"/api/documents/{doc_id}").get_json()["revision"] == rev0 + 1
+
+    cover_docs = [d for d in client.get(f"/api/documents?job_id={job_id}").get_json()["documents"]
+                  if d["kind"] == "cover_letter"]
+    assert len(cover_docs) == 1  # updated in place, not accumulated
+
+
 def test_start_rejects_unknown_job_and_status_404(client):
     _seed()
     assert client.post("/api/documents/cover-letter/start", json={"job_id": 999999}).status_code == 404

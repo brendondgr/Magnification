@@ -41,7 +41,8 @@ def strategize(state: Dict[str, Any], orch) -> None:
     if client:
         try:
             behavioral = state.get("behavioral") or {}
-            user = (f"Application-fit evaluation:\n{evaluation_json(evaluation)}\n\n"
+            user = (prompts.guidance_block(state.get("instructions", "")) +
+                    f"Application-fit evaluation:\n{evaluation_json(evaluation)}\n\n"
                     f"Candidate work-style: {behavioral.get('work_style_paragraph', '')}\n"
                     f"Strengths: {', '.join(behavioral.get('strengths') or [])}")
             strategy = prompts.normalize_strategy(
@@ -118,6 +119,8 @@ def write_letter(state: Dict[str, Any], orch) -> None:
                     f"Candidate profile:\n{profile_summary(state.get('profile'))}\n\n"
                     f"Job: {job.get('title', '')} at {job.get('company', '')}\n"
                     f"{(job.get('description') or '')[:3000]}")
+            user = prompts.guidance_block(state.get("instructions", ""),
+                                          state.get("prior_content", "")) + user
             raw = _chat_json(client, prompts.WRITE_LETTER_PROMPT, user)
             if isinstance(raw, dict):
                 filled = {k: str(v) for k, v in raw.items() if k in prose_slots and v}

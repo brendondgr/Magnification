@@ -29,19 +29,38 @@ def _start(kind: str):
         return jsonify({"success": False, "message": "Job not found"}), 404
     template_id = data.get("template_id")
     interactive = bool(data.get("interactive"))
-    task_id = service.start_generation(kind, job_id, template_id=template_id, interactive=interactive)
+    instructions = (data.get("instructions") or "").strip()
+
+    # A refine re-run: update the named draft in place and build on its current content.
+    revise_from = data.get("revise_from")
+    prior_content = ""
+    if isinstance(revise_from, int):
+        prev = docs_ops.get_generated_document(revise_from)
+        prior_content = (prev or {}).get("content") or "" if prev else ""
+    else:
+        revise_from = None
+
+    task_id = service.start_generation(
+        kind, job_id, template_id=template_id, interactive=interactive,
+        instructions=instructions, prior_content=prior_content, revise_from=revise_from)
     return jsonify({"success": True, "task_id": task_id, "kind": kind, "job_id": job_id})
 
 
 @generation_bp.route("/api/documents/cover-letter/start", methods=["POST"])
 def start_cover_letter():
-    """Start a cover-letter generation. Body: ``{job_id, template_id?, interactive?}``."""
+    """Start a cover-letter generation.
+
+    Body: ``{job_id, template_id?, interactive?, instructions?, revise_from?}``. ``instructions`` is
+    Application-Mode guidance for a steered re-run; ``revise_from`` (a doc id) updates that draft in
+    place, building on its current content.
+    """
     return _start("cover_letter")
 
 
 @generation_bp.route("/api/documents/resume/start", methods=["POST"])
 def start_resume():
-    """Start a résumé fine-tune. Body: ``{job_id, template_id?, interactive?}``."""
+    """Start a résumé fine-tune. Body: ``{job_id, template_id?, interactive?, instructions?,
+    revise_from?}`` (same refine semantics as the cover-letter start)."""
     return _start("resume")
 
 

@@ -31,6 +31,23 @@ def fill_slots(body: str, values: Dict[str, Any]) -> str:
     return _SLOT_RE.sub(_sub, body or "")
 
 
+def guidance_block(instructions: str = "", prior_content: str = "") -> str:
+    """
+    Build a high-priority guidance preamble for a steered / refine re-run.
+
+    Returns ``""`` when neither is given (so a first-pass generation is unaffected). Used by the
+    writer/strategist/planner nodes to fold the user's Application-Mode feedback — and the current
+    draft it should build on — into their prompts.
+    """
+    parts = []
+    if (instructions or "").strip():
+        parts.append("USER GUIDANCE (highest priority — follow it):\n" + instructions.strip())
+    if (prior_content or "").strip():
+        parts.append("CURRENT DRAFT to improve (revise it to satisfy the guidance; keep what "
+                     "already works, change what the guidance asks):\n" + prior_content.strip()[:4000])
+    return ("\n\n".join(parts) + "\n\n") if parts else ""
+
+
 # ==================== small coercion helpers ====================
 
 def _as_str(value: Any) -> str:

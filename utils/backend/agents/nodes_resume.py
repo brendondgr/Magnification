@@ -93,7 +93,8 @@ def plan_edits(state: Dict[str, Any], orch) -> None:
         try:
             job = state["job"]
             resume_text = (state.get("profile") or {}).get("resume_text") or ""
-            user = (f"Résumé:\n{resume_text[:4000]}\n\n"
+            user = (prompts.guidance_block(state.get("instructions", "")) +
+                    f"Résumé:\n{resume_text[:4000]}\n\n"
                     f"Job description:\n{(job.get('description') or '')[:2500]}\n\n"
                     f"Missing skills: {', '.join(gap.get('missing_skills') or [])}\n"
                     f"Missing keywords: {', '.join(gap.get('missing_keywords') or [])}")
@@ -139,7 +140,9 @@ def rewrite_resume(state: Dict[str, Any], orch) -> None:
             job = state["job"]
             gap = state.get("gap") or {}
             plan = state.get("plan") or {}
-            user = (f"Original résumé:\n{resume_text[:5000]}\n\n"
+            user = (prompts.guidance_block(state.get("instructions", ""),
+                                           state.get("prior_content", "")) +
+                    f"Original résumé:\n{resume_text[:5000]}\n\n"
                     f"Job description:\n{(job.get('description') or '')[:2500]}\n\n"
                     f"Tailoring plan: {json.dumps(plan, ensure_ascii=False)[:1500]}\n"
                     f"Skills to surface (only if already present): "

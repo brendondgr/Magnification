@@ -59,19 +59,30 @@ def _checkpoint_snapshot(state: Dict[str, Any]) -> Dict[str, Any]:
     return {k: state[k] for k in keys if k in state}
 
 
-def _persist(kind: str, job_id: int, state: Dict[str, Any]) -> int:
+def _persist(kind: str, job_id: int, state: Dict[str, Any],
+             revise_from: Optional[int] = None) -> int:
+    """Persist the finished document. With ``revise_from`` set, update that row in place (bumping
+    ``revision``) so a refine loop keeps one evolving draft per kind instead of accumulating rows."""
     payload: Dict[str, Any] = {
-        "job_id": job_id,
-        "kind": kind,
         "content": state.get("final") or "",
         "format": (state.get("template") or {}).get("format") or "markdown",
         "status": "draft",
-        "revision": state.get("revision", 1),
         "checkpoint_state": _checkpoint_snapshot(state),
     }
     if kind == "resume":
         payload["match_before"] = state.get("match_before")
         payload["match_after"] = state.get("match_after")
+
+    if revise_from:
+        existing = docs_ops.get_generated_document(revise_from)
+        if existing and existing.get("job_id") == job_id and existing.get("kind") == kind:
+            payload["revision"] = (existing.get("revision") or 1) + 1
+            docs_ops.update_generated_document(revise_from, payload)
+            return revise_from
+
+    payload["job_id"] = job_id
+    payload["kind"] = kind
+    payload["revision"] = state.get("revision", 1)
     return docs_ops.create_generated_document(payload)
 
 
@@ -96,7 +107,8 @@ def _result_payload(kind: str, job_id: int, doc_id: int, state: Dict[str, Any]) 
 
 
 def _run(task_id: str, kind: str, job_id: int, template_id: Optional[int],
-         interactive: bool) -> None:
+         interactive: bool, instructions: str = "", prior_content: str = "",
+         revise_from: Optional[int] = None) -> None:
     rec = generation_tasks[task_id]
     rec["status"] = "running"
 
@@ -117,11 +129,12 @@ def _run(task_id: str, kind: str, job_id: int, template_id: Optional[int],
                           edits=decision.get("edits") or {})
 
     try:
-        state = context.load_context(job_id, kind, template_id)
+        state = context.load_context(job_id, kind, template_id,
+                                     instructions=instructions, prior_content=prior_content)
         state["interactive"] = interactive
         orch = Orchestrator(report=report, resume_fn=resume_fn if interactive else None)
         state = _GRAPHS[kind].run(state, orch)
-        doc_id = _persist(kind, job_id, state)
+        doc_id = _persist(kind, job_id, state, revise_from=revise_from)
         rec["results"] = _result_payload(kind, job_id, doc_id, state)
         rec["status"] = "completed"
     except Exception as e:
@@ -133,8 +146,13 @@ def _run(task_id: str, kind: str, job_id: int, template_id: Optional[int],
 
 
 def start_generation(kind: str, job_id: int, template_id: Optional[int] = None,
-                     interactive: bool = False) -> str:
-    """Create a task record + spawn the graph in a daemon thread. Returns the task id."""
+                     interactive: bool = False, instructions: str = "",
+                     prior_content: str = "", revise_from: Optional[int] = None) -> str:
+    """Create a task record + spawn the graph in a daemon thread. Returns the task id.
+
+    ``instructions`` + ``prior_content`` steer a refine re-run; ``revise_from`` (a doc id) makes the
+    result update that document in place instead of creating a new one.
+    """
     if kind not in _GRAPHS:
         raise ValueError(f"Unknown generation kind: {kind}")
     _cleanup_old_tasks()
@@ -151,8 +169,10 @@ def start_generation(kind: str, job_id: int, template_id: Optional[int] = None,
         "_event": threading.Event(),
         "_decision": None,
     }
-    thread = threading.Thread(target=_run, args=(task_id, kind, job_id, template_id, interactive),
-                              daemon=True)
+    thread = threading.Thread(
+        target=_run,
+        args=(task_id, kind, job_id, template_id, interactive, instructions, prior_content, revise_from),
+        daemon=True)
     thread.start()
     return task_id
 

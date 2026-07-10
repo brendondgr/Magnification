@@ -40,13 +40,15 @@ def candidate_name(profile: Dict[str, Any]) -> str:
 
 
 def load_context(job_id: int, kind: str, template_id: Optional[int] = None,
-                 client=None) -> Dict[str, Any]:
+                 client=None, instructions: str = "", prior_content: str = "") -> Dict[str, Any]:
     """
     Build the initial graph state for a job.
 
     Reads the job, its analysis (with the stored embedding, needed for the résumé match-lift),
     the active profile / behavioral / writing-style records, and the chosen (or default)
-    template. Raises :class:`GraphError` if the job does not exist.
+    template. ``instructions`` (Application-Mode user guidance) and ``prior_content`` (the current
+    draft to build on) steer a refine re-run; both default empty for a first-pass generation.
+    Raises :class:`GraphError` if the job does not exist.
     """
     job = db_ops.get_job_by_id(job_id)
     if not job:
@@ -78,6 +80,8 @@ def load_context(job_id: int, kind: str, template_id: Optional[int] = None,
             "contact": "",
         },
         "client": resolve_client(client),
+        "instructions": instructions or "",
+        "prior_content": prior_content or "",
         "revision": 0,
         "llm_used": False,
         "needs_review": False,
