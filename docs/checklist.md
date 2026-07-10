@@ -410,6 +410,46 @@ Requirement: raise the Find Jobs **Max Results** ceiling to **100**, and add a *
 - [ ] **Live multi-iteration scrape** — the offset/loop/dedup paths are covered by an offline
   mocked-scraper test; a real multi-pass run hits live job boards (and, for new jobs, the LLM fit).
 
+## Agentic Documents — Foundation — Definition of Done
+
+Design: `docs/plans/agentic-documents-system.md`. Plan: `docs/plans/agentic-documents-foundation.md`.
+Delivered on branch `agentic-documents-foundation` (worktree), committed per phase.
+
+Scope: the **data + ingestion foundation** (design build-order §8.1 data layer + §8.2 ingestion
+agent & Profile/Documents sidebar). Orchestration is **in-house plain Python (no LangGraph)** — the
+node structure and checkpoint semantics are preserved via DB columns + the async-task pattern, with
+zero new dependencies. **Application Mode is out of scope**, and the cover-letter/résumé generation
+graphs (§8.3/§8.4) are the **next phase** (checked in with the user before building them).
+
+- [x] (1/6) Worktree + design/implementation plan docs
+- [x] (2/6) 6 supporting-document models (`uploaded_documents`, `behavioral_profiles`,
+  `writing_style_profiles`, `document_templates`, `job_evaluations`, `generated_documents`) —
+  created by `create_all` (no migration for new tables); `documents_ops.py` CRUD (single-active
+  invariant for the two profile-like tables, default-per-kind templates, `job_evaluations` upsert);
+  idempotent `seed_documents_if_empty()` wired into `init_database()`; `clear_jobs_database()` also
+  purges the new job-linked rows; 8 in-memory round-trip/invariant/seed tests
+- [x] (3/6) In-house ingestion/summarization agent (`utils/backend/agents/ingestion`) —
+  extract→classify→summarize/normalize, reuses `extract_resume_text` + `OpenAIClient`, returns a
+  draft (never persists), degrades to an empty editable draft with no LLM, never 500s on a malformed
+  upload; 7 mocked-LLM tests
+- [x] (4/6) `documents_bp` blueprint (ingest, ingest/save, uploaded list, behavioral/writing/templates
+  CRUD, job-evaluation, generated-docs list) registered in `app.py`; 8 test-client tests on an
+  isolated in-memory DB
+- [x] (5/6) Profile slide-over → tabbed **Profile & Documents** sidebar (Candidate | Behavioral |
+  Writing | Templates) with upload→draft→edit→save for behavioral/writing, a template manager, and a
+  Recent-uploads trace; verified live in-browser (DOM): tabs render+switch, seeds load, template
+  selection loads its body, Save Profile is Candidate-only, no console errors; +2 served-page wiring tests
+- [x] (6/6) Docs (`database.md`, `structure.md`, `routes.md`, `api-contract.md`, `component-map.md`,
+  `data-flow.md`, `documentation.md`, this checklist) + validation
+- [x] Offline test subset green (`tests/database`, `tests/agents`, `tests/documents`,
+  `tests/test_frontend_wiring.py`, + the prior suites), `import app` clean; UI verified via preview
+  tools (screenshot tooling timed out as in prior UI work — DOM inspection used instead)
+- [ ] **Ingestion live with a real LLM endpoint** — the agent is covered by mocked-client tests; real
+  summarization needs an enabled endpoint (Options → LLM Endpoint). Without one it degrades to an
+  empty editable draft.
+- [ ] **Next phase (deferred, pending user check-in):** cover-letter graph (§2) + résumé fine-tuner
+  with recommender match-lift (§3); then Application Mode (§4) as a separate large effort.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

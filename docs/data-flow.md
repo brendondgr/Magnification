@@ -127,6 +127,47 @@ See `docs/recommendation.md`. Stored embeddings are reused on re-analysis; analy
 scrape pipeline is gated by `runtime_config.enable_analysis` + an active profile and is
 non-fatal (a scrape still succeeds if the embedding model is unavailable).
 
+## Document Ingestion Flow
+
+Uploading a résumé/behavioral/writing-style file drafts a structured record via an in-house
+agent (plain Python, no LangGraph) before anything is saved — the user reviews/edits the draft,
+then explicitly saves it:
+
+```
+Upload zone (Profile & Documents sidebar) → POST /api/documents/ingest  {file, doc_type?}
+   → agents.ingestion.ingest_document(filename, data, doc_type, client)
+       → extract_resume_text (recommend.profile_builder)          [text extraction]
+       → classify doc_type (resume|behavioral|writing|reference|other) when not given
+       → summarize/normalize into a target-table-shaped record
+           via build_profile_from_text + OpenAIClient                [OPTIONAL — LLM]
+   → DRAFT returned to the client — NOT persisted
+       {success, filename, doc_type, target_table, draft, summary, raw_text,
+        llm_used, llm_error}
+(no LLM endpoint configured → degrades to an empty, still-editable draft, llm_used=False;
+ malformed uploads never 500)
+
+User edits the drafted fields in the sidebar (strengths tags + traits JSON + work-style
+paragraph, or tone/formality/sentence_length + sample_text + dos/donts tags), then Save:
+
+POST /api/documents/ingest/save  {doc_type, target_table, record, filename?, raw_text?, summary?}
+   → documents_ops upsert of `record` into its target table
+       (profiles | behavioral_profiles | writing_style_profiles — single-active row upsert;
+        reference/other kept summary-only, no target-table row)
+   → documents_ops logs an uploaded_documents row (raw_text, summary, status=saved,
+       derived_table + derived_id pointing at the row just upserted)
+   → {success, derived_table, derived_id, uploaded_id}
+
+Read: GET /api/documents/uploaded → uploaded_documents log (traces each file to the record
+      it produced) — rendered as the "Recent uploads" list.
+```
+
+`job_evaluations` (per-job application-fit: verdict, fit_score, emphasize, gaps, risks,
+talking_points) is a separate 1:1-per-job table from `JobAnalysis` — it is conceptually seeded
+from a `JobAnalysis` verdict but written independently via `GET/POST /api/job-evaluation/<job_id>`;
+it is not produced by the ingestion agent above. `document_templates` (cover_letter/resume/
+job_evaluation, default-per-kind) and the dormant `generated_documents` table are unrelated to
+ingestion and exist as substrate for the deferred cover-letter/résumé generation phase.
+
 ## State Ownership
 
 - **Server-side / durable:** scraped jobs, tracker status, config files, model files. Owned by the backend; SQLite is the source of truth for jobs.

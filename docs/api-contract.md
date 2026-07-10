@@ -69,6 +69,26 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 - `POST /api/recommend/keywords` — body: optional `{seed}` (else uses the active profile) → `{success, search_terms:[...], keyword_groups:[{label,terms}], job_type}`. 400 if the LLM endpoint is disabled or there is no seed/profile.
 - `GET /api/jobs?with_analysis=1` → each job dict gains `analysis: {rag_score, semantic_score, bm25_score, keyword_score, skill_score, keyword_group_hits, skill_match:{matched,missing}, extracted_skills, llm_score, llm_rationale, ...}` (or `null`).
 
+## Documents (`documents_bp`)
+
+Data + ingestion foundation for the agentic documents system (see `docs/plans/agentic-documents-system.md` §8.1–§8.2). The cover-letter/résumé generation graphs are a deferred later phase; these endpoints only ingest, draft, and persist source records.
+
+- `POST /api/documents/ingest` — multipart `{file, doc_type?}` (`doc_type` optional; one of `resume|behavioral|writing|reference|other`, inferred when omitted) → runs the in-house ingestion agent (extract → classify → summarize/normalize) and returns `{success, filename, doc_type, target_table, draft, summary, raw_text, llm_used, llm_error}`. Nothing is persisted by this call. Degrades to an empty editable draft with `llm_used: false` (no `500`) when no LLM endpoint is configured or the upload can't be parsed.
+- `POST /api/documents/ingest/save` — body: `{doc_type, target_table, record, filename?, raw_text?, summary?}` → upserts the approved `record` into its target table (`profiles`, `behavioral_profiles`, or `writing_style_profiles`; a summary-only upload for `reference`/`other` skips the upsert) and logs an `uploaded_documents` row linking the upload to the produced record. Returns `{success, derived_table, derived_id, uploaded_id}`.
+- `GET /api/documents/uploaded` → `{documents:[...]}` — the raw-upload log (`uploaded_documents`: id, filename, doc_type, raw_text, summary, derived_table, derived_id, status `draft|saved`, uploaded_at), newest first.
+- `GET /api/behavioral-profile` → the single active `behavioral_profiles` row: `{exists, id, name, is_active, traits, strengths, work_style_paragraph, source_filename, created_at, updated_at}` (or `{exists:false}` + empty fields).
+- `POST /api/behavioral-profile` — body: any of `{name, traits, strengths, work_style_paragraph, source_filename}` → single-active upsert (mirrors `profile_bp`'s pattern). Returns `{success, profile, id}`.
+- `GET /api/writing-style` → the single active `writing_style_profiles` row: `{exists, id, name, is_active, tone, formality, sentence_length, sample_text, dos, donts, source_filename, created_at, updated_at}` (or `{exists:false}` + empty fields).
+- `POST /api/writing-style` — body: any of `{name, tone, formality, sentence_length, sample_text, dos, donts, source_filename}` → single-active upsert. Returns `{success, profile, id}`.
+- `GET /api/templates` — query `kind?` (one of `cover_letter|resume|job_evaluation`; omit for all) → `{templates:[...]}` (`document_templates`: id, kind, name, body, format `markdown|latex|docx`, is_default, created_at, updated_at).
+- `POST /api/templates` — body: `{kind, name, body, format?, is_default?}` → creates a template; if `is_default: true`, clears `is_default` on other templates of the same `kind` (default-per-kind). Returns `{success, template}`.
+- `GET /api/templates/<int:id>` → a single template record, or `404` if missing.
+- `PATCH /api/templates/<int:id>` — body: any subset of `{name, body, format, is_default}` → updates the template (same default-per-kind exclusivity when `is_default: true` is set). Returns `{success, template}`, or `404` if missing.
+- `DELETE /api/templates/<int:id>` → deletes the template. Returns `{success: true}`, or `404` if missing.
+- `GET /api/job-evaluation/<int:job_id>` → the `job_evaluations` row for that job (1:1, distinct from `recommend_bp`'s analysis): `{exists, id, job_id, profile_id, verdict, fit_score, emphasize, gaps, risks, talking_points, created_at, updated_at}` (or `{exists:false}` + empty fields).
+- `POST /api/job-evaluation/<int:job_id>` — body: `{verdict, fit_score, emphasize, gaps, risks, talking_points}` → upserts by `job_id` (unique). Returns `{success, evaluation}`, or `404` if the job doesn't exist.
+- `GET /api/documents` — query `job_id` → `{documents:[...]}`, the `generated_documents` rows (kind `cover_letter|resume`) for that job. Empty until the deferred generation graphs land; the table (content, format, status `draft|approved`, match_before, match_after, revision, checkpoint_state) exists as dormant substrate.
+
 ## Shared Schema
 
 Job and related records are defined as SQLAlchemy models in `utils/backend/database/models.py`. See `docs/database.md` for the schema deep-dive.

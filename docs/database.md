@@ -118,6 +118,139 @@ Per-job recommendation artifacts, **1:1 with `jobs`**. The embedding is profile-
 
 ---
 
+### 5. Uploaded Documents Table (agentic documents system)
+Raw-upload audit log: records every file run through the ingestion agent and, once approved, which record it produced.
+
+**Table Name**: `uploaded_documents`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `filename` (String, Not Null) - original uploaded filename
+- `doc_type` (String) - one of `resume`, `behavioral`, `writing`, `reference`, `other`
+- `raw_text` (Text, Nullable) - extracted plain text of the upload
+- `summary` (Text, Nullable) - LLM-produced (or degraded) summary of the document
+- `derived_table` (String, Nullable) - name of the table the approved record was saved into (e.g. `profiles`, `behavioral_profiles`, `writing_style_profiles`); null for summary-only `reference`/`other` uploads
+- `derived_id` (Integer, Nullable) - PK of the row in `derived_table`
+- `status` (String, default `draft`) - `draft` (ingested, not yet approved) or `saved` (approved into its target table)
+- `uploaded_at` (DateTime)
+
+**Notes**: `derived_table`/`derived_id` are a logical, polymorphic pointer (the target table varies by `doc_type`) — not a DB-level foreign key.
+
+---
+
+### 6. Behavioral Profiles Table (agentic documents system)
+Stores the candidate's behavioral/interview profile (traits, strengths, work style) built from an uploaded document.
+
+**Table Name**: `behavioral_profiles`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `name` (String, default `"default"`) - human label
+- `is_active` (Integer, default 0) - 1 for the single active profile, same convention as `profiles.is_active`
+- `traits` (JSON, Nullable) - list of trait strings
+- `strengths` (JSON, Nullable) - list of strength strings
+- `work_style_paragraph` (Text, Nullable)
+- `source_filename` (String, Nullable) - originating uploaded filename
+- `created_at` / `updated_at` (DateTime)
+
+**Invariant**: SINGLE-ACTIVE table — at most one row has `is_active=1`, mirroring the Profiles table (§3).
+
+---
+
+### 7. Writing Style Profiles Table (agentic documents system)
+Stores the candidate's writing voice (tone, formality, do's/don'ts) used by the (deferred) cover-letter and résumé generators.
+
+**Table Name**: `writing_style_profiles`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `name` (String, default `"default"`)
+- `is_active` (Integer, default 0) - 1 for the single active profile, same convention as `profiles.is_active`
+- `tone` (String, Nullable)
+- `formality` (String, Nullable)
+- `sentence_length` (String, Nullable)
+- `sample_text` (Text, Nullable)
+- `dos` (JSON, Nullable) - list of stylistic do's
+- `donts` (JSON, Nullable) - list of stylistic don'ts
+- `source_filename` (String, Nullable)
+- `created_at` / `updated_at` (DateTime)
+
+**Invariant**: SINGLE-ACTIVE table — at most one row has `is_active=1`, mirroring the Profiles table (§3).
+
+---
+
+### 8. Document Templates Table (agentic documents system)
+Reusable templates for generated documents. Multi-row (not single-active) — each `kind` may have several templates with one marked default.
+
+**Table Name**: `document_templates`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `kind` (String) - one of `cover_letter`, `resume`, `job_evaluation`
+- `name` (String)
+- `body` (Text) - template content
+- `format` (String) - one of `markdown`, `latex`, `docx`
+- `is_default` (Integer, default 0) - default template used for its `kind`
+- `created_at` / `updated_at` (DateTime)
+
+**Relationship Rules**: unlike Profiles/Behavioral/Writing, this table is multi-row per `kind`; `is_default` is enforced as at-most-one-per-`kind` by application logic (`documents_ops.py`), not a DB constraint.
+
+---
+
+### 9. Job Evaluations Table (agentic documents system)
+Per-job application-fit verdict — **1:1 with `jobs`**, upserted by `job_id`. Distinct from Job Analyses (§4): Job Analyses is the RAG/embedding relevance signal, Job Evaluations is the agentic fit verdict (emphasize/gaps/risks/talking points).
+
+**Table Name**: `job_evaluations`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `job_id` (Integer, FK → `jobs.id` ON DELETE CASCADE, **unique** → 1:1)
+- `profile_id` (Integer, FK → `profiles.id` ON DELETE SET NULL, Nullable)
+- `verdict` (String, Nullable)
+- `fit_score` (Float, Nullable)
+- `emphasize` (JSON, Nullable) - list of points to emphasize
+- `gaps` (JSON, Nullable) - list of gap strings
+- `risks` (Text, Nullable)
+- `talking_points` (JSON, Nullable) - list of talking-point strings
+- `created_at` / `updated_at` (DateTime)
+
+**Relationship Rules**:
+- Deleting a `Job` cascades to its `JobEvaluation` (same FK-cascade pattern as `JobAnalysis`, §4).
+- One evaluation per job: `job_evaluations` upserts by `job_id` rather than accumulating rows.
+
+---
+
+### 10. Generated Documents Table (agentic documents system)
+Job-linked storage for generated cover letters/résumés. Currently a **dormant substrate**: the table and its CRUD exist, but the generation graphs that populate it are a later, deferred phase.
+
+**Table Name**: `generated_documents`
+
+**Columns**:
+- `id` (Integer, PK, Auto-increment)
+- `job_id` (Integer, FK → `jobs.id` ON DELETE CASCADE)
+- `kind` (String) - `cover_letter` or `resume`
+- `content` (Text, Nullable)
+- `format` (String, Nullable)
+- `status` (String, default `draft`) - `draft` or `approved`
+- `match_before` / `match_after` (Float, Nullable) - fit score before/after generation
+- `revision` (Integer, default 0)
+- `checkpoint_state` (JSON, Nullable) - in-progress generation state
+- `created_at` / `updated_at` (DateTime)
+
+**Relationship Rules**:
+- Deleting a `Job` cascades to its `GeneratedDocument` rows (same FK-cascade pattern as `JobAnalysis`, §4).
+- Not unique on `job_id`: multiple documents/revisions per job are expected (different `kind`, or successive `revision`s).
+
+---
+
+> Tables 5-10 are created by `Base.metadata.create_all()` in `init_db.init_database()` — same as Job Analyses (§4), no migration is required since they are new tables.
+
+> `clear_jobs_database()` now also bulk-deletes `job_evaluations` and `generated_documents` alongside `application_statuses`/`job_analyses` (bulk delete bypasses the ORM cascade, so job-linked agentic-documents rows must be purged explicitly).
+
+> These six tables are the data foundation for the agentic documents system described in [`docs/plans/agentic-documents-system.md`](plans/agentic-documents-system.md) (build order §8.1-§8.2): document ingestion and profile/template storage are implemented now, while the cover-letter/résumé generation graphs remain a deferred phase.
+
+---
+
 ## File Organization & Implementation Plan
 
 ### Database Models Directory

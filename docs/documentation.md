@@ -40,6 +40,7 @@ These existing references remain canonical for their subsystems:
 - `docs/recommendation.md` — the RAG + LLM recommendation system
 - `docs/profile.md` — the résumé → profile builder
 - `docs/ui.md` — UI notes
+- `docs/plans/agentic-documents-system.md` — design for the agentic documents system (in-house ingestion agent + cover-letter/résumé generation)
 
 ## Major Decisions
 
@@ -66,4 +67,8 @@ These existing references remain canonical for their subsystems:
   user units run the scrape on boot and daily, **gated on the LLM being reachable**
   (re-checks every 10 min ×6, else skips the day; once-per-day stamp). See
   `docs/plans/systemd-daily-search.md`.
+- **Agentic Documents foundation complete:** data layer (behavioral/writing-style profiles,
+  templates, job evaluations), the in-house ingestion agent, and a tabbed "Profile & Documents"
+  sidebar have shipped; the cover-letter/résumé generation graphs and Application Mode remain
+  deferred. See `docs/plans/agentic-documents-system.md`.
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.

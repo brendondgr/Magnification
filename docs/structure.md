@@ -48,11 +48,12 @@ Magnification/
 │
 ├── utils/                      # All application Python + frontend assets
 │   ├── backend/
-│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm, options
+│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm, options, documents (ingestion + profile/template/job-evaluation CRUD)
 │   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
 │   │   ├── llm/                # OpenAI-compatible client + endpoint config (recommendation system)
 │   │   ├── recommend/          # RAG/LLM recommendation: embedder, bm25, ranker, skills, compensation, service, keywords, profile_builder, runtime_config
-│   │   ├── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis), init, CRUD, idempotent migrations (incl. migrate_job_saved)
+│   │   ├── agents/             # In-house ingestion agent (no LangGraph): ingestion/{agent.py, prompts.py} — extract/classify/summarize uploaded documents into drafts
+│   │   ├── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis, + documents-foundation tables), init, CRUD, idempotent migrations (incl. migrate_job_saved), documents_ops.py, seed_documents.py
 │   │   └── scheduler/          # LLM-gated daily job-search runner + CLI (systemd-driven: llm_health, daily_runner, __main__)
 │   ├── frontend/
 │   │   ├── templates/          # index.html — single dc-runtime design export (no Jinja partials)
@@ -63,7 +64,9 @@ Magnification/
 │   ├── job_scraper.py
 │   ├── test_config_loading.py
 │   ├── test_frontend_wiring.py # dc-runtime page + job/config API contract
-│   ├── database/               # Profile + JobAnalysis CRUD round-trip
+│   ├── agents/                 # Ingestion agent tests (test_ingestion.py)
+│   ├── documents/              # Documents API tests (test_documents_api.py)
+│   ├── database/               # Profile + JobAnalysis CRUD round-trip, incl. test_agentic_documents.py for the new documents-foundation tables
 │   ├── scheduler/              # LLM-health probe + once-per-day runner (offline, mocked)
 │   └── docs/                   # Doc/skill-pointer verification tests
 │
@@ -82,7 +85,8 @@ Magnification/
 | `docs/` | Source of truth: project docs, plans, and canonical skills. |
 | `docs/skills/` | Canonical skill definitions; agent folders only point here. |
 | `.claude/`, `.agents/`, `.cursor/` | Tool-specific pointer files. No canonical content. |
-| `utils/backend/` | API routes, scraping pipeline, database layer, and the scheduled daily-search runner. |
+| `utils/backend/` | API routes, scraping pipeline, database layer, the in-house ingestion agent, and the scheduled daily-search runner. |
+| `utils/backend/agents/` | In-house, plain-Python ingestion agent (no LangGraph) — extracts, classifies, and summarizes/normalizes uploaded documents into an editable draft; part of the agentic-documents foundation in `docs/plans/agentic-documents-system.md`. |
 | `utils/backend/scheduler/` | LLM-gated, once-per-day job-search runner + CLI invoked by the systemd units. |
 | `deploy/systemd/` | Systemd **user** units + installer for the web app on boot and the automated daily search (see `deploy/systemd/README.md`). |
 | `utils/frontend/` | Jinja templates and static CSS/JS assets. |
