@@ -20,6 +20,12 @@ from .models import (
     Base,
     Job,
     ApplicationStatus,
+    UploadedDocument,
+    BehavioralProfile,
+    WritingStyleProfile,
+    DocumentTemplate,
+    JobEvaluation,
+    GeneratedDocument,
 )
 
 from .init_db import (
@@ -76,6 +82,12 @@ __all__ = [
     'Base',
     'Job',
     'ApplicationStatus',
+    'UploadedDocument',
+    'BehavioralProfile',
+    'WritingStyleProfile',
+    'DocumentTemplate',
+    'JobEvaluation',
+    'GeneratedDocument',
     # Init
     'engine',
     'SessionLocal',

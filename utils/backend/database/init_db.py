@@ -28,10 +28,12 @@ def init_database():
 
     This function should be called once at application startup.
     Tables are only created if they don't already exist. Lightweight, idempotent
-    column migrations for pre-existing databases run afterwards.
+    column migrations for pre-existing databases run afterwards, then day-one
+    starter records for the Agentic Document System are seeded where absent.
     """
     Base.metadata.create_all(bind=engine)
     _run_migrations()
+    _seed_documents()
 
 
 def _run_migrations():
@@ -42,6 +44,12 @@ def _run_migrations():
     migrate_profile_blocklists()
     migrate_profile_llm_instructions()
     migrate_job_saved()
+
+
+def _seed_documents():
+    """Seed the Agentic Document System's day-one starter records (idempotent)."""
+    from .seed_documents import seed_documents_if_empty
+    seed_documents_if_empty()
 
 
 def get_db_session() -> Session:

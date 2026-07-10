@@ -11,7 +11,9 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Set, Tuple
 
 from .init_db import get_db_context
-from .models import Job, ApplicationStatus, Profile, JobAnalysis
+from .models import (
+    Job, ApplicationStatus, Profile, JobAnalysis, JobEvaluation, GeneratedDocument,
+)
 from .config import APPLICATION_STATUSES
 from .utils import validate_job_data, validate_status, format_date
 
@@ -177,14 +179,16 @@ def clear_jobs_database() -> int:
     analyses) while leaving profiles intact.
 
     Bulk ``Query.delete()`` bypasses ORM-level cascades, so the dependent rows
-    are removed explicitly in FK-safe order (analyses + statuses before jobs)
-    within a single transaction.
+    are removed explicitly in FK-safe order (analyses + evaluations + generated
+    documents + statuses before jobs) within a single transaction.
 
     Returns:
         int: number of Job rows deleted.
     """
     with get_db_context() as db:
         db.query(JobAnalysis).delete(synchronize_session=False)
+        db.query(JobEvaluation).delete(synchronize_session=False)
+        db.query(GeneratedDocument).delete(synchronize_session=False)
         db.query(ApplicationStatus).delete(synchronize_session=False)
         deleted = db.query(Job).delete(synchronize_session=False)
 
