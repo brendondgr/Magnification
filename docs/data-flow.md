@@ -220,8 +220,28 @@ pattern as the recommend analyze background task. Semi-auto checkpoints pause th
 snapshotted to `generated_documents.checkpoint_state`. Every node degrades to a deterministic
 fallback when no LLM endpoint is configured.
 
-Application Mode (the interactive Apply-button flow meant to drive these graphs from the job
-detail panel) is designed but deferred — not built.
+**Application Mode** is the interactive flow that drives these graphs from an **Apply** button
+on job cards / the job detail (distinct from the quick-mark **Applied** button). It opens a
+frontend-only modal — no new DB table; the session itself is ephemeral, only the documents it
+produces persist in `generated_documents`:
+
+```
+Intake (choose résumé and/or cover letter + optional free-text guidance)
+   → Generating (the selected graphs run as background tasks — same generation_tasks/polling
+       machinery as Execution/runtime above — polled in parallel, each showing its own node stage)
+   → Review (view each document + the résumé match-lift, edit the text directly, or Refine)
+```
+
+From Review, **Refine** is the key loop: the user gives feedback (typed, or a quick chip) and
+Regenerate re-runs that document's graph with the feedback as high-priority `instructions` plus
+the current draft as `prior_content`, via the start endpoint's `revise_from` — this updates the
+same `generated_documents` row in place and bumps its `revision` rather than creating a new row.
+The user iterates until they approve; manual inline edits instead persist immediately via
+`PATCH /api/documents/<id>`. Approving is followed by Mark as Applied, which advances the
+Tracker through the existing status flow (see Status Updates above).
+
+This is design §4 minus the deferred browser-automation submission adapter (§4.3) and the
+still-unbuilt `application_sessions` table.
 
 ## State Ownership
 

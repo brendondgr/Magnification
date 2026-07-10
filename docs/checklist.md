@@ -494,6 +494,41 @@ a persisted `generated_documents.checkpoint_state` snapshot; zero new dependenci
 - [ ] **Application Mode (§4)** — the Apply-button intent/status split, `application_sessions`, the
   intake wizard, and the manual/browser submission adapters remain the deferred large effort.
 
+## Agentic Documents — Application Mode — Definition of Done
+
+Design: `docs/plans/agentic-documents-system.md` (§4). Plan: `docs/plans/agentic-documents-application-mode.md`.
+Delivered on branch `agentic-documents-foundation` (worktree), committed per phase.
+
+Scope: the interactive **Apply** flow — generation moved **out of the Profile side-panel** into a
+dedicated modal, with an iterate/refine loop. **Out of scope (still deferred):** the
+browser-automation submission adapter (§4.3) and a persisted `application_sessions` table (the
+session is ephemeral frontend state; the documents persist in `generated_documents`).
+
+- [x] (1/5) Plan doc (`docs/plans/agentic-documents-application-mode.md`)
+- [x] (2/5) Steerable refine backend — `prompts.guidance_block()`; `instructions`/`prior_content`
+  through `context.load_context` + the cover-letter (strategize/write) and résumé (plan/rewrite)
+  nodes; `service.start_generation(instructions, prior_content, revise_from)` with `_persist`
+  updating the `revise_from` row in place (revision bump, no accumulation); routes accept
+  `{instructions?, revise_from?}` (revise_from loads the prior draft's content). Tests: guidance
+  threads through both graphs; API refine updates in place.
+- [x] (3/5) Apply flow UI — cards (New Jobs + Saved) + job-detail footer show **Apply** (opens the
+  flow) + **Applied** (quick markApplied); the side-panel Documents section + viewer are removed.
+  Application Mode modal (mirrors the Find Jobs shell): Intake (résumé/cover toggles + guidance +
+  Start / Just-mark-Applied) → Generating (parallel per-doc node-stage progress) → Review (content,
+  résumé match-lift badge, Edit / Download / Approve, quick-refine chips + a Regenerate feedback box
+  that re-runs in place via `revise_from`). Mark-as-Applied finishes. Wiring test swapped to
+  Application-Mode tokens.
+- [x] Verified live in-app on the preview: Apply → intake → **parallel** generation of both docs
+  with live stages → review with the 54%→56% match-lift badge → chip-prefilled **Regenerate**
+  (re-ran the cover letter in place) → Edit editor → Approve chip → Close (pollers torn down); no
+  console errors. Node `--check` on the component JS passes; `import app` clean; 46 targeted offline
+  tests green. Verification rows were removed and the job status left untouched.
+- [ ] (4/5, remaining) Docs (`component-map.md`, `routes.md`, `api-contract.md`, `data-flow.md`,
+  this checklist) + adversarial review of the diff.
+- [ ] **Browser-automation submission (§4.3)** and **`application_sessions`** persistence remain the
+  deferred follow-ups; a full LLM endpoint is still needed for best-quality prose (the graphs
+  degrade gracefully offline).
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

@@ -132,8 +132,8 @@ Runs the in-house cover-letter and résumé agent graphs as background tasks (sa
 
 | Path | Method | Purpose |
 | --- | --- | --- |
-| `/api/documents/cover-letter/start` | POST | Start the cover-letter graph in a daemon thread (body: `{job_id, template_id?, interactive?}` → `{success, task_id, kind, job_id}`) |
-| `/api/documents/resume/start` | POST | Start the résumé fine-tuner graph (same body/response shape) |
+| `/api/documents/cover-letter/start` | POST | Start the cover-letter graph in a daemon thread (body: `{job_id, template_id?, interactive?, instructions?, revise_from?}` → `{success, task_id, kind, job_id}`; `instructions` steers the writer/strategist prompts, `revise_from` (existing doc id) updates that document in place instead of creating a new row) |
+| `/api/documents/resume/start` | POST | Start the résumé fine-tuner graph (same body/response shape; `instructions` steers the planner/rewriter prompts instead) |
 | `/api/documents/status/<task_id>` | GET | Poll a generation task: `{status, kind, job_id, progress:{stage, percent, details}, events:[{t, stage, percent, message}], results, checkpoint}` (`status` ∈ `pending`\|`running`\|`paused`\|`completed`\|`failed`) |
 | `/api/documents/<task_id>/resume` | POST | Resume a graph paused at a semi-auto checkpoint (body: `{decision: approve\|edit\|reject, edits?}` — cover letter edits `{thesis, hooks}`, résumé edits `{plan}`) → `{success, task}` |
 | `/api/documents/<int:doc_id>` | GET | Fetch a single generated document |

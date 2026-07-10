@@ -28,8 +28,8 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 | Area | State keys | Key methods |
 | --- | --- | --- |
-| Jobs / Tracker / Saved | `jobs, tab, selectedId, search, page, dragOverCol` | `loadJobs`, `mapDbJob`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `moveTo`, `toggleStatus` |
-| **Job Detail — Documents** | `docGen{active,kind,taskId,percent,stage,message}, docsByJob{jobId->[docs]}, docView{open,title,content,id}` | `loadJobDocuments`, `generateDoc`, `pollGen`, `viewDoc`, `approveDoc`, `downloadDoc`, `closeDocView` |
+| Jobs / Tracker / Saved | `jobs, tab, selectedId, search, page, dragOverCol` | `loadJobs`, `mapDbJob`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
+| **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},docs{cover_letter,resume},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, useLLM` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
 | **Profile & Documents** | `profileOpen, docsTab, profile{llm_instructions,interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy, pfSkillsExpanded, beh{...}, wri{...}, behTraitsText, templates, tplSelId, uploadedDocs` | `openProfile` (now also calls `loadDocuments`), `loadProfile`, `saveProfile`, `blockCompany`, `addSkillToProfile`, `onResumeFile`, `rebuildProfile` (unions `skills` + `blocked_companies`), `pfSet`; docs: `loadDocuments`, `loadTemplates`, `loadUploadedDocs`, `behSet`/`wriSet`, `onBehFile`/`onWriFile`, `ingestDoc`, `saveBehavioral`, `saveWriting`, `tplSet`/`addTemplate`/`saveTemplate`/`deleteTemplate` |
@@ -45,22 +45,38 @@ Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options** (Pr
 Jobs, Options right). Profile + Options are right-side slide-over panels mirroring the job
 detail panel; Find Jobs is a centered modal.
 
-### Job detail — Documents section
+### Application Mode
 
-The job-detail slide-over (`selectedJob`) has a **Documents** section below the Job Description:
-**Cover Letter** and **Tailor Résumé** buttons call `generateDoc(kind)` (`POST
-/api/documents/cover-letter/start` or `/resume/start`), tracked in `docGen` and polled by
-`pollGen` (`GET /api/documents/status/<task_id>` every 700ms, reusing the progress-bar/activity
-idiom from Find Jobs/Analyze). While active, an inline progress card shows the node stage,
-percent bar, and live message; `formatStage()` gained labels for the generation stages
-(`research, evaluate, strategize, write, style, critique, truthfulness, finalize, evaluate_gap,
-plan_edits, rewrite, ats_format, score`). Below it, `docsByJob[jobId]` (loaded via
-`loadJobDocuments`, called when a job is opened) lists each generated document with its kind, a
-Draft/Approved status chip, a match-lift badge for résumés (e.g. "42% → 61% match", colored via
-`this.matchColorFor`), and **View**/**Approve** buttons (`viewDoc` → `GET /api/documents/<id>`;
-`approveDoc` → `PATCH /api/documents/<id>` `status=approved`). **View** opens a centered
-**Document viewer** modal (`docView`) rendering the markdown in a `<pre>` with a **Download**
-button (`downloadDoc`, Blob-based `.md` download) and `closeDocView` to dismiss.
+The job-detail slide-over no longer has a Documents section or a document-viewer modal; document
+generation and review moved into **Application Mode**. Cards (New Jobs + Saved grids) and the
+job-detail footer each show two buttons: **Apply** (`openApply(job)`, opens Application Mode) and
+**Applied** (`onMarkApplied`, a quick one-step `markApplied` with no generation). Application Mode
+itself is a centered modal — mirroring the Find Jobs modal shell — driven by the `app` state
+object and stepping through three stages:
+
+- **Intake** (`stage: 'intake'`) — toggles for "Tailor my résumé" / "Write a cover letter"
+  (`toggleAppKind`, both on by default), an optional guidance textarea (`setGuidance`), and
+  Start (`startApply`) / just-mark-Applied / Cancel (`closeApply`) actions. If the job already
+  has drafts, a "Review existing drafts" shortcut (`reviewExisting`) skips straight to Review.
+- **Generating** (`stage: 'generating'`) — one progress card per selected kind, generated in
+  parallel via `_startGen(kind, opts)`; each is polled every 700ms by `_pollApp(kind, taskId)`
+  (`GET /api/documents/status/<task_id>`) and shows a percent bar plus a live node-stage feed
+  (reusing the progress idiom from Find Jobs/Analyze). `_finishGen` fetches the finished doc
+  (`_fetchAppDoc`) and advances to Review once every kind in the initial batch is done;
+  `_genFail` handles a failed generation.
+- **Review** (`stage: 'review'`) — per document: a status chip, a résumé match-lift badge
+  (colored via `this.matchColorFor`), the content shown inline, **Edit** (`editDoc`/`editInput`/
+  `saveEdit`/`cancelEdit`, an inline textarea PATCHed on save) / **Download** (`downloadAppDoc`) /
+  **Approve** (`approveAppDoc`), plus quick-refine chips (Warmer tone / More concise / Different
+  angle / Stronger opening) and a free-text regenerate box (`refineInput`, `quickRefine`,
+  `submitRefine` — re-runs generation via `revise_from` + instructions, staying in Review).
+  `appCard(kind)` builds the per-document view model; `appToggleStyle`/`appCheckStyle` drive the
+  toggle chips. The footer offers **Mark as Applied** (`markAppliedAndClose`) or **Close**
+  (`closeApply`).
+
+`componentWillUnmount` clears the Application Mode pollers (`_clearAppPollers`). The prior
+`generateDoc`/`pollGen`/`viewDoc`/`closeDocView`/`approveDoc`/`downloadDoc`/`loadJobDocuments`
+methods and the `docGen`/`docView`/`docsByJob` state are gone.
 
 ### Profile & Documents sidebar tabs
 
