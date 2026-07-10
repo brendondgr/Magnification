@@ -17,6 +17,7 @@ from typing import Any, Dict
 from . import nodes_shared as shared
 from . import nodes_resume as rz
 from . import scoring
+from . import latex
 from .orchestrator import Checkpoint, MAX_REVISIONS, MATCH_MIN_LIFT
 
 
@@ -68,6 +69,10 @@ def run(state: Dict[str, Any], orch) -> Dict[str, Any]:
             break
 
     state["needs_review"] = not accepted
-    state["final"] = state.get("ats") or state.get("rewrite") or ""
+    # Plain tailored text is what the match-lift scored on; the persisted document is LaTeX.
+    orch.report("render", 94, "Rendering the résumé as LaTeX…")
+    state["final_text"] = state.get("ats") or state.get("rewrite") or ""
+    state["final"] = latex.build_resume_tex(state)
+    state["format"] = "latex"
     orch.report("finalize", 96, "Finalizing the résumé…")
     return state

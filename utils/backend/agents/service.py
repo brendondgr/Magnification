@@ -69,7 +69,8 @@ def _persist(kind: str, job_id: int, state: Dict[str, Any],
     ``revision``) so a refine loop keeps one evolving draft per kind instead of accumulating rows."""
     payload: Dict[str, Any] = {
         "content": state.get("final") or "",
-        "format": (state.get("template") or {}).get("format") or "markdown",
+        # The graphs now render LaTeX; fall back to the template's format only if a graph didn't set one.
+        "format": state.get("format") or (state.get("template") or {}).get("format") or "markdown",
         "status": "draft",
         "checkpoint_state": _checkpoint_snapshot(state),
     }

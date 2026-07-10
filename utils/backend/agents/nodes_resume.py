@@ -204,6 +204,9 @@ def ats_format(state: Dict[str, Any], orch) -> None:
         if not filled.get(slot):
             filled[slot] = _fallback_resume_slot(slot, state, rewrite)
     values.update(filled)
+    # Keep the structured slots so the LaTeX builder can lay them into a real résumé (design:
+    # the graph owns substance, agents/latex.py owns the compilable presentation).
+    state["resume_slots"] = values
 
     formatted = prompts.fill_slots(body, values).strip()
     # Never let formatting drop the tailored content (which the match-lift is scored on).

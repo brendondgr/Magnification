@@ -16,6 +16,7 @@ from typing import Any, Dict
 
 from . import nodes_shared as shared
 from . import nodes_cover_letter as cl
+from . import latex
 from .orchestrator import Checkpoint, MAX_REVISIONS, COVER_SCORE_THRESHOLD
 
 
@@ -65,6 +66,10 @@ def run(state: Dict[str, Any], orch) -> Dict[str, Any]:
             break
 
     state["needs_review"] = not accepted
-    state["final"] = state.get("styled_draft") or state.get("draft") or ""
+    # The critic/truthfulness passes scored the plain prose; the persisted document is LaTeX.
+    orch.report("render", 94, "Rendering the letter as LaTeX…")
+    state["final_text"] = state.get("styled_draft") or state.get("draft") or ""
+    state["final"] = latex.build_cover_letter_tex(state)
+    state["format"] = "latex"
     orch.report("finalize", 96, "Finalizing the letter…")
     return state
