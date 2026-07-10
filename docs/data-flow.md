@@ -187,7 +187,7 @@ utils/backend/agents/context.py load_context(job_id, kind, template_id)
 research_company → evaluate_fit → strategize
    → [Checkpoint 1: approve angle — only when interactive & low confidence]
    → (write → style → critique + truthfulness) looped up to 2 revisions
-   → finalize
+   → render (assemble LaTeX) → finalize
 ```
 
 `evaluate_fit` persists a `job_evaluations` row (the job evaluation system described above),
@@ -200,7 +200,7 @@ persists `generated_documents(kind='cover_letter')`.
 evaluate_gap → plan_edits
    → [Checkpoint 1: approve plan — only when interactive & large cuts]
    → (rewrite → ats_format → score → truthfulness) looped up to 2 revisions
-   → finalize(kind='resume', match_before, match_after)
+   → render (assemble LaTeX) → finalize(kind='resume', match_before, match_after)
 ```
 
 `score` is the differentiator: it treats the tailored résumé as a throwaway profile and
@@ -211,6 +211,29 @@ renormalizes over whichever signals are present, so a real lift is measurable ev
 the embedding model; semantic scoring folds in when embeddings exist. The LLM fit verdict is
 excluded from the lift score. Rewrites are truth-preserving — never fabricate skills the
 candidate lacks.
+
+**Render step** (`utils/backend/agents/latex.py`). The graphs produce the substance (the plain
+prose / tailored content in `state["final_text"]`); a final deterministic, offline `render` node
+wraps it into a compilable single-column `article` document — `build_tex(kind, state)` →
+`build_cover_letter_tex` / `build_resume_tex`, with `escape_latex` + `md_to_latex` helpers and
+only base packages (geometry, titlesec, enumitem, parskip, hyperref, lmodern), hardened to
+compile even on adversarial `& % _ $` / `C++` / `[Your Name]` content. It sets `state["final"]`
+to the LaTeX source and `state["format"]="latex"` while keeping `state["final_text"]` as the
+plain text; the résumé match-lift is scored on `final_text` (plain), **not** the LaTeX
+(`ats_format` stashes `state["resume_slots"]` for the builder). A `render` progress stage
+(~94%, "Rendering … as LaTeX") is reported before finalize, and `service._persist` records
+`state["format"]`.
+
+**PDF compile + serve** (`utils/backend/pdf_compile.py`). The stored LaTeX is compiled to a PDF
+on demand:
+
+```
+GET /api/documents/<id>/pdf  → compile_pdf(doc_id, tex) → pdflatex (-interaction=nonstopmode
+    -halt-on-error -no-shell-escape, 40s, temp dir) → cache data/generated_pdfs/doc_<id>_<hash>.pdf
+    (one file per doc; older revisions pruned) → stream application/pdf
+    (?download=1 attaches; 404 unknown doc, 415 non-LaTeX, 422 LatexCompileError(message, log))
+GET /api/documents/<id>/tex  → raw LaTeX source
+```
 
 **Execution/runtime** (`utils/backend/agents/service.py`): each graph runs in a daemon thread
 via an in-memory `generation_tasks` store, emitting staged progress events in the
@@ -227,17 +250,23 @@ produces persist in `generated_documents`:
 
 ```
 Intake (choose résumé and/or cover letter + optional free-text guidance)
-   → Generating (the selected graphs run as background tasks — same generation_tasks/polling
-       machinery as Execution/runtime above — polled in parallel, each showing its own node stage)
-   → Review (view each document + the résumé match-lift, edit the text directly, or Refine)
+   → Workspace (generation + review unified into one two-column stage; document tabs switch
+       Tailored Résumé ∣ Cover Letter — the selected graphs still run as background tasks via the
+       same generation_tasks/polling machinery, polled in parallel):
+         LEFT  "Process"  = a live step-by-step agent feed rendered from the task events[] (prior
+             steps + revision loops), the résumé match-lift, refine chips + textarea (Regenerate),
+             and Edit LaTeX / Download PDF / Approve actions
+         RIGHT "Preview"  = the compiled PDF (GET /api/documents/<id>/pdf) in an <iframe>,
+             re-fetched/recompiled after each generation, refine, or edit
 ```
 
-From Review, **Refine** is the key loop: the user gives feedback (typed, or a quick chip) and
+From the workspace, **Refine** is the key loop: the user gives feedback (typed, or a quick chip) and
 Regenerate re-runs that document's graph with the feedback as high-priority `instructions` plus
 the current draft as `prior_content`, via the start endpoint's `revise_from` — this updates the
 same `generated_documents` row in place and bumps its `revision` rather than creating a new row.
-The user iterates until they approve; manual inline edits instead persist immediately via
-`PATCH /api/documents/<id>`. Approving is followed by Mark as Applied, which advances the
+The user iterates until they approve; manual **Edit LaTeX** edits instead persist immediately via
+`PATCH /api/documents/<id>` (the PDF preview recompiles from the edited source). Approving is
+followed by Mark as Applied, which advances the
 Tracker through the existing status flow (see Status Updates above).
 
 This is design §4 minus the deferred browser-automation submission adapter (§4.3) and the

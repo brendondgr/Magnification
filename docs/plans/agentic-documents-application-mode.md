@@ -80,3 +80,68 @@ The graphs already run to completion; they gain optional **guidance** so a re-ru
 | Frontend | `utils/frontend/templates/index.html` |
 | Tests | `tests/agents/test_refine.py`, `tests/documents/test_generation_api.py` (+refine), `tests/test_frontend_wiring.py` (+Apply/Application-Mode tokens) |
 | Docs | `routes.md`, `api-contract.md`, `data-flow.md`, `component-map.md`, `checklist.md` |
+
+---
+
+## Iteration 2 — LaTeX documents + PDF preview workspace
+
+**Status:** Delivered on top of the Apply flow above (branch `agentic-documents-foundation`, worktree).
+**Scope:** the generation graphs now emit **LaTeX** instead of Markdown, a compile subsystem renders that
+source to a **PDF**, and the Review screen becomes a **two-column workspace** — the live agent process
+feed alongside the rendered PDF preview — with per-document tabs.
+
+**Still out of scope (unchanged):** the browser-automation submission adapter (§4.3) and a persisted
+`application_sessions` table.
+
+### What changed and why
+The refine loop above returned Markdown-ish plain text. The user wanted a **print-ready document** they can
+actually see and download, so the output format becomes **LaTeX** (typeset quality, deterministic offline
+assembly) and the Review screen shows the compiled **PDF** next to the live generation process instead of a
+raw text blob.
+
+### Backend — LaTeX output + PDF compile/serve
+- **LaTeX assembly** (`utils/backend/agents/latex.py`, deterministic + offline): `escape_latex` (escapes
+  TeX specials), `md_to_latex` (light Markdown → LaTeX for the model's prose), and `build_cover_letter_tex`
+  / `build_resume_tex` (assemble a full `\documentclass{article}` document). The graphs' final node emits
+  LaTeX; `generated_documents.content` is now a complete `.tex` document and the row persists
+  `format="latex"`. The résumé **match-lift** is still scored on the plain tailored text (not the LaTeX),
+  so the recommender-reuse scoring is unchanged.
+- **PDF compile** (`utils/backend/pdf_compile.py`): `compile_pdf(...)` shells out to `pdflatex` and caches
+  the result under `data/generated_pdfs/`, keyed by content (an unchanged document isn't recompiled). A
+  missing toolchain or a source that fails to typeset raises `LatexCompileError`.
+- **Serve routes:** `GET /api/documents/<id>/pdf` compiles (or reuses the cache) and streams the PDF
+  inline, or as an attachment with `?download=1`; it returns 404 (unknown doc), 415 (a non-LaTeX
+  document), or 422 (compile failure) — all logged. `GET /api/documents/<id>/tex` returns the raw LaTeX
+  source (always available, even when no TeX toolchain is installed).
+
+### Frontend — two-column tabbed workspace
+- The Review stage becomes a two-column `data-appws` workspace:
+  - **Left — Process:** the live step-by-step agent feed (rendered from the task `events`, including the
+    revision loops), plus the refine controls — quick chips + a feedback box (**Regenerate**, re-runs in
+    place via `revise_from`) and the **Edit LaTeX** / **Download PDF** / **Approve** actions.
+  - **Right — Preview:** the compiled PDF in an `<iframe>` whose `src` is set through a React `ref` — so
+    the raw template never fetches a literal `{{…}}` URL before hydration.
+  - **Document tabs** switch between *Tailored Résumé* and *Cover Letter*; on narrow screens a
+    **Process ∣ Preview** toggle swaps the two columns. The PDF recompiles (re-fetches `/pdf`) after each
+    refine or LaTeX edit.
+- Reuses the existing Application-Mode modal shell, pollers, `revise_from` refine loop, and `matchColorFor`
+  grading — this iteration reshapes the Review stage rather than adding a new flow.
+
+### Steps
+1. **LaTeX assembly:** `agents/latex.py` helpers; the cover-letter/résumé final nodes emit a full
+   `\documentclass{article}` document; persist `format="latex"`. Tests (`tests/agents/test_latex.py`).
+   Commit.
+2. **PDF compile + serve:** `pdf_compile.compile_pdf` (pdflatex, on-disk cache, `LatexCompileError`);
+   `/api/documents/<id>/pdf` + `/tex` routes. Tests (`tests/documents/test_pdf_route.py`). Commit.
+3. **Two-column workspace:** the `data-appws` Process ∣ Preview Review layout, document tabs, ref-driven
+   `<iframe>` PDF preview, recompile-on-refine. Wiring test
+   (`test_index_has_two_column_latex_workspace`). Commit.
+4. **Docs + validation:** this section + the checklist; full suite green. Commit.
+
+### Deliverables
+| Area | Files |
+| --- | --- |
+| Backend | `utils/backend/agents/latex.py` (new), `utils/backend/pdf_compile.py` (new), `routes/document_generation_routes.py` (pdf/tex routes), the cover-letter/résumé graph nodes (LaTeX output) |
+| Frontend | `utils/frontend/templates/index.html` |
+| Tests | `tests/agents/test_latex.py`, `tests/documents/test_pdf_route.py`, `tests/test_frontend_wiring.py::test_index_has_two_column_latex_workspace` |
+| Docs | `checklist.md`, this plan |

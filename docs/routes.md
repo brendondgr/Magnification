@@ -136,8 +136,10 @@ Runs the in-house cover-letter and résumé agent graphs as background tasks (sa
 | `/api/documents/resume/start` | POST | Start the résumé fine-tuner graph (same body/response shape; `instructions` steers the planner/rewriter prompts instead) |
 | `/api/documents/status/<task_id>` | GET | Poll a generation task: `{status, kind, job_id, progress:{stage, percent, details}, events:[{t, stage, percent, message}], results, checkpoint}` (`status` ∈ `pending`\|`running`\|`paused`\|`completed`\|`failed`) |
 | `/api/documents/<task_id>/resume` | POST | Resume a graph paused at a semi-auto checkpoint (body: `{decision: approve\|edit\|reject, edits?}` — cover letter edits `{thesis, hooks}`, résumé edits `{plan}`) → `{success, task}` |
-| `/api/documents/<int:doc_id>` | GET | Fetch a single generated document |
-| `/api/documents/<int:doc_id>` | PATCH | Edit/approve a generated document (body: `{content?, status?, format?}` → `{success, document}`) |
+| `/api/documents/<int:doc_id>` | GET | Fetch a single generated document (generated `content` is now LaTeX, `format: latex`) |
+| `/api/documents/<int:doc_id>` | PATCH | Edit/approve a generated document (body: `{content?, status?, format?}` → `{success, document}`; generated content is LaTeX, `format: latex`) |
+| `/api/documents/<int:doc_id>/pdf` | GET | Compile the document's LaTeX to a PDF and stream it (`application/pdf`, inline; `?download=1` → attachment). `404`/`415` (not LaTeX)/`422` (compile failed, with TeX log tail). PDFs are cached under `data/generated_pdfs/` |
+| `/api/documents/<int:doc_id>/tex` | GET | Download the raw LaTeX source (`application/x-tex`) |
 
 ## UI States (per view)
 

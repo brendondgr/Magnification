@@ -108,7 +108,7 @@ def test_index_has_documents_sidebar_wiring(client):
 
 
 def test_index_has_application_mode(client):
-    """The served page wires Application Mode (Apply → intake / generate / review / refine)."""
+    """The served page wires Application Mode (Apply → intake / workspace / refine)."""
     html = client.get("/").get_data(as_text=True)
     for token in ("openApply", "startApply", "appOpen", "appCards", "submitRefine",
                   "approveAppDoc", "markAppliedAndClose", "onMarkApplied", "_pollApp"):
@@ -121,6 +121,18 @@ def test_index_has_application_mode(client):
     # The old side-panel Documents surface must be gone.
     assert "docGenActive" not in html
     assert "docViewOpen" not in html
+
+
+def test_index_has_two_column_latex_workspace(client):
+    """The workspace wires the two-column (process ‖ PDF) layout + LaTeX/PDF preview plumbing."""
+    html = client.get("/").get_data(as_text=True)
+    for token in ("appWorkspace", "appActive", "appTabButtons", "data-appws",
+                  "loadPdf", "pdfRef", "Agent process", "PDF preview"):
+        assert token in html, f"missing workspace token: {token}"
+    # The raw template must NOT ship a bound resource `src` (it would fetch a literal {{…}} URL
+    # pre-hydration); the iframe src is set via a ref instead.
+    assert 'src="{{ appActive.pdfUrl }}"' not in html
+    assert "Download PDF" in html
 
 
 def test_generation_endpoints_registered(client):

@@ -535,6 +535,46 @@ session is ephemeral frontend state; the documents persist in `generated_documen
   deferred follow-ups; a full LLM endpoint is still needed for best-quality prose (the graphs
   degrade gracefully offline).
 
+## Agentic Documents — LaTeX Output + PDF Preview Workspace — Definition of Done
+
+Design: `docs/plans/agentic-documents-system.md` (§4). Plan: `docs/plans/agentic-documents-application-mode.md`
+(LaTeX + PDF iteration). Delivered on branch `agentic-documents-foundation` (worktree), committed per phase.
+
+Scope: on top of the Apply flow, the generation graphs now emit **LaTeX** (not Markdown), a compile
+subsystem renders that source to a **PDF**, and the Apply **Review** screen becomes a **two-column
+workspace** — left a live step-by-step agent process feed + refine controls, right the rendered PDF
+preview — with per-document tabs. **Out of scope (still deferred):** the browser-automation submission
+adapter (§4.3) and a persisted `application_sessions` table.
+
+- [x] (1/5) Deterministic offline LaTeX assembly (`utils/backend/agents/latex.py`: `escape_latex`,
+  `md_to_latex`, `build_cover_letter_tex`, `build_resume_tex`) — the graphs' final node now emits a full
+  `\documentclass{article}` document; `generated_documents.content` is a complete `.tex` document and the
+  row persists `format="latex"`; the résumé **match-lift** is still computed on the plain tailored text
+  (not the LaTeX), so the recommender reuse is unchanged; tests (`tests/agents/test_latex.py`)
+- [x] (2/5) PDF compile subsystem (`utils/backend/pdf_compile.py`: `compile_pdf` shells out to `pdflatex`
+  and caches the result under `data/generated_pdfs/` keyed by content — an unchanged document isn't
+  recompiled — with `LatexCompileError` on a missing toolchain / bad source)
+- [x] (3/5) Serve routes — `GET /api/documents/<id>/pdf` (compile-or-reuse-cache → stream the PDF inline,
+  or as an attachment with `?download=1`; 404 unknown doc / 415 non-LaTeX / 422 compile failure, all
+  logged) + `GET /api/documents/<id>/tex` (raw LaTeX source); tests (`tests/documents/test_pdf_route.py`)
+- [x] (4/5) Apply Review two-column `data-appws` workspace — left **Process** column (the live agent step
+  feed from the task `events`, including the revision loops, + the refine chips/box → **Regenerate** and
+  **Edit LaTeX** / **Download PDF** / **Approve**); right **Preview** column (the compiled PDF in an
+  `<iframe>` whose `src` is set through a React `ref`, so the raw template never fetches a literal `{{…}}`
+  URL); document tabs (Tailored Résumé ∣ Cover Letter); a Process ∣ Preview toggle on narrow screens; the
+  PDF recompiles on each refine/edit; wiring test
+  (`tests/test_frontend_wiring.py::test_index_has_two_column_latex_workspace`)
+- [x] (5/5) Docs (this checklist + the plan doc's LaTeX/PDF iteration section) + validation
+- [x] Full suite **251 passed** (2 pre-existing, unrelated env failures), `import app` clean; the six
+  `/api/documents/*` generation routes plus the new `/pdf` + `/tex` routes register without collision
+- [ ] **PDF preview needs `pdflatex` on the host** — the compile subsystem shells out to `pdflatex`; where
+  it isn't installed (or the source fails to typeset) `compile_pdf` raises `LatexCompileError` and the
+  `/pdf` route returns 422 (logged). Install a TeX toolchain to render/download the PDF; the raw `.tex`
+  source is always available via `/tex`.
+- [ ] **Best-quality LaTeX prose still needs a real LLM endpoint** — the deterministic assembly guarantees
+  a valid compilable document offline, but the model-authored body is best exercised with an enabled,
+  responsive endpoint (Options → LLM Endpoint).
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

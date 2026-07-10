@@ -48,11 +48,12 @@ Magnification/
 │
 ├── utils/                      # All application Python + frontend assets
 │   ├── backend/
-│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm, options, documents (ingestion + profile/template/job-evaluation CRUD), document_generation (cover-letter/résumé generation: start, status/<task_id>, <task_id>/resume, GET/PATCH <doc_id>)
+│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm, options, documents (ingestion + profile/template/job-evaluation CRUD), document_generation (cover-letter/résumé generation: start, status/<task_id>, <task_id>/resume, GET/PATCH <doc_id>, GET <doc_id>/pdf, GET <doc_id>/tex)
 │   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
 │   │   ├── llm/                # OpenAI-compatible client + endpoint config (recommendation system)
 │   │   ├── recommend/          # RAG/LLM recommendation: embedder, bm25, ranker, skills, compensation, service, keywords, profile_builder, runtime_config
-│   │   ├── agents/             # In-house agents (no LangGraph): ingestion/{agent.py, prompts.py} — extract/classify/summarize uploaded documents into drafts; orchestrator.py (node-pipeline driver: progress + semi-auto checkpoints), context.py (Ingestion-layer DB read: job/JobAnalysis/profile/template), scoring.py (résumé match-lift via recommend/ranker), prompts.py, nodes_shared.py (research/evaluate/truthfulness), nodes_cover_letter.py + cover_letter.py (cover-letter graph), nodes_resume.py + resume.py (résumé fine-tuner graph), service.py (generation_tasks store + daemon-thread runner)
+│   │   ├── agents/             # In-house agents (no LangGraph): ingestion/{agent.py, prompts.py} — extract/classify/summarize uploaded documents into drafts; orchestrator.py (node-pipeline driver: progress + semi-auto checkpoints), context.py (Ingestion-layer DB read: job/JobAnalysis/profile/template), scoring.py (résumé match-lift via recommend/ranker), prompts.py, nodes_shared.py (research/evaluate/truthfulness), nodes_cover_letter.py + cover_letter.py (cover-letter graph), nodes_resume.py + resume.py (résumé fine-tuner graph), service.py (generation_tasks store + daemon-thread runner), latex.py (deterministic offline LaTeX assembly — wraps graph prose into a compilable single-column `article`)
+│   │   ├── pdf_compile.py      # Compile document LaTeX → PDF via pdflatex; cache under data/generated_pdfs/
 │   │   ├── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis, + documents-foundation tables), init, CRUD, idempotent migrations (incl. migrate_job_saved), documents_ops.py, seed_documents.py
 │   │   └── scheduler/          # LLM-gated daily job-search runner + CLI (systemd-driven: llm_health, daily_runner, __main__)
 │   ├── frontend/
@@ -64,8 +65,8 @@ Magnification/
 │   ├── job_scraper.py
 │   ├── test_config_loading.py
 │   ├── test_frontend_wiring.py # dc-runtime page + job/config API contract
-│   ├── agents/                 # Ingestion agent tests (test_ingestion.py)
-│   ├── documents/              # Documents API tests (test_documents_api.py)
+│   ├── agents/                 # Ingestion agent + LaTeX builder tests (test_ingestion.py, test_latex.py)
+│   ├── documents/              # Documents API tests (test_documents_api.py, test_pdf_route.py)
 │   ├── database/               # Profile + JobAnalysis CRUD round-trip, incl. test_agentic_documents.py for the new documents-foundation tables
 │   ├── scheduler/              # LLM-health probe + once-per-day runner (offline, mocked)
 │   └── docs/                   # Doc/skill-pointer verification tests
@@ -86,7 +87,7 @@ Magnification/
 | `docs/skills/` | Canonical skill definitions; agent folders only point here. |
 | `.claude/`, `.agents/`, `.cursor/` | Tool-specific pointer files. No canonical content. |
 | `utils/backend/` | API routes, scraping pipeline, database layer, the in-house ingestion agent, and the scheduled daily-search runner. |
-| `utils/backend/agents/` | In-house, plain-Python agents (no LangGraph): the ingestion agent extracts, classifies, and summarizes/normalizes uploaded documents into an editable draft; the cover-letter and résumé generation graphs (orchestrator, context loader, résumé match-lift scoring, shared/letter/résumé node modules, generation task-store service) drive the rest of the agentic-documents foundation in `docs/plans/agentic-documents-system.md`. |
+| `utils/backend/agents/` | In-house, plain-Python agents (no LangGraph): the ingestion agent extracts, classifies, and summarizes/normalizes uploaded documents into an editable draft; the cover-letter and résumé generation graphs (orchestrator, context loader, résumé match-lift scoring, shared/letter/résumé node modules, generation task-store service) drive the rest of the agentic-documents foundation in `docs/plans/agentic-documents-system.md`. Both graphs end with a deterministic render step (`latex.py`) that wraps their prose into a compilable LaTeX document; `utils/backend/pdf_compile.py` compiles that source to a cached PDF for preview/download. |
 | `utils/backend/scheduler/` | LLM-gated, once-per-day job-search runner + CLI invoked by the systemd units. |
 | `deploy/systemd/` | Systemd **user** units + installer for the web app on boot and the automated daily search (see `deploy/systemd/README.md`). |
 | `utils/frontend/` | Jinja templates and static CSS/JS assets. |
