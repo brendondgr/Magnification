@@ -523,8 +523,14 @@ session is ephemeral frontend state; the documents persist in `generated_documen
   (re-ran the cover letter in place) → Edit editor → Approve chip → Close (pollers torn down); no
   console errors. Node `--check` on the component JS passes; `import app` clean; 46 targeted offline
   tests green. Verification rows were removed and the job status left untouched.
-- [ ] (4/5, remaining) Docs (`component-map.md`, `routes.md`, `api-contract.md`, `data-flow.md`,
-  this checklist) + adversarial review of the diff.
+- [x] (4/5) Docs (`component-map.md`, `routes.md`, `api-contract.md`, `data-flow.md`, this checklist).
+- [x] (5/5) Adversarial multi-agent review of the diff (4 dimensions → verify): 5 findings confirmed
+  and **all fixed** — (a) review-existing / de-selected kinds no longer render a phantom card or a
+  false "couldn't generate" error (card visibility keys off `want`, reconciled on the review-existing
+  path); (b) Edit/Download/Approve are hidden while a card is actively regenerating, so a refine can't
+  silently revert a concurrent Approve/Save; (c) the refine's revision read-modify-write is serialized
+  with a lock; (d) the Apply pollers/`_fetchAppDoc`/`_finishGen` carry a job-id guard so a late
+  completion can't cross jobs. Fixes 1 & 3 re-verified live in-app; full offline suite green.
 - [ ] **Browser-automation submission (§4.3)** and **`application_sessions`** persistence remain the
   deferred follow-ups; a full LLM endpoint is still needed for best-quality prose (the graphs
   degrade gracefully offline).

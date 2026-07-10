@@ -1020,12 +1020,12 @@
 
                 <sc-if value="{{ c.viewing }}" hint-placeholder-val="">
                   <div style="padding:16px 16px 0;max-height:320px;overflow:auto"><pre style="margin:0;white-space:pre-wrap;word-wrap:break-word;font:400 13px/1.6 var(--font-body);color:var(--text)">{{ c.content }}</pre></div>
-                  <div style="display:flex;align-items:center;gap:10px;padding:16px;flex-wrap:wrap">
-                    <button onclick="{{ c.onEdit }}" style="height:36px;padding:0 14px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Edit</button>
-                    <button onclick="{{ c.onDownload }}" style="height:36px;padding:0 14px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Download</button>
-                    <button onclick="{{ c.onApprove }}" style="{{ c.approveStyle }}" style-hover="filter:brightness(1.05)">{{ c.approveLabel }}</button>
-                  </div>
                   <sc-if value="{{ c.canRefine }}" hint-placeholder-val="">
+                    <div style="display:flex;align-items:center;gap:10px;padding:16px;flex-wrap:wrap">
+                      <button onclick="{{ c.onEdit }}" style="height:36px;padding:0 14px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Edit</button>
+                      <button onclick="{{ c.onDownload }}" style="height:36px;padding:0 14px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Download</button>
+                      <button onclick="{{ c.onApprove }}" style="{{ c.approveStyle }}" style-hover="filter:brightness(1.05)">{{ c.approveLabel }}</button>
+                    </div>
                     <div style="padding:0 16px 16px">
                       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
                         <button onclick="{{ c.onWarmer }}" style="padding:6px 11px;border-radius:99px;border:var(--bw) solid var(--border2);background:var(--bg);color:var(--text);font:500 12px/1 var(--font-body);cursor:pointer" style-hover="border-color:var(--accent2);color:var(--accent2)">Warmer tone</button>
@@ -1885,7 +1885,7 @@ class Component extends DCLogic {
       this.setState(st=>(st.app.jobId===jobId?{app:Object.assign({},st.app,{docs:Object.assign({},st.app.docs,docs)})}:{}));
     }catch(e){ console.error(e); }
   }
-  reviewExisting(){ this.setApp({stage:'review'}); }
+  reviewExisting(){ const d=this.state.app.docs; this.setApp({stage:'review', wantResume:!!d.resume, wantCover:!!d.cover_letter}); }
   startApply(){
     const a=this.state.app; const kinds=[];
     if(a.wantResume) kinds.push('resume');
@@ -1904,37 +1904,41 @@ class Component extends DCLogic {
     if(opts.revise_from!=null) body.revise_from=opts.revise_from;
     this._setAppNested('gen', kind, {active:true,taskId:null,percent:0,stage:'Starting',message:'Preparing…'});
     fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-      .then(r=>r.json()).then(d=>{ if(d.success && d.task_id){ this._pollApp(kind, d.task_id); }
-        else { this._genFail(kind, d.message); } })
-      .catch(e=>{ console.error(e); this._genFail(kind, 'Failed to start'); });
+      .then(r=>r.json()).then(d=>{ if(d.success && d.task_id){ this._pollApp(kind, d.task_id, jobId); }
+        else { this._genFail(kind, d.message, jobId); } })
+      .catch(e=>{ console.error(e); this._genFail(kind, 'Failed to start', jobId); });
   }
-  _pollApp(kind, taskId){
+  _pollApp(kind, taskId, jobId){
     this._appPollers=this._appPollers||{}; clearInterval(this._appPollers[kind]);
     this._appPollers[kind]=setInterval(async()=>{
+      if(this.state.app.jobId!==jobId){ clearInterval(this._appPollers[kind]); return; }  // job switched — stop
       try{
         const res=await fetch('/api/documents/status/'+taskId);
-        if(!res.ok){ clearInterval(this._appPollers[kind]); this._genFail(kind, 'status error'); return; }
+        if(!res.ok){ clearInterval(this._appPollers[kind]); this._genFail(kind, 'status error', jobId); return; }
         const data=await res.json(); const prog=data.progress||{}; const details=prog.details||{};
+        if(this.state.app.jobId!==jobId){ clearInterval(this._appPollers[kind]); return; }
         this._setAppNested('gen', kind, {active:true, taskId, percent:Math.round(prog.percent||0),
           stage:this.formatStage(prog.stage), message:details.message||''});
         if(data.status==='completed'){
           clearInterval(this._appPollers[kind]);
-          await this._fetchAppDoc(kind, (data.results||{}).document_id);
-          this._finishGen(kind, true);
+          await this._fetchAppDoc(kind, (data.results||{}).document_id, jobId);
+          this._finishGen(kind, true, jobId);
         } else if(data.status==='failed'){
-          clearInterval(this._appPollers[kind]); this._genFail(kind, data.error);
+          clearInterval(this._appPollers[kind]); this._genFail(kind, data.error, jobId);
         }
-      }catch(e){ console.error(e); clearInterval(this._appPollers[kind]); this._genFail(kind, 'poll error'); }
+      }catch(e){ console.error(e); clearInterval(this._appPollers[kind]); this._genFail(kind, 'poll error', jobId); }
     }, 700);
   }
-  async _fetchAppDoc(kind, docId){
+  async _fetchAppDoc(kind, docId, jobId){
     if(docId==null) return;
     try{ const res=await fetch('/api/documents/'+docId); if(!res.ok) return; const doc=await res.json();
-      this.setState(st=>({app:Object.assign({},st.app,{docs:Object.assign({},st.app.docs,{[kind]:doc})})}));
+      // Only apply if this Apply session is still on the same job (guards a late completion after a job switch).
+      this.setState(st=>(st.app.jobId===jobId?{app:Object.assign({},st.app,{docs:Object.assign({},st.app.docs,{[kind]:doc})})}:{}));
     }catch(e){ console.error(e); }
   }
-  _finishGen(kind, ok){
+  _finishGen(kind, ok, jobId){
     this.setState(st=>{
+      if(jobId!=null && st.app.jobId!==jobId) return {};  // job switched — don't touch the new session
       const gen=Object.assign({}, st.app.gen);
       gen[kind]=Object.assign({}, gen[kind], {active:false, percent:ok?100:gen[kind].percent, stage:ok?'Completed':'Failed'});
       const app=Object.assign({}, st.app, {gen});
@@ -1945,7 +1949,7 @@ class Component extends DCLogic {
       return {app};
     });
   }
-  _genFail(kind, msg){ this._finishGen(kind, false); this.showToast(msg||'Generation failed'); }
+  _genFail(kind, msg, jobId){ this._finishGen(kind, false, jobId); this.showToast(msg||'Generation failed'); }
   // review-screen actions
   editDoc(kind){ const d=this.state.app.docs[kind]; this._setAppNested('edit', kind, d?d.content||'':''); }
   editInput(kind, e){ this._setAppNested('edit', kind, e.target.value); }
@@ -2487,7 +2491,7 @@ class Component extends DCLogic {
       closeApply:()=>this.closeApply(), startApply:()=>this.startApply(), reviewExisting:()=>this.reviewExisting(),
       toggleAppCover:()=>this.toggleAppKind('cover_letter'), toggleAppResume:()=>this.toggleAppKind('resume'),
       onAppGuidance:(e)=>this.setGuidance(e), markAppliedAndClose:()=>this.markAppliedAndClose(),
-      appCards:(()=>{ const out=[]; if(s.app.wantResume||s.app.docs.resume) out.push(this.appCard('resume')); if(s.app.wantCover||s.app.docs.cover_letter) out.push(this.appCard('cover_letter')); return out; })(),
+      appCards:(()=>{ const out=[]; if(s.app.wantResume) out.push(this.appCard('resume')); if(s.app.wantCover) out.push(this.appCard('cover_letter')); return out; })(),
 
       findOpen:s.findOpen, findConfig:s.findView==='config', findProgress:s.findView==='progress',
       closeFind:()=>this.closeFind(), stop:(e)=>e.stopPropagation(),

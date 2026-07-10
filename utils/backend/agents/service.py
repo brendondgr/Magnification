@@ -26,6 +26,10 @@ from .orchestrator import Checkpoint, Orchestrator
 #             checkpoint, _event, _decision} }  — underscore keys are stripped from API views.
 generation_tasks: Dict[str, Dict[str, Any]] = {}
 
+# Serializes the revise_from read-modify-write in _persist so two concurrent refines of the same
+# document (e.g. an orphaned background thread + a fresh one) can't lose a revision bump.
+_persist_lock = threading.Lock()
+
 _GRAPHS = {"cover_letter": cover_letter, "resume": resume}
 
 
@@ -74,11 +78,12 @@ def _persist(kind: str, job_id: int, state: Dict[str, Any],
         payload["match_after"] = state.get("match_after")
 
     if revise_from:
-        existing = docs_ops.get_generated_document(revise_from)
-        if existing and existing.get("job_id") == job_id and existing.get("kind") == kind:
-            payload["revision"] = (existing.get("revision") or 1) + 1
-            docs_ops.update_generated_document(revise_from, payload)
-            return revise_from
+        with _persist_lock:  # atomic revision read-modify-write across concurrent refines
+            existing = docs_ops.get_generated_document(revise_from)
+            if existing and existing.get("job_id") == job_id and existing.get("kind") == kind:
+                payload["revision"] = (existing.get("revision") or 1) + 1
+                docs_ops.update_generated_document(revise_from, payload)
+                return revise_from
 
     payload["job_id"] = job_id
     payload["kind"] = kind
