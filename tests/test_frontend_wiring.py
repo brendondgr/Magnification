@@ -90,6 +90,38 @@ def test_jobs_api_shape_and_status_roundtrip(client):
         db_ops.delete_job(job_id)
 
 
+def test_index_has_documents_sidebar_wiring(client):
+    """The served page wires the Profile & Documents tabbed sidebar + ingestion handlers."""
+    html = client.get("/").get_data(as_text=True)
+    # Panel + tabs.
+    assert "Profile &amp; Documents" in html
+    for token in ("setDocsBehavioral", "setDocsWriting", "setDocsTemplates",
+                  "docsTabBehavioral", "docsTabTemplates"):
+        assert token in html, f"missing sidebar token: {token}"
+    # Ingestion + save handlers.
+    for token in ("onBehFile", "onWriFile", "ingestDoc", "saveBehavioral",
+                  "saveWriting", "saveTemplate", "loadDocuments"):
+        assert token in html, f"missing handler token: {token}"
+    # Visible labels.
+    assert "Save Writing Style" in html
+    assert "Document Templates" in html
+
+
+def test_documents_endpoints_served(client):
+    """The documents blueprint is registered and its read endpoints return the seeds."""
+    templates = client.get("/api/templates").get_json()["templates"]
+    assert len(templates) >= 5
+    kinds = {t["kind"] for t in templates}
+    assert {"cover_letter", "resume", "job_evaluation"} <= kinds
+
+    beh = client.get("/api/behavioral-profile").get_json()
+    assert beh["exists"] is True
+    wri = client.get("/api/writing-style").get_json()
+    assert wri["exists"] is True
+    uploaded = client.get("/api/documents/uploaded").get_json()
+    assert "documents" in uploaded and isinstance(uploaded["documents"], list)
+
+
 def test_config_save_creates_dir_and_roundtrips(client):
     """Config save must create its dir on first run and load must round-trip."""
     backup = None

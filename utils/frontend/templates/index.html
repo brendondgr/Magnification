@@ -486,15 +486,23 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <h2 style="margin:0;font:600 18px/1 var(--font-head)">Profile</h2>
-          <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Built from your résumé · drives recommendations</div>
+          <h2 style="margin:0;font:600 18px/1 var(--font-head)">Profile &amp; Documents</h2>
+          <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Résumé, behavioral, writing style &amp; templates</div>
         </div>
         <button onclick="{{ closeProfile }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color .15s ease,transform .15s ease" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
         </button>
       </div>
 
+      <div style="display:flex;gap:6px;padding:14px 26px 0;flex-wrap:wrap">
+        <button onclick="{{ setDocsCandidate }}" style="{{ docsTabCandidateStyle }}" style-hover="background:var(--surface2);color:var(--text)">Candidate</button>
+        <button onclick="{{ setDocsBehavioral }}" style="{{ docsTabBehavioralStyle }}" style-hover="background:var(--surface2);color:var(--text)">Behavioral</button>
+        <button onclick="{{ setDocsWriting }}" style="{{ docsTabWritingStyle }}" style-hover="background:var(--surface2);color:var(--text)">Writing</button>
+        <button onclick="{{ setDocsTemplates }}" style="{{ docsTabTemplatesStyle }}" style-hover="background:var(--surface2);color:var(--text)">Templates</button>
+      </div>
+
       <div style="flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:22px">
+        <sc-if value="{{ docsTabCandidate }}" hint-placeholder-val="{{ true }}">
         <div>
           <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Model Instructions</label>
           <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Optional. Tell the model what you're looking for — it steers the generated job titles, search queries, skills, and interests below when you <b style="color:var(--text)">Build Profile</b>, instead of relying on the résumé alone.</p>
@@ -619,11 +627,158 @@
             <input value="{{ pfBlockedDraft }}" oninput="{{ onPfBlockedDraft }}" onkeydown="{{ onPfBlockedKey }}" placeholder="add company to block…" style="flex:1;min-width:150px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
           </div>
         </div>
+        </sc-if>
+
+        <!-- ===== BEHAVIORAL TAB ===== -->
+        <sc-if value="{{ docsTabBehavioral }}" hint-placeholder-val="">
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Behavioral Assessment → Traits</label>
+            <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Upload a DISC / Predictive Index / StrengthsFinder export — the agent summarizes it into work-style traits that shape the tone and framing of generated documents.</p>
+            <label style="{{ docUploadStyle }}" style-hover="border-color:var(--accent2)">
+              <input type="file" accept=".pdf,.tex,.md,.markdown,.txt" onchange="{{ onBehFile }}" style="display:none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              <div style="font:600 13px/1.4 var(--font-body);color:var(--text);text-align:center">Browse a file — <span style="color:var(--accent2);text-decoration:underline">PDF · LaTeX · Markdown · TXT</span></div>
+            </label>
+            <sc-if value="{{ behStatus }}" hint-placeholder-val=""><span style="display:block;margin-top:8px;font:400 12px/1.3 var(--font-body);color:var(--accent-text)">{{ behStatus }}</span></sc-if>
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Strengths</label>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+              <sc-for list="{{ behStrengths }}" as="st" hint-placeholder-count="2">
+                <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent);color:var(--accent-ink);border-radius:99px;font:600 12px/1 var(--font-body)">{{ st.label }}<button onclick="{{ st.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button></span>
+              </sc-for>
+              <input value="{{ behStrengthDraft }}" oninput="{{ onBehStrengthDraft }}" onkeydown="{{ onBehStrengthKey }}" placeholder="add strength…" style="flex:1;min-width:120px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Work-style paragraph</label>
+            <textarea value="{{ behWorkStyle }}" oninput="{{ onBehWorkStyle }}" placeholder="How this person works best…" style="width:100%;min-height:100px;padding:12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1.5 var(--font-body);outline:none;resize:vertical"></textarea>
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Traits (JSON)</label>
+            <textarea value="{{ behTraitsText }}" oninput="{{ onBehTraitsText }}" placeholder='{&quot;influence&quot;:&quot;high&quot;}' style="width:100%;min-height:84px;padding:12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 13px/1.5 var(--font-mono);outline:none;resize:vertical"></textarea>
+          </div>
+          <button onclick="{{ saveBehavioral }}" style="{{ docSaveStyle }}" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Save Behavioral Profile</button>
+          <sc-if value="{{ hasUploadedDocs }}" hint-placeholder-val="">
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Recent uploads</label>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ uploadedDocsList }}" as="ud" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                    <span style="font:600 12px/1 var(--font-body);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px">{{ ud.name }}</span>
+                    <span style="font:500 10px/1 var(--font-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)">{{ ud.type }}</span>
+                    <span style="margin-left:auto;font:400 11px/1 var(--font-mono);color:var(--muted)">{{ ud.derived }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+
+        <!-- ===== WRITING TAB ===== -->
+        <sc-if value="{{ docsTabWriting }}" hint-placeholder-val="">
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Writing Sample → Voice</label>
+            <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Upload a writing sample; the agent captures tone, formality, and do's/don'ts so generated letters sound like you.</p>
+            <label style="{{ docUploadStyle }}" style-hover="border-color:var(--accent2)">
+              <input type="file" accept=".pdf,.tex,.md,.markdown,.txt" onchange="{{ onWriFile }}" style="display:none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              <div style="font:600 13px/1.4 var(--font-body);color:var(--text);text-align:center">Browse a file — <span style="color:var(--accent2);text-decoration:underline">PDF · LaTeX · Markdown · TXT</span></div>
+            </label>
+            <sc-if value="{{ wriStatus }}" hint-placeholder-val=""><span style="display:block;margin-top:8px;font:400 12px/1.3 var(--font-body);color:var(--accent-text)">{{ wriStatus }}</span></sc-if>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Tone</label>
+              <input value="{{ wriTone }}" oninput="{{ onWriTone }}" placeholder="warm-professional" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+            </div>
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Formality</label>
+              <input value="{{ wriFormality }}" oninput="{{ onWriFormality }}" placeholder="semi-formal" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Sentence length</label>
+            <input value="{{ wriSentence }}" oninput="{{ onWriSentence }}" placeholder="medium, varied" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Sample text</label>
+            <textarea value="{{ wriSample }}" oninput="{{ onWriSample }}" placeholder="A representative excerpt of your writing…" style="width:100%;min-height:100px;padding:12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1.5 var(--font-body);outline:none;resize:vertical"></textarea>
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Do's</label>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+              <sc-for list="{{ wriDos }}" as="d" hint-placeholder-count="2">
+                <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent);color:var(--accent-ink);border-radius:99px;font:600 12px/1 var(--font-body)">{{ d.label }}<button onclick="{{ d.onRemove }}" style="display:flex;background:none;border:none;color:var(--accent-ink);cursor:pointer;padding:0;opacity:.7;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button></span>
+              </sc-for>
+              <input value="{{ wriDoDraft }}" oninput="{{ onWriDoDraft }}" onkeydown="{{ onWriDoKey }}" placeholder="add do…" style="flex:1;min-width:120px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Don'ts</label>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+              <sc-for list="{{ wriDonts }}" as="d" hint-placeholder-count="2">
+                <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--accent2);color:#fff;border-radius:99px;font:600 12px/1 var(--font-body)">{{ d.label }}<button onclick="{{ d.onRemove }}" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8;transition:opacity .15s ease,transform .15s ease" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button></span>
+              </sc-for>
+              <input value="{{ wriDontDraft }}" oninput="{{ onWriDontDraft }}" onkeydown="{{ onWriDontKey }}" placeholder="add don't…" style="flex:1;min-width:120px;height:30px;background:transparent;border:none;outline:none;color:var(--text);font:400 13px/1 var(--font-body)">
+            </div>
+          </div>
+          <button onclick="{{ saveWriting }}" style="{{ docSaveStyle }}" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Save Writing Style</button>
+          <sc-if value="{{ hasUploadedDocs }}" hint-placeholder-val="">
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Recent uploads</label>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ uploadedDocsList }}" as="ud" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                    <span style="font:600 12px/1 var(--font-body);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px">{{ ud.name }}</span>
+                    <span style="font:500 10px/1 var(--font-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)">{{ ud.type }}</span>
+                    <span style="margin-left:auto;font:400 11px/1 var(--font-mono);color:var(--muted)">{{ ud.derived }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+
+        <!-- ===== TEMPLATES TAB ===== -->
+        <sc-if value="{{ docsTabTemplates }}" hint-placeholder-val="">
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Document Templates</label>
+            <p style="margin:0 0 10px;font:400 12px/1.4 var(--font-body);color:var(--muted)">Cover-letter, résumé, and evaluation-rubric skeletons with slots (hook, why_them, why_you, close) the upcoming generators fill in.</p>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ templateList }}" as="tp" hint-placeholder-count="3">
+                <button onclick="{{ tp.onSelect }}" style="{{ tp.style }}" style-hover="border-color:var(--accent2)">
+                  <span style="font:600 13px/1 var(--font-body);color:var(--text)">{{ tp.name }}</span>
+                  <span style="margin-left:auto;font:500 10px/1 var(--font-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)">{{ tp.kind }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <button onclick="{{ addTemplate }}" style="align-self:flex-start;margin-top:10px;display:flex;align-items:center;gap:7px;padding:8px 13px;background:transparent;border:1.5px dashed var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer;transition:border-color .15s ease,color .15s ease" style-hover="border-color:var(--accent2);color:var(--accent2)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>New cover-letter template</button>
+          </div>
+          <sc-if value="{{ hasTplSel }}" hint-placeholder-val="">
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Name</label>
+              <input value="{{ tplName }}" oninput="{{ onTplName }}" style="width:100%;height:42px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:600 14px/1 var(--font-body);outline:none">
+            </div>
+            <div>
+              <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Body</label>
+              <textarea value="{{ tplBody }}" oninput="{{ onTplBody }}" style="width:100%;min-height:200px;padding:12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 13px/1.5 var(--font-mono);outline:none;resize:vertical"></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button onclick="{{ toggleTplDefault }}" style="{{ tplDefaultStyle }}" style-hover="filter:brightness(1.05)">{{ tplDefaultLabel }}</button>
+              <button onclick="{{ deleteTemplate }}" style="display:flex;align-items:center;gap:7px;padding:0 14px;height:42px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:#E5484D;font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:rgba(229,72,77,.1);border-color:#E5484D">Delete</button>
+              <button onclick="{{ saveTemplate }}" style="{{ docSaveStyle }};flex:1;min-width:140px" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Save Template</button>
+            </div>
+            <sc-if value="{{ tplStatus }}" hint-placeholder-val=""><span style="font:400 12px/1.3 var(--font-body);color:var(--muted)">{{ tplStatus }}</span></sc-if>
+          </sc-if>
+        </sc-if>
       </div>
 
       <div style="display:flex;gap:10px;padding:18px 26px;border-top:var(--bw) solid var(--border)">
         <button onclick="{{ closeProfile }}" style="flex:1;height:44px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Close</button>
+        <sc-if value="{{ docsTabCandidate }}" hint-placeholder-val="{{ true }}">
         <button onclick="{{ saveProfile }}" style="flex:2;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Save Profile</button>
+        </sc-if>
       </div>
     </aside>
   </sc-if>
@@ -1133,6 +1288,13 @@ class Component extends DCLogic {
       profileOpen:false, pfBusy:false, pfStatus:'', pfDragging:false, pfSkillsExpanded:false,
       profile:{interests_paragraph:'',skills:[],job_titles:[],keyword_groups:[],blocked_companies:[],title_blocklist:[],llm_instructions:'',resume_text:'',source_filename:'',exists:false},
       pfSkillDraft:'', pfTitleDraft:'', pfGroupDrafts:{}, pfBlockedDraft:'', pfTitleBlockDraft:'',
+      // ---- Profile & Documents sidebar tabs ----
+      docsTab:'candidate',
+      beh:{traits:{},strengths:[],work_style_paragraph:'',source_filename:''},
+      behStatus:'', behBusy:false, behStrengthDraft:'', behTraitsText:'{}', behUpload:null,
+      wri:{tone:'',formality:'',sentence_length:'',sample_text:'',dos:[],donts:[],source_filename:''},
+      wriStatus:'', wriBusy:false, wriDoDraft:'', wriDontDraft:'', wriUpload:null,
+      templates:[], tplSelId:null, tplStatus:'', uploadedDocs:[],
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
@@ -1548,7 +1710,7 @@ class Component extends DCLogic {
   }
 
   // ---------- profile panel (real API) ----------
-  openProfile(){ this.setState({profileOpen:true,pfStatus:'',pfDragging:false}); this.loadProfile(); this.loadOptions(); }
+  openProfile(){ this.setState({profileOpen:true,pfStatus:'',pfDragging:false}); this.loadProfile(); this.loadOptions(); this.loadDocuments(); }
   closeProfile(){ this.setState({profileOpen:false}); }
   async loadProfile(){
     try{
@@ -1629,6 +1791,91 @@ class Component extends DCLogic {
         this.rescoreJobs();
       })
       .catch(e=>{ console.error(e); this.setState({pfBusy:false}); this.showToast('Could not save profile'); });
+  }
+
+  // ---------- Profile & Documents sidebar (behavioral / writing / templates) ----------
+  loadDocuments(){
+    fetch('/api/behavioral-profile').then(r=>r.json()).then(d=>{
+      if(d && d.exists){ this.setState({beh:{traits:d.traits||{},strengths:d.strengths||[],work_style_paragraph:d.work_style_paragraph||'',source_filename:d.source_filename||''}, behTraitsText:JSON.stringify(d.traits||{},null,2)}); }
+    }).catch(e=>console.error('behavioral load failed', e));
+    fetch('/api/writing-style').then(r=>r.json()).then(d=>{
+      if(d && d.exists){ this.setState({wri:{tone:d.tone||'',formality:d.formality||'',sentence_length:d.sentence_length||'',sample_text:d.sample_text||'',dos:d.dos||[],donts:d.donts||[],source_filename:d.source_filename||''}}); }
+    }).catch(e=>console.error('writing load failed', e));
+    this.loadTemplates();
+    this.loadUploadedDocs();
+  }
+  loadTemplates(){
+    fetch('/api/templates').then(r=>r.json()).then(d=>{
+      const t=(d&&d.templates)||[];
+      this.setState(st=>({templates:t, tplSelId:(st.tplSelId!=null && t.some(x=>x.id===st.tplSelId))?st.tplSelId:(t[0]?t[0].id:null)}));
+    }).catch(e=>console.error('templates load failed', e));
+  }
+  loadUploadedDocs(){
+    fetch('/api/documents/uploaded').then(r=>r.json()).then(d=>this.setState({uploadedDocs:(d&&d.documents)||[]})).catch(e=>console.error('uploads load failed', e));
+  }
+  behSet(patch){ this.setState(st=>({beh:Object.assign({},st.beh,patch)})); }
+  wriSet(patch){ this.setState(st=>({wri:Object.assign({},st.wri,patch)})); }
+  onBehFile(e){ const f=e.target.files && e.target.files[0]; if(f) this.ingestDoc(f,'behavioral'); }
+  onWriFile(e){ const f=e.target.files && e.target.files[0]; if(f) this.ingestDoc(f,'writing'); }
+  // Upload → ingestion agent → drafted record (NOT persisted); Save commits it.
+  ingestDoc(file, docType){
+    const fd=new FormData(); fd.append('file',file); fd.append('doc_type',docType);
+    const busyKey=docType==='behavioral'?'behBusy':'wriBusy';
+    const statusKey=docType==='behavioral'?'behStatus':'wriStatus';
+    this.setState({[busyKey]:true,[statusKey]:'Summarizing…'});
+    fetch('/api/documents/ingest',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
+      if(!d.success){ this.setState({[busyKey]:false,[statusKey]:d.message||'Ingest failed'}); return; }
+      const draft=d.draft||{};
+      const note=d.llm_used?'Summarized — review & save.':'Uploaded (no LLM) — fill in the fields & save.';
+      const up={filename:d.filename,raw_text:d.raw_text,summary:d.summary};
+      if(docType==='behavioral'){
+        this.setState({beh:{traits:draft.traits||{},strengths:draft.strengths||[],work_style_paragraph:draft.work_style_paragraph||'',source_filename:d.filename||''}, behTraitsText:JSON.stringify(draft.traits||{},null,2), behUpload:up, behBusy:false, behStatus:note});
+      } else {
+        this.setState({wri:{tone:draft.tone||'',formality:draft.formality||'',sentence_length:draft.sentence_length||'',sample_text:draft.sample_text||'',dos:draft.dos||[],donts:draft.donts||[],source_filename:d.filename||''}, wriUpload:up, wriBusy:false, wriStatus:note});
+      }
+    }).catch(err=>{ console.error(err); this.setState({[busyKey]:false,[statusKey]:'Ingest failed'}); });
+  }
+  saveBehavioral(){
+    let traits={}; try{ traits=JSON.parse(this.state.behTraitsText||'{}'); }catch(e){ this.setState({behStatus:'Traits must be valid JSON.'}); return; }
+    const b=this.state.beh, up=this.state.behUpload;
+    this.setState({behBusy:true});
+    const record={traits:traits,strengths:b.strengths,work_style_paragraph:b.work_style_paragraph};
+    const done=()=>{ this.setState({behBusy:false,behStatus:'Saved.',behUpload:null}); this.showToast('Behavioral profile saved'); this.loadUploadedDocs(); };
+    const fail=(e)=>{ console.error(e); this.setState({behBusy:false,behStatus:'Save failed'}); };
+    if(up){
+      fetch('/api/documents/ingest/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doc_type:'behavioral',target_table:'behavioral_profiles',record:record,filename:up.filename,raw_text:up.raw_text,summary:up.summary})}).then(r=>r.json()).then(done).catch(fail);
+    } else {
+      fetch('/api/behavioral-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(record)}).then(r=>r.json()).then(done).catch(fail);
+    }
+  }
+  saveWriting(){
+    const w=this.state.wri, up=this.state.wriUpload;
+    this.setState({wriBusy:true});
+    const record={tone:w.tone,formality:w.formality,sentence_length:w.sentence_length,sample_text:w.sample_text,dos:w.dos,donts:w.donts};
+    const done=()=>{ this.setState({wriBusy:false,wriStatus:'Saved.',wriUpload:null}); this.showToast('Writing style saved'); this.loadUploadedDocs(); };
+    const fail=(e)=>{ console.error(e); this.setState({wriBusy:false,wriStatus:'Save failed'}); };
+    if(up){
+      fetch('/api/documents/ingest/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({doc_type:'writing',target_table:'writing_style_profiles',record:record,filename:up.filename,raw_text:up.raw_text,summary:up.summary})}).then(r=>r.json()).then(done).catch(fail);
+    } else {
+      fetch('/api/writing-style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(record)}).then(r=>r.json()).then(done).catch(fail);
+    }
+  }
+  tplSet(patch){ this.setState(st=>({templates:st.templates.map(t=>t.id===st.tplSelId?Object.assign({},t,patch):t)})); }
+  addTemplate(){
+    fetch('/api/templates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'cover_letter',name:'New template',body:'',format:'markdown'})})
+      .then(r=>r.json()).then(d=>{ if(d && d.success && d.template){ this.setState({tplSelId:d.template.id}); this.loadTemplates(); } })
+      .catch(e=>console.error('add template failed', e));
+  }
+  saveTemplate(){
+    const t=this.state.templates.find(x=>x.id===this.state.tplSelId); if(!t) return;
+    fetch('/api/templates/'+t.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:t.name,body:t.body,format:t.format,is_default:t.is_default})})
+      .then(r=>r.json()).then(d=>{ this.setState({tplStatus:'Saved.'}); this.showToast('Template saved'); this.loadTemplates(); })
+      .catch(e=>{ console.error(e); this.setState({tplStatus:'Save failed'}); });
+  }
+  deleteTemplate(){
+    const id=this.state.tplSelId; if(id==null) return;
+    fetch('/api/templates/'+id,{method:'DELETE'}).then(r=>r.json()).then(d=>{ this.setState({tplSelId:null,tplStatus:''}); this.showToast('Template deleted'); this.loadTemplates(); })
+      .catch(e=>console.error('delete template failed', e));
   }
 
   // ---------- options panel (real API) ----------
@@ -1829,6 +2076,12 @@ class Component extends DCLogic {
 
     // ---- profile panel ----
     const pf=s.profile;
+    // ---- Profile & Documents: behavioral / writing / templates ----
+    const beh=s.beh, wri=s.wri;
+    const tplSel=(s.templates||[]).find(t=>t.id===s.tplSelId)||null;
+    const docUploadStyle='display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 16px;cursor:pointer;border-radius:var(--r-sm);transition:border-color .15s,background .15s;border:1.5px dashed var(--border2);background:var(--bg)';
+    const docSaveStyle='display:flex;align-items:center;justify-content:center;gap:8px;height:44px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease';
+    const tplRow=(on)=>'display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;transition:border-color .15s ease;border:var(--bw) solid '+(on?'var(--accent2)':'var(--border)');
     const addPfTag=(field,draftKey,val)=>{ const v=(val||'').trim(); if(!v) return; this.pfSet({[field]:(pf[field]||[]).concat(v)}); this.setState({[draftKey]:''}); };
     const SKILLS_SHOW_LIMIT=20;
     const allPfSkills=(pf.skills||[]).map((t,i)=>({label:t,onRemove:()=>this.pfSet({skills:pf.skills.filter((_,k)=>k!==i)})}));
@@ -1961,6 +2214,46 @@ class Component extends DCLogic {
       onPfBlockedKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('blocked_companies','pfBlockedDraft',s.pfBlockedDraft); } },
       pfTitleBlock, pfTitleBlockDraft:s.pfTitleBlockDraft, onPfTitleBlockDraft:(e)=>this.setState({pfTitleBlockDraft:e.target.value}),
       onPfTitleBlockKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('title_blocklist','pfTitleBlockDraft',s.pfTitleBlockDraft); } },
+
+      // ---- Profile & Documents tabs ----
+      docsTabCandidate:s.docsTab==='candidate', docsTabBehavioral:s.docsTab==='behavioral',
+      docsTabWriting:s.docsTab==='writing', docsTabTemplates:s.docsTab==='templates',
+      setDocsCandidate:()=>this.setState({docsTab:'candidate'}), setDocsBehavioral:()=>this.setState({docsTab:'behavioral'}),
+      setDocsWriting:()=>this.setState({docsTab:'writing'}), setDocsTemplates:()=>this.setState({docsTab:'templates'}),
+      docsTabCandidateStyle:tabStyle(s.docsTab==='candidate'), docsTabBehavioralStyle:tabStyle(s.docsTab==='behavioral'),
+      docsTabWritingStyle:tabStyle(s.docsTab==='writing'), docsTabTemplatesStyle:tabStyle(s.docsTab==='templates'),
+      docUploadStyle, docSaveStyle,
+      // behavioral
+      onBehFile:(e)=>this.onBehFile(e), behStatus:s.behStatus, saveBehavioral:()=>this.saveBehavioral(),
+      behStrengths:(beh.strengths||[]).map((t,i)=>({label:t,onRemove:()=>this.behSet({strengths:beh.strengths.filter((_,k)=>k!==i)})})),
+      behStrengthDraft:s.behStrengthDraft, onBehStrengthDraft:(e)=>this.setState({behStrengthDraft:e.target.value}),
+      onBehStrengthKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); const v=(s.behStrengthDraft||'').trim(); if(v){ this.behSet({strengths:(beh.strengths||[]).concat(v)}); this.setState({behStrengthDraft:''}); } } },
+      behWorkStyle:beh.work_style_paragraph||'', onBehWorkStyle:(e)=>this.behSet({work_style_paragraph:e.target.value}),
+      behTraitsText:s.behTraitsText, onBehTraitsText:(e)=>this.setState({behTraitsText:e.target.value}),
+      // writing
+      onWriFile:(e)=>this.onWriFile(e), wriStatus:s.wriStatus, saveWriting:()=>this.saveWriting(),
+      wriTone:wri.tone||'', onWriTone:(e)=>this.wriSet({tone:e.target.value}),
+      wriFormality:wri.formality||'', onWriFormality:(e)=>this.wriSet({formality:e.target.value}),
+      wriSentence:wri.sentence_length||'', onWriSentence:(e)=>this.wriSet({sentence_length:e.target.value}),
+      wriSample:wri.sample_text||'', onWriSample:(e)=>this.wriSet({sample_text:e.target.value}),
+      wriDos:(wri.dos||[]).map((t,i)=>({label:t,onRemove:()=>this.wriSet({dos:wri.dos.filter((_,k)=>k!==i)})})),
+      wriDoDraft:s.wriDoDraft, onWriDoDraft:(e)=>this.setState({wriDoDraft:e.target.value}),
+      onWriDoKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); const v=(s.wriDoDraft||'').trim(); if(v){ this.wriSet({dos:(wri.dos||[]).concat(v)}); this.setState({wriDoDraft:''}); } } },
+      wriDonts:(wri.donts||[]).map((t,i)=>({label:t,onRemove:()=>this.wriSet({donts:wri.donts.filter((_,k)=>k!==i)})})),
+      wriDontDraft:s.wriDontDraft, onWriDontDraft:(e)=>this.setState({wriDontDraft:e.target.value}),
+      onWriDontKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); const v=(s.wriDontDraft||'').trim(); if(v){ this.wriSet({donts:(wri.donts||[]).concat(v)}); this.setState({wriDontDraft:''}); } } },
+      // templates
+      templateList:(s.templates||[]).map(t=>({id:t.id,name:t.name||'(untitled)',kind:t.kind,onSelect:()=>this.setState({tplSelId:t.id,tplStatus:''}),style:tplRow(t.id===s.tplSelId)})),
+      hasTplSel:!!tplSel,
+      tplName:(tplSel&&tplSel.name)||'', onTplName:(e)=>this.tplSet({name:e.target.value}),
+      tplBody:(tplSel&&tplSel.body)||'', onTplBody:(e)=>this.tplSet({body:e.target.value}),
+      tplStatus:s.tplStatus,
+      tplDefaultLabel:(tplSel&&tplSel.is_default)?('★ Default for '+((tplSel&&tplSel.kind)||'')):'Set as default',
+      tplDefaultStyle:'display:flex;align-items:center;gap:7px;padding:0 14px;height:42px;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:filter .15s ease;border:var(--bw) solid '+((tplSel&&tplSel.is_default)?'var(--accent2)':'var(--border2)')+';background:'+((tplSel&&tplSel.is_default)?'var(--accent2)':'transparent')+';color:'+((tplSel&&tplSel.is_default)?'#fff':'var(--text)'),
+      toggleTplDefault:()=>this.tplSet({is_default:(tplSel&&tplSel.is_default)?0:1}),
+      addTemplate:()=>this.addTemplate(), saveTemplate:()=>this.saveTemplate(), deleteTemplate:()=>this.deleteTemplate(),
+      uploadedDocsList:(s.uploadedDocs||[]).map(u=>({key:u.id,name:u.filename||'(unnamed)',type:u.doc_type||'other',derived:u.derived_table?('→ '+u.derived_table):'summary only'})),
+      hasUploadedDocs:(s.uploadedDocs||[]).length>0,
 
       // ---- options panel ----
       optionsOpen:s.optionsOpen, closeOptions:()=>this.closeOptions(),
