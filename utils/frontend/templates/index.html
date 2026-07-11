@@ -1059,6 +1059,7 @@
                     <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap">
                       <button onclick="{{ appActive.onEdit }}" style="height:34px;padding:0 13px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Edit LaTeX</button>
                       <button onclick="{{ appActive.onDownload }}" style="height:34px;padding:0 13px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Download PDF</button>
+                      <button onclick="{{ appActive.onDownloadTex }}" style="height:34px;padding:0 13px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer" style-hover="background:var(--surface2)">Export .tex</button>
                       <button onclick="{{ appActive.onApprove }}" style="{{ appActive.approveStyle }}" style-hover="filter:brightness(1.05)">{{ appActive.approveLabel }}</button>
                     </div>
                   </div>
@@ -2077,6 +2078,11 @@ class Component extends DCLogic {
     const a=document.createElement('a'); a.href='/api/documents/'+doc.id+'/pdf?download=1'; a.rel='noopener';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
+  downloadAppTex(kind){
+    const doc=this.state.app.docs[kind]; if(!doc) return;
+    const a=document.createElement('a'); a.href='/api/documents/'+doc.id+'/tex'; a.rel='noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
   openAppPdf(kind){ const doc=this.state.app.docs[kind]; if(!doc) return; window.open('/api/documents/'+doc.id+'/pdf','_blank','noopener'); }
   markAppliedAndClose(){ const id=this.state.app.jobId; if(id!=null) this.markApplied(id); this.closeApply(); }
   // Segmented Process|Preview control (narrow screens) + per-document tab styling.
@@ -2120,6 +2126,7 @@ class Component extends DCLogic {
       onAngle:()=>this.quickRefine(kind,'Try a different angle — lead with a different strength.'),
       onStronger:()=>this.quickRefine(kind,'Make the opening stronger and more specific to this role.'),
       onApprove:()=>this.approveAppDoc(kind), onDownload:()=>this.downloadAppDoc(kind),
+      onDownloadTex:()=>this.downloadAppTex(kind),
       approveLabel:approved?'Approved':'Approve',
       approveStyle:'height:36px;padding:0 14px;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:'+(approved?'default':'pointer')+';border:var(--bw) solid '+(approved?'var(--border2)':'var(--accent2)')+';background:transparent;color:'+(approved?'var(--muted)':'var(--accent2)'),
       canRefine:!!doc && !g.active, viewing:!!doc && !editing, noDoc:!doc && !g.active,

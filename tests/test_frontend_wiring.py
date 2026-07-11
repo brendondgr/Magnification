@@ -133,6 +133,9 @@ def test_index_has_two_column_latex_workspace(client):
     # pre-hydration); the iframe src is set via a ref instead.
     assert 'src="{{ appActive.pdfUrl }}"' not in html
     assert "Download PDF" in html
+    # LaTeX source export (not just the rendered PDF).
+    assert "Export .tex" in html
+    assert "downloadAppTex" in html
 
 
 def test_generation_endpoints_registered(client):
