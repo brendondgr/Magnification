@@ -7,7 +7,7 @@ agent (``style_letter``) applies the writing style, and a critic (``critique_let
 result. Each node degrades to a deterministic fallback when no LLM endpoint is configured.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from loguru import logger
 
@@ -77,22 +77,28 @@ def _context_slot_values(state: Dict[str, Any]) -> Dict[str, str]:
 
 
 def _fallback_slot(slot: str, state: Dict[str, Any]) -> str:
+    """Deterministic slot text for the no-LLM / endpoint-down path.
+
+    Kept deliberately plain and honest. It must NOT (a) parrot the job posting, (b) manufacture
+    motivation ("What draws me to X is <JD phrase>"), or (c) splice the strategist's often
+    third-person hooks into first-person prose ("I bring He has…"). Those were the artefacts a
+    flaky endpoint shipped. When the LLM is unavailable this is what the user gets, so it errs
+    toward generic-but-clean over specific-but-broken; the LLM path supplies the real specificity.
+    """
     job = state["job"]
-    strategy = state.get("strategy") or {}
-    evaluation = state.get("evaluation") or {}
-    research = state.get("research") or {}
-    hooks: List[str] = strategy.get("hooks") or evaluation.get("emphasize") or []
     role = job.get("title") or "this role"
     company = job.get("company") or "your team"
     mapping = {
-        "hook": f"I'm excited to apply for {role} at {company}. {strategy.get('thesis', '')}".strip(),
-        "why_them": f"What draws me to {company} is {research.get('angle') or 'the focus of this role'}.",
-        "why_you": (("I bring " + ", ".join(hooks[:3]) + ".") if hooks
-                    else "I bring directly relevant experience to what this role needs."),
-        "close": (f"I would welcome the chance to discuss how I can contribute to {company}. "
-                  "Thank you for your consideration."),
-        "story": (hooks[0] if hooks else "My background maps closely to what this role needs."),
-        "referral_intro": f"I was excited to see the {role} opening at {company}.",
+        "hook": f"I'm applying for the {role} position at {company}.",
+        "why_them": ("I'm interested in this role because it lines up with the kind of work I "
+                     "want to keep doing and where I believe I can contribute."),
+        "why_you": ("In my work I've taken on hands-on technical problems and carried them "
+                    "through to working results, and I'd bring that same approach to your team."),
+        "close": (f"I'd welcome the chance to talk about how I could contribute to {company}. "
+                  "Thank you for your time and consideration."),
+        "story": ("A through-line in my background is turning open-ended technical problems into "
+                  "systems that actually work."),
+        "referral_intro": f"I'm reaching out about the {role} opening at {company}.",
     }
     return mapping.get(slot, "")
 
@@ -112,16 +118,19 @@ def write_letter(state: Dict[str, Any], orch) -> None:
         try:
             strategy = state.get("strategy") or {}
             evaluation = state.get("evaluation") or {}
-            research = state.get("research") or {}
             job = state["job"]
-            user = (f"Template slots to fill: {prose_slots}\n\n"
-                    f"Thesis: {strategy.get('thesis', '')}\n"
-                    f"Hooks: {strategy.get('hooks')}\n"
-                    f"Emphasize: {evaluation.get('emphasize')}\n"
-                    f"Company angle: {research.get('angle', '')}\n\n"
+            # Candidate first (primacy); the JD is context, not a vocabulary to mine. The
+            # keyword-derived lists are reframed as competencies to EVIDENCE, not to name — so the
+            # letter argues from real experience instead of echoing the posting.
+            user = (f"Fill these template slots: {prose_slots}\n\n"
                     f"{candidate_facts(state.get('profile'))}\n\n"
-                    f"Job: {job.get('title', '')} at {job.get('company', '')}\n"
-                    f"{(job.get('description') or '')[:3000]}")
+                    f"Angle to take (in plain terms): {strategy.get('thesis', '')}\n"
+                    f"Genuine connection points: {strategy.get('hooks')}\n"
+                    f"Competencies to DEMONSTRATE through the candidate's real work (show them via "
+                    f"concrete experience — do not name them verbatim or copy them as keywords): "
+                    f"{evaluation.get('emphasize')}\n\n"
+                    f"Job posting for {job.get('title', '')} at {job.get('company', '')} — CONTEXT "
+                    f"ONLY, do not copy its wording:\n{(job.get('description') or '')[:1800]}")
             user = prompts.guidance_block(state.get("instructions", ""),
                                           state.get("prior_content", "")) + user
             raw = _chat_json(client, prompts.WRITE_LETTER_PROMPT, user)

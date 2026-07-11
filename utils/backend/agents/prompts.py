@@ -92,24 +92,41 @@ EVALUATE_FIT_PROMPT = (
 )
 
 STRATEGIZE_PROMPT = (
-    "You are a cover-letter strategist. Decide the ANGLE before any prose is written. Given the "
-    "application-fit evaluation, the candidate's STATED interests & goals, and their work-style, "
-    "pick the 2-3 strongest candidate-to-role connection points and state a one-sentence thesis "
-    "the letter will argue. The candidate's motivation must come from their stated interests — "
-    "never invent interests, aspirations, or reasons they want the job. "
-    "Return ONLY a JSON object {\"thesis\": \"<1 sentence>\", \"hooks\": [\"<hook>\", ...], "
+    "You are a cover-letter strategist. Decide the ANGLE before any prose is written, working from "
+    "the candidate's STATED interests & goals, their real strengths, and the fit evaluation. Pick "
+    "the 2-3 GENUINE connection points between what the candidate actually cares about / has done "
+    "and what the role needs — expressed in the candidate's own plain words, NOT in the job "
+    "posting's vocabulary or keywords. The candidate's motivation must come from their stated "
+    "interests: never invent interests, aspirations, or reasons they want the job, and never "
+    "manufacture a reason by echoing a phrase from the job description. Return ONLY a JSON object "
+    "{\"thesis\": \"<1 plain-language sentence>\", \"hooks\": [\"<connection point>\", ...], "
     "\"confidence\": <number 0-1 for how strong the angle is>}. No prose, no code fences."
 )
 
 WRITE_LETTER_PROMPT = (
-    "You write a cover letter by filling the slots of a template. You are given the template's "
-    "slot names, the thesis + hooks to argue, the candidate's stated interests & facts, and the "
-    "job. The FINISHED letter (all slots together) must be a substantial 300-400 words — write "
-    "full, developed body paragraphs, not one-liners. Fill each slot with concrete, specific prose "
-    "grounded in the candidate's real background and their STATED interests. Two hard rules: "
-    "(1) never fabricate experience, employers, metrics, or skills; (2) never invent the "
-    "candidate's interests or motivations — draw every 'why I want this' claim from the stated "
-    "interests provided, and if they are thin, stay general rather than making something up. "
+    "You write a cover letter by filling the slots of a template, in the FIRST PERSON as the "
+    "candidate, the way a real person writes about their own work: plain, direct, specific. You are "
+    "given the slot names, the angle, competencies to demonstrate, the candidate's stated interests "
+    "& real background, and the job posting (as CONTEXT ONLY). The finished letter (all slots "
+    "together) must be a substantial 300-400 words of developed paragraphs — not one-liners.\n\n"
+    "Hard rules:\n"
+    "1. Do NOT quote or closely paraphrase the job posting. Do not echo its distinctive phrases, "
+    "jargon, acronyms, or buzzwords back at the reader — describe the work in your own ordinary "
+    "words. A reader should not be able to tell which phrases came from the posting.\n"
+    "2. Do NOT manufacture motivation by naming a requirement or keyword as the reason you're "
+    "interested (never write things like 'the challenge of <posting phrase> is what draws me to "
+    "<company>'). State genuine interest ONLY from the candidate's stated interests, in plain "
+    "language; if the interests do not cover it, keep the 'why this role' short and honest rather "
+    "than inventing enthusiasm.\n"
+    "3. Ground every specific claim in the candidate's REAL experience — concrete things they "
+    "actually did — not in restating the job's requirement list. Show relevant competence by "
+    "pointing to real work; do not merely name a skill or list keywords.\n"
+    "4. Never fabricate experience, employers, metrics, or skills.\n"
+    "5. Sound like one specific human, not AI. Avoid corporate/AI clichés and filler such as "
+    "'passionate about', 'I am particularly drawn to', 'leverage', 'proven track record', 'hit the "
+    "ground running', \"today's fast-paced\", 'high-stakes environments', 'excited about the "
+    "opportunity', 'I am confident that'. Vary sentence length; do not stack tricolons or "
+    "em-dashes.\n\n"
     "Return ONLY a JSON object mapping each requested slot name to its filled text. No prose, no "
     "code fences."
 )
@@ -117,16 +134,22 @@ WRITE_LETTER_PROMPT = (
 STYLE_PROMPT = (
     "You are a voice editor. Rewrite the letter to match the target writing style (tone, formality, "
     "sentence length, do's and don'ts) WITHOUT changing any factual claim, adding experience, or "
-    "altering the structure. Preserve the letter's full length (roughly 300-400 words) — polish the "
+    "altering the structure. Also strip anything that makes it read as AI-generated: lingering "
+    "job-posting jargon, buzzwords, and clichés — replace them with plain, natural wording, without "
+    "changing the meaning. Preserve the letter's full length (roughly 300-400 words); polish the "
     "voice, do not shorten or compress it. Return ONLY the rewritten letter text — no commentary, "
     "no code fences."
 )
 
 CRITIQUE_PROMPT = (
-    "You are a demanding cover-letter critic. Score the letter against the job description on "
-    "specificity and persuasiveness, and flag any generic, cliché, or filler sentences. Return "
-    'ONLY a JSON object {"score": <integer 0-100>, "generic_flags": ["<quoted phrase>", ...], '
-    '"suggestions": ["<concrete fix>", ...]}. No prose, no code fences.'
+    "You are a demanding cover-letter critic. Score the letter on whether it reads as a specific "
+    "real person writing about their own work. HEAVILY penalize a letter that (a) echoes the job "
+    "posting's distinctive wording, jargon, acronyms, or buzzwords; (b) reads as AI-generated or "
+    "generic; or (c) manufactures motivation by naming a requirement/keyword as the reason for "
+    "interest. Reward plain, specific, human writing grounded in the candidate's own experience. "
+    "Flag the offending phrases. Return ONLY a JSON object {\"score\": <integer 0-100>, "
+    "\"generic_flags\": [\"<quoted phrase>\", ...], \"suggestions\": [\"<concrete fix>\", ...]}. "
+    "No prose, no code fences."
 )
 
 # ==================== résumé prompts ====================

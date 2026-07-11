@@ -196,7 +196,12 @@ seeded from `JobAnalysis.skill_match` + `llm_rationale` and refined by the LLM. 
 plus résumé/skills) so the letter's motivation is grounded in the candidate's own words rather
 than invented; the prompts target a **300-400 word** letter, and the revision loop enforces a
 minimum length (`COVER_MIN_WORDS`) on the LLM path — a short first draft triggers another pass.
-`finalize` persists `generated_documents(kind='cover_letter')`.
+The prompts also forbid echoing the job posting's wording/jargon and manufacturing motivation from
+JD keywords (the JD is passed as *context only*), and the critic penalizes JD-parroting / AI-generic
+voice — so the letter reads like the candidate, not the posting. The deterministic fallback (used
+when no endpoint is configured or every LLM call fails) is plain and honest: it never parrots the
+JD, manufactures motivation, or splices third-person hooks into first-person prose. `finalize`
+persists `generated_documents(kind='cover_letter')`.
 
 **Résumé fine-tuner graph** (`utils/backend/agents/resume.py`):
 

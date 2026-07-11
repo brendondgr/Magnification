@@ -52,12 +52,26 @@ def test_letter_word_count_ignores_template_slots():
 
 def test_prompts_target_length_and_forbid_invented_interests():
     assert "300-400" in prompts.WRITE_LETTER_PROMPT
-    assert "never invent" in prompts.WRITE_LETTER_PROMPT.lower()
     assert "stated interests" in prompts.WRITE_LETTER_PROMPT.lower()
+    assert "inventing enthusiasm" in prompts.WRITE_LETTER_PROMPT.lower()
     # The strategist must ground motivation in stated interests, not invent it.
     assert "never invent interests" in prompts.STRATEGIZE_PROMPT.lower()
     # The voice pass must not compress the letter back down.
     assert "300-400" in prompts.STYLE_PROMPT
+
+
+def test_prompts_forbid_jd_parroting_and_ai_voice():
+    """The writer must not echo the posting's wording or read as AI; the critic must push back."""
+    w = prompts.WRITE_LETTER_PROMPT.lower()
+    assert "do not quote or closely paraphrase" in w
+    assert "buzzwords" in w and "clich" in w
+    assert "what draws me" in w          # the banned manufactured-motivation construction
+    assert "context only" in w           # the JD is context, not a vocabulary to mine
+    # The strategist works in the candidate's words, not the posting's.
+    assert "job posting's vocabulary" in prompts.STRATEGIZE_PROMPT.lower()
+    # The critic penalizes parroting + AI voice.
+    c = prompts.CRITIQUE_PROMPT.lower()
+    assert "echo" in c and "ai-generated" in c
 
 
 # ==================== graph integration ====================
@@ -147,6 +161,25 @@ def test_long_letter_is_accepted_without_review(temp_db):
     result = cover_letter.run(state, Orchestrator())
     assert shared.letter_word_count(state["current_document"]) >= COVER_MIN_WORDS
     assert result["needs_review"] is False
+
+
+def test_offline_fallback_letter_is_clean(temp_db, monkeypatch):
+    """When the endpoint is unavailable the deterministic letter must not parrot the JD,
+    manufacture motivation, or splice third-person hooks into first-person prose."""
+    def _raise(*a, **k):
+        raise RuntimeError("endpoint disabled")
+    monkeypatch.setattr(context.OpenAIClient, "from_config", _raise)
+    job_id = _seed()
+    state = context.load_context(job_id, "cover_letter", client=None)
+    assert state["client"] is None
+    result = cover_letter.run(state, Orchestrator())
+    letter = result["final_text"].lower()
+    # The artefacts a flaky endpoint used to ship:
+    assert "what draws me to" not in letter          # manufactured, JD-parroting motivation
+    assert "i bring he " not in letter               # third-person hook spliced into "I bring …"
+    assert "i'm excited to apply" not in letter       # AI cliché opener
+    # Still a usable, company-named letter.
+    assert "Acme" in result["final_text"]
 
 
 def test_short_letter_triggers_review_on_llm_path(temp_db):
