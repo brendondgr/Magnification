@@ -23,6 +23,9 @@ from typing import Any, Callable, Dict, Optional
 
 # Revision loop cap shared by both graphs (design §2.1 / §3.1: "cap 2-3, then checkpoint").
 MAX_REVISIONS = 2
+# Minimum word count for an accepted cover letter (target band is 300-400 words). Enforced only
+# on the LLM path — the deterministic offline fallback cannot grow to length.
+COVER_MIN_WORDS = 280
 # Cover-letter Critic acceptance score (0..100) and résumé match-lift floor (0..1).
 COVER_SCORE_THRESHOLD = 75
 MATCH_MIN_LIFT = 0.0

@@ -12,7 +12,9 @@ from typing import Any, Dict, List
 from loguru import logger
 
 from . import prompts
-from .nodes_shared import _chat_json, _chat_text, profile_summary, evaluation_json
+from .nodes_shared import (
+    _chat_json, _chat_text, candidate_facts, evaluation_json,
+)
 
 # A minimal built-in letter body used only when no cover-letter template exists at all.
 _DEFAULT_LETTER_BODY = (
@@ -43,6 +45,7 @@ def strategize(state: Dict[str, Any], orch) -> None:
             behavioral = state.get("behavioral") or {}
             user = (prompts.guidance_block(state.get("instructions", "")) +
                     f"Application-fit evaluation:\n{evaluation_json(evaluation)}\n\n"
+                    f"{candidate_facts(state.get('profile'))}\n\n"
                     f"Candidate work-style: {behavioral.get('work_style_paragraph', '')}\n"
                     f"Strengths: {', '.join(behavioral.get('strengths') or [])}")
             strategy = prompts.normalize_strategy(
@@ -116,7 +119,7 @@ def write_letter(state: Dict[str, Any], orch) -> None:
                     f"Hooks: {strategy.get('hooks')}\n"
                     f"Emphasize: {evaluation.get('emphasize')}\n"
                     f"Company angle: {research.get('angle', '')}\n\n"
-                    f"Candidate profile:\n{profile_summary(state.get('profile'))}\n\n"
+                    f"{candidate_facts(state.get('profile'))}\n\n"
                     f"Job: {job.get('title', '')} at {job.get('company', '')}\n"
                     f"{(job.get('description') or '')[:3000]}")
             user = prompts.guidance_block(state.get("instructions", ""),
@@ -173,11 +176,19 @@ def style_letter(state: Dict[str, Any], orch) -> None:
 # ==================== critique ====================
 
 def _heuristic_critique(letter: str) -> Dict[str, Any]:
-    """Offline critic: penalize clichés + too-short letters. Passes a clean draft on rev 1."""
+    """Offline critic: penalize clichés + a nearly-empty draft. Passes a clean draft on rev 1.
+
+    Reports ``word_count`` so callers can see length, but does not fail the offline path for being
+    under the 300-400 target — the deterministic fallback cannot lengthen itself, and the length
+    target is enforced on the LLM path in the cover-letter graph instead.
+    """
+    from .nodes_shared import letter_word_count
     low = (letter or "").lower()
+    words = letter_word_count(letter)
     flags = [c for c in _CLICHES if c in low]
-    score = 85.0 - 10.0 * len(flags) - (15.0 if len(low) < 200 else 0.0)
-    return {"score": max(40.0, score), "generic_flags": flags, "suggestions": []}
+    score = 85.0 - 10.0 * len(flags) - (15.0 if words < 40 else 0.0)
+    return {"score": max(40.0, score), "generic_flags": flags, "suggestions": [],
+            "word_count": words}
 
 
 def critique_letter(state: Dict[str, Any], orch) -> None:

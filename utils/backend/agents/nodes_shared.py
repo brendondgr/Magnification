@@ -11,7 +11,8 @@ deterministic fallback (for ``evaluate_fit``, the ``JobAnalysis`` seed) instead 
 """
 
 import json
-from typing import Any, Dict
+import re
+from typing import Any, Dict, List
 
 from loguru import logger
 
@@ -37,6 +38,42 @@ def _chat_text(client, system: str, user: str, **overrides) -> str:
 def profile_summary(profile: Dict[str, Any]) -> str:
     """Flatten the profile into a compact query string (reusing the ranker's builder)."""
     return ranker.build_profile_query(profile or {})[:2000]
+
+
+def letter_word_count(text: str) -> int:
+    """Word count of letter prose, excluding the salutation/signature scaffold lines.
+
+    Used by the revision loop and critic to judge whether a cover letter reached its target
+    length. Strips ``{{slot}}`` markers so an unfilled template body counts as empty.
+    """
+    body = re.sub(r"\{\{\s*\w+\s*\}\}", " ", text or "")
+    return len(body.split())
+
+
+def candidate_facts(profile: Dict[str, Any]) -> str:
+    """
+    A labelled, ground-truth block of the candidate's OWN words for the writer/strategist.
+
+    Unlike :func:`profile_summary` (a flattened query string for embedding), this keeps the
+    profile's *stated interests* distinct and prominent so the letter argues motivation from what
+    the user actually wrote — not invented aspirations. Only real, present fields are included.
+    """
+    profile = profile or {}
+    parts: List[str] = []
+    interests = (profile.get("interests_paragraph") or "").strip()
+    if interests:
+        parts.append("Candidate's stated interests & goals (use ONLY these for motivation — do "
+                     "not invent interests):\n" + interests)
+    skills = [s for s in (profile.get("skills") or []) if s]
+    if skills:
+        parts.append("Skills: " + ", ".join(str(s) for s in skills[:30]))
+    titles = [t for t in (profile.get("job_titles") or []) if t]
+    if titles:
+        parts.append("Target roles: " + ", ".join(str(t) for t in titles[:8]))
+    resume = (profile.get("resume_text") or "").strip()
+    if resume:
+        parts.append("Résumé (source of truth for experience):\n" + resume[:2500])
+    return "\n\n".join(parts)
 
 
 # ==================== research_company ====================

@@ -93,24 +93,33 @@ EVALUATE_FIT_PROMPT = (
 
 STRATEGIZE_PROMPT = (
     "You are a cover-letter strategist. Decide the ANGLE before any prose is written. Given the "
-    "application-fit evaluation and the candidate's work-style, pick the 2-3 strongest "
-    "candidate-to-role connection points and state a one-sentence thesis the letter will argue. "
+    "application-fit evaluation, the candidate's STATED interests & goals, and their work-style, "
+    "pick the 2-3 strongest candidate-to-role connection points and state a one-sentence thesis "
+    "the letter will argue. The candidate's motivation must come from their stated interests — "
+    "never invent interests, aspirations, or reasons they want the job. "
     "Return ONLY a JSON object {\"thesis\": \"<1 sentence>\", \"hooks\": [\"<hook>\", ...], "
     "\"confidence\": <number 0-1 for how strong the angle is>}. No prose, no code fences."
 )
 
 WRITE_LETTER_PROMPT = (
     "You write a cover letter by filling the slots of a template. You are given the template's "
-    "slot names, the thesis + hooks to argue, the candidate profile, and the job. Fill EACH slot "
-    "with 1-3 sentences of concrete, specific prose grounded in the candidate's real background — "
-    "no fabricated experience, no generic filler. Return ONLY a JSON object mapping each requested "
-    "slot name to its filled text. No prose, no code fences."
+    "slot names, the thesis + hooks to argue, the candidate's stated interests & facts, and the "
+    "job. The FINISHED letter (all slots together) must be a substantial 300-400 words — write "
+    "full, developed body paragraphs, not one-liners. Fill each slot with concrete, specific prose "
+    "grounded in the candidate's real background and their STATED interests. Two hard rules: "
+    "(1) never fabricate experience, employers, metrics, or skills; (2) never invent the "
+    "candidate's interests or motivations — draw every 'why I want this' claim from the stated "
+    "interests provided, and if they are thin, stay general rather than making something up. "
+    "Return ONLY a JSON object mapping each requested slot name to its filled text. No prose, no "
+    "code fences."
 )
 
 STYLE_PROMPT = (
     "You are a voice editor. Rewrite the letter to match the target writing style (tone, formality, "
     "sentence length, do's and don'ts) WITHOUT changing any factual claim, adding experience, or "
-    "altering the structure. Return ONLY the rewritten letter text — no commentary, no code fences."
+    "altering the structure. Preserve the letter's full length (roughly 300-400 words) — polish the "
+    "voice, do not shorten or compress it. Return ONLY the rewritten letter text — no commentary, "
+    "no code fences."
 )
 
 CRITIQUE_PROMPT = (

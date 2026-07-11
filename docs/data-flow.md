@@ -191,8 +191,12 @@ research_company → evaluate_fit → strategize
 ```
 
 `evaluate_fit` persists a `job_evaluations` row (the job evaluation system described above),
-seeded from `JobAnalysis.skill_match` + `llm_rationale` and refined by the LLM. `finalize`
-persists `generated_documents(kind='cover_letter')`.
+seeded from `JobAnalysis.skill_match` + `llm_rationale` and refined by the LLM. `strategize` and
+`write` are given a `candidate_facts(profile)` block (the profile's stated `interests_paragraph`
+plus résumé/skills) so the letter's motivation is grounded in the candidate's own words rather
+than invented; the prompts target a **300-400 word** letter, and the revision loop enforces a
+minimum length (`COVER_MIN_WORDS`) on the LLM path — a short first draft triggers another pass.
+`finalize` persists `generated_documents(kind='cover_letter')`.
 
 **Résumé fine-tuner graph** (`utils/backend/agents/resume.py`):
 

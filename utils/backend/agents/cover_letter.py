@@ -17,7 +17,7 @@ from typing import Any, Dict
 from . import nodes_shared as shared
 from . import nodes_cover_letter as cl
 from . import latex
-from .orchestrator import Checkpoint, MAX_REVISIONS, COVER_SCORE_THRESHOLD
+from .orchestrator import Checkpoint, MAX_REVISIONS, COVER_SCORE_THRESHOLD, COVER_MIN_WORDS
 
 
 def _apply_angle_decision(state: Dict[str, Any], cp: Checkpoint) -> None:
@@ -50,6 +50,12 @@ def run(state: Dict[str, Any], orch) -> Dict[str, Any]:
         })
         _apply_angle_decision(state, cp)
 
+    # Enforce the length target only on the LLM path; the deterministic fallback cannot grow, so
+    # looping on it would just repeat the same short draft. `base_instructions` is the user's
+    # guidance; a length note is appended per-revision without stacking.
+    enforce_length = state.get("client") is not None
+    base_instructions = state.get("instructions") or ""
+
     accepted = False
     for revision in range(1, MAX_REVISIONS + 1):
         state["revision"] = revision
@@ -61,9 +67,15 @@ def run(state: Dict[str, Any], orch) -> Dict[str, Any]:
 
         critique_ok = (state.get("critique") or {}).get("score", 0) >= COVER_SCORE_THRESHOLD
         truthful_ok = (state.get("truthful") or {}).get("ok", True)
-        if critique_ok and truthful_ok:
+        words = shared.letter_word_count(state["current_document"])
+        length_ok = (not enforce_length) or words >= COVER_MIN_WORDS
+        if critique_ok and truthful_ok and length_ok:
             accepted = True
             break
+        if enforce_length and not length_ok and revision < MAX_REVISIONS:
+            note = (f"The previous draft was only {words} words — expand it to a full 300-400 "
+                    "words with developed body paragraphs (do not pad with fluff or invent facts).")
+            state["instructions"] = (base_instructions + "\n\n" + note).strip()
 
     state["needs_review"] = not accepted
     # The critic/truthfulness passes scored the plain prose; the persisted document is LaTeX.
