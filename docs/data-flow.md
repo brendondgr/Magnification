@@ -43,10 +43,12 @@ The dedup/database-check/filter steps run *before* the LinkedIn fetch and LLM co
 steps specifically so those expensive calls only ever touch jobs that are both new and pass
 the keyword filter — not the full scraped batch. LinkedIn descriptions are fetched
 **serially** (one at a time) to avoid rate-limiting. The analysis stage runs over **only the
-keyword-filtered remainder** (non-ignored jobs): embed → rank by semantic+bm25 → LLM fit
-verdict on **all** of them by default (`llm_fraction` = `1.0`; lower it to send only the top
-share by semantic+bm25, and the optional `top_n_llm` cap composes on top: `0` = all, `N>0` =
-top-N) → fold the `llm` signal into `rag_score` (renormalized when no verdict). This holds for
+keyword-filtered remainder** (non-ignored jobs): embed → rank by semantic+bm25 → pick the LLM
+coverage set over **all** analyzed jobs — top ceil(`llm_fraction` × N) by semantic+bm25
+(default `1.0` = every job; lower it to send only that top share), optional `top_n_llm` cap on
+top (`0` = no cap, `N>0` = top-N) — then issue the fit verdict for jobs in that set (gap-fill:
+only those still missing one) → fold the `llm` signal into `rag_score` (renormalized when no
+verdict). This holds for
 **both** manual Web-UI searches (`/api/scrape/start`) and the automatic daily bot
 (`utils/backend/scheduler`) — both run through the same `execute_full_scraping_workflow`. See
 `docs/recommendation.md`.
@@ -116,7 +118,9 @@ Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
        → recover missing compensation from descriptions (LLM)   [gap-fill, non-ignored jobs]
        → extract skills (gazetteer, or LLM batch if enabled)
        → ranker.rank_batch (semantic + bm25 + keyword-group + skill → rag_score)
-       → LLM fit verdict only for jobs missing one (gap-fill; reanalyze_all re-scores all)
+       → LLM fit verdict: coverage = top ceil(llm_fraction × N) of ALL analyzed jobs by
+         semantic+bm25 (+ top_n_llm cap), then gap-fill within it — only jobs missing one
+         (reanalyze_all re-scores every covered job)
        → save_job_analysis → JobAnalysis table
 Read: GET /api/jobs?with_analysis=1  /  GET /api/recommend/report  → match badges + detail breakdown
 ```

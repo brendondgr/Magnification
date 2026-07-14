@@ -90,11 +90,10 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
 
     llm_new = 0
     if runtime.get("enable_llm_rerank"):
-        n_for_llm = (sum(1 for an in analyses if an.get("llm_score") is None)
-                     if llm_only_missing else len(analyses))
+        n_for_llm = len(_select_llm_indices(analyses, runtime, llm_only_missing=llm_only_missing))
         _report(progress_callback, "llm", 90,
                 (f"LLM fit verdict on {n_for_llm} of {len(analyses)} job(s)…" if n_for_llm
-                 else f"All {len(analyses)} job(s) already have an LLM fit."))
+                 else f"All {len(analyses)} covered job(s) already have an LLM fit."))
         llm_new = _llm_rerank(jobs, analyses, profile, runtime,
                               llm_only_missing=llm_only_missing)
 
@@ -319,33 +318,29 @@ _LLM_VERDICT_PROMPT = (
 )
 
 
-def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True) -> int:
+def _select_llm_indices(analyses: List[Dict[str, Any]], runtime: Dict[str, Any],
+                        llm_only_missing: bool = True) -> List[int]:
     """
-    Add llm_score + llm_rationale (in place) to the analyzed jobs. Returns the number of new
-    verdicts issued.
+    Choose which analyzed jobs receive an LLM fit verdict this run, honoring the Options →
+    Runtime **"Jobs through the LLM"** coverage slider.
 
-    When ``llm_only_missing`` is True, jobs that already carry a verdict (``llm_score`` set,
-    e.g. seeded from a prior analysis) are skipped so "Analyze Matches" only fills the gaps.
+    Coverage is computed over the **full** analyzed set — not just the jobs still missing a
+    verdict — so the fraction means what the Options copy says: 100% covers every job, 50% the
+    top half. Two composing knobs, both read from ``runtime``:
 
-    Coverage is controlled by two composing knobs, both read from ``runtime``:
-
-    * ``llm_fraction`` (default ``1.0``) — the share of candidates that receive a verdict.
-      ``1.0`` sends **every** final job to the LLM (the default: manual searches and the daily
-      bot alike get a personalized fit on all jobs); a value ``<1.0`` keeps the top
-      ``ceil(fraction × N)`` candidates by **semantic + bm25**. Clamped to ``[0, 1]``.
+    * ``llm_fraction`` (default ``1.0``) — keep the top ``ceil(fraction × N)`` of **all**
+      analyses by **semantic + bm25**. ``1.0`` covers every job (manual searches and the daily
+      bot alike); ``<1.0`` keeps only that top share. Clamped to ``[0, 1]``.
     * ``top_n_llm`` — an optional absolute cost cap applied **after** the fraction: ``0`` (or
-      missing/negative) means no cap; a positive value limits the verdict to that many top
-      candidates by **semantic + bm25**.
+      missing/negative) means no cap; ``N>0`` limits the coverage to that many top candidates.
+
+    The gap-fill filter is applied **last**: when ``llm_only_missing`` is True, jobs in the
+    coverage set that already carry a verdict are dropped, so repeat runs stay cheap while 100%
+    coverage still guarantees every job ends up with an LLM fit.
     """
-    cfg = load_llm_endpoint_config()
-    if not cfg.get("enabled"):
-        return 0
-    if not analyses:
-        return 0
-    candidates = [
-        i for i in range(len(analyses))
-        if not (llm_only_missing and analyses[i].get("llm_score") is not None)
-    ]
+    n = len(analyses)
+    if n == 0:
+        return []
 
     def _by_relevance(idxs):
         return sorted(
@@ -360,15 +355,40 @@ def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True)
     except (TypeError, ValueError):
         fraction = 1.0
     fraction = max(0.0, min(1.0, fraction))
-    if fraction < 1.0 and candidates:
-        keep = math.ceil(fraction * len(candidates))
-        order = _by_relevance(candidates)[:keep]
+
+    all_idx = list(range(n))
+    if fraction < 1.0:
+        keep = math.ceil(fraction * n)
+        coverage = _by_relevance(all_idx)[:keep]
     else:
-        order = candidates
+        coverage = all_idx
 
     top_n = int(runtime.get("top_n_llm", 0) or 0)
     if top_n > 0:
-        order = _by_relevance(order)[:top_n]
+        coverage = _by_relevance(coverage)[:top_n]
+
+    if llm_only_missing:
+        coverage = [i for i in coverage if analyses[i].get("llm_score") is None]
+    return coverage
+
+
+def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True) -> int:
+    """
+    Add llm_score + llm_rationale (in place) to the analyzed jobs. Returns the number of new
+    verdicts issued.
+
+    Coverage (which jobs get a verdict) is decided by ``_select_llm_indices``: the
+    ``llm_fraction`` "Jobs through the LLM" slider selects the top share of the **full**
+    analyzed set, ``top_n_llm`` optionally caps it, and — when ``llm_only_missing`` is True —
+    jobs that already carry a verdict (e.g. seeded from a prior analysis) are skipped so
+    "Analyze Matches" only fills the gaps within that coverage.
+    """
+    cfg = load_llm_endpoint_config()
+    if not cfg.get("enabled"):
+        return 0
+    if not analyses:
+        return 0
+    order = _select_llm_indices(analyses, runtime, llm_only_missing=llm_only_missing)
     if not order:
         return 0
     profile_summary = ranker.build_profile_query(profile)[:2000]

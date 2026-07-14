@@ -50,11 +50,13 @@ Scrape completes → scraping_service (if runtime.enable_analysis and an active 
         → extract skills (gazetteer, or LLM batch if enabled)
         → ranker.rank_batch → semantic/bm25/keyword/skill scores
         → seed any existing stored LLM verdict onto the fresh analysis  [preserve]
-        → LLM fit verdict only for jobs that don't already have one (gap-fill; 2-3 sentences,
-          weighs what the company wants); coverage = `llm_fraction` (default 1.0 = all; <1.0
-          keeps the top ceil(fraction × N) by semantic+bm25) then optional `top_n_llm` cap
-          (0 = all, N>0 = top-N by semantic+bm25) → fold `llm` into rag_score (renormalized
-          when absent). Applies to both manual searches and the daily bot (shared workflow).
+        → pick the coverage set over ALL analyzed jobs: top ceil(`llm_fraction` × N) by
+          semantic+bm25 (default 1.0 = every job; <1.0 = that top share), then optional
+          `top_n_llm` cap (0 = no cap, N>0 = top-N); THEN gap-fill — issue an LLM fit verdict
+          only for jobs in the coverage set that don't already have one (2-3 sentences, weighs
+          what the company wants) → fold `llm` into rag_score (renormalized when absent). So
+          100% guarantees every job ends up with a verdict while repeat runs stay cheap; 50% =
+          the top 50% of all jobs. Applies to manual searches and the daily bot (shared workflow).
         → save_job_analysis per job (JobAnalysis table)
 
 Manual: POST /api/recommend/analyze  ("Analyze Matches" — gap-fills LLM fit + compensation for
