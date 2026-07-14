@@ -65,6 +65,47 @@ def test_gapfill_all_present_is_noop(monkeypatch):
     assert analyses[0]["llm_score"] == 42.0
 
 
+def test_llm_fraction_applies_to_full_set_not_just_gap(monkeypatch):
+    """The fix: llm_fraction is a share of ALL jobs, not of the missing-verdict gap.
+
+    Jobs 3 & 4 (top semantic+bm25) lack a verdict; jobs 1 & 2 (low relevance) already have one.
+    llm_fraction=0.5 selects the top 2 of ALL four jobs (3 & 4), then gap-fills — so both are
+    issued a verdict. (Pre-fix, the fraction hit the missing gap and would keep only 1.)
+    """
+    _enable_llm(monkeypatch, [{"score": 80, "rationale": "r"}, {"score": 81, "rationale": "r"}])
+    jobs = [{"id": i, "title": f"J{i}", "description": "d"} for i in range(1, 5)]
+    analyses = [
+        {"job_id": 1, "semantic_score": 0.1, "bm25_score": 0.1, "llm_score": 50.0},
+        {"job_id": 2, "semantic_score": 0.2, "bm25_score": 0.2, "llm_score": 51.0},
+        {"job_id": 3, "semantic_score": 0.6, "bm25_score": 0.6},
+        {"job_id": 4, "semantic_score": 0.9, "bm25_score": 0.9},
+    ]
+    new = service._llm_rerank(jobs, analyses, {"interests_paragraph": "x"},
+                              {"llm_fraction": 0.5, "llm_workers": 2}, llm_only_missing=True)
+    assert new == 2                                   # both top-half missing jobs filled
+    assert analyses[0]["llm_score"] == 50.0           # low-relevance verdicts preserved
+    assert analyses[1]["llm_score"] == 51.0
+    assert analyses[2].get("llm_score") is not None   # jobs 3 & 4 (top 50%) gap-filled
+    assert analyses[3].get("llm_score") is not None
+
+
+def test_full_coverage_gapfills_only_missing(monkeypatch):
+    """llm_fraction=1.0 covers every job but only spends calls on the ones missing a verdict."""
+    _enable_llm(monkeypatch, [{"score": 88, "rationale": "r"}])
+    jobs = [{"id": i, "title": f"J{i}", "description": "d"} for i in range(1, 4)]
+    analyses = [
+        {"job_id": 1, "semantic_score": 0.5, "bm25_score": 0.5, "llm_score": 40.0},
+        {"job_id": 2, "semantic_score": 0.4, "bm25_score": 0.4, "llm_score": 41.0},
+        {"job_id": 3, "semantic_score": 0.3, "bm25_score": 0.3},   # the only gap
+    ]
+    new = service._llm_rerank(jobs, analyses, {"interests_paragraph": "x"},
+                              {"llm_fraction": 1.0, "llm_workers": 2}, llm_only_missing=True)
+    assert new == 1                          # only the single missing verdict was issued
+    assert analyses[0]["llm_score"] == 40.0  # existing verdicts untouched
+    assert analyses[1]["llm_score"] == 41.0
+    assert analyses[2]["llm_score"] == 88.0  # gap filled
+
+
 # ---- compensation recovery ----
 
 def test_recover_compensation_fills_and_persists(monkeypatch):
