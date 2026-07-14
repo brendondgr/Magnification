@@ -22,6 +22,9 @@ mobile nav), a Saved grid, and exclusion of saved jobs from the New Jobs feed.
 - **Does Save interact with Ignore?** *Assumption:* They are independent flags. A job can be
   saved and separately ignored; the Saved tab shows saved jobs regardless of the ignore flag
   (the whole point is that saved jobs are always reachable). Save does not clear `ignore`.
+  **Follow-up fix (`docs/plans/saved-jobs-not-auto-hidden.md`):** while the flags stay independent,
+  the *automatic* filters (`filter_and_mark_jobs`, `apply_profile_filters`) now skip saved jobs, so a
+  saved job the user un-hid is never silently re-hidden by a search / profile save / block-company.
 - **Do saved+applied jobs stay in the Tracker too?** *Assumption:* Yes. Save is additive and does
   not change application status; a saved job that is later Applied still appears on the Tracker
   kanban **and** in the Saved tab (requirement: "Saved jobs will always appear here, even [if]

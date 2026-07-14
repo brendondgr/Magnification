@@ -575,6 +575,28 @@ adapter (§4.3) and a persisted `application_sessions` table.
   a valid compilable document offline, but the model-authored body is best exercised with an enabled,
   responsive endpoint (Options → LLM Endpoint).
 
+## Saved Jobs Not Auto-Hidden — Definition of Done
+
+Plan: `docs/plans/saved-jobs-not-auto-hidden.md`. Delivered on branch
+`fix-saved-jobs-auto-hidden` (worktree), committed per phase.
+
+Fixes the reported bug where jobs in the **Saved** lane were being hidden (`ignore=1`) without the
+user clicking hide, and got re-hidden after the user un-hid them (on a server restart / job search).
+Root cause: the two auto-hide filters (`filter_and_mark_jobs` during a search, `apply_profile_filters`
+on Profile Save / Block Company over all jobs) set `ignore=1` on matching jobs **without exempting
+saved jobs**, and blocking is one-directional (only ever hides). These are the only two non-user
+writers of `ignore=1`.
+
+- [x] (1/3) `saved`-guard added to `filter_and_mark_jobs()` and `apply_profile_filters()` in
+  `utils/backend/scrapers/job_filter.py` — both skip any job with `saved=1` (never auto-hide it);
+  docstrings updated. Save/Ignore stay independent; the manual hide button still works on a saved job.
+- [x] (2/3) Isolated in-memory regression tests (`tests/scrapers/test_saved_job_filter_exempt.py`):
+  a saved job matching a block rule (company / title / keyword-group) or failing the `jobs_config`
+  keyword filter is left visible, while an identical non-saved job is still hidden.
+- [x] (3/3) Docs updated (`database.md`, `data-flow.md`, `save-jobs.md`, this checklist).
+- [x] Offline test subset green (`tests/scrapers`, `tests/database`), `import app` clean; fix verified
+  by reproducing the bug against an isolated DB before/after the guard.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.

@@ -64,8 +64,16 @@ SQLite → database/operations (query) → GET /api/jobs[/<id>]
 Drag/drop or action in handlers.js
       → PATCH /api/jobs/<id>/status  (tracker status)
       → PATCH /api/jobs/<id>/ignore  (hide)
+      → PATCH /api/jobs/<id>/save    (pin to the Saved lane)
       → database/operations → SQLite
 ```
+
+**Saved jobs are never auto-hidden.** A saved job (`saved=1`) is an explicit user keep, so the
+two filters that set `ignore=1` without user action — `job_filter.filter_and_mark_jobs` (Step 6
+of a scrape) and `job_filter.apply_profile_filters` (retroactive apply on Profile Save /
+Block Company) — skip it. Only the manual hide button (`PATCH /api/jobs/<id>/ignore`) can hide a
+saved job. This prevents a saved job the user un-hid from being silently re-hidden on the next
+search, profile save, or daily-search-on-boot.
 
 ## LLM Flow
 
