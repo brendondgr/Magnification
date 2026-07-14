@@ -575,6 +575,30 @@ adapter (§4.3) and a persisted `application_sessions` table.
   a valid compilable document offline, but the model-authored body is best exercised with an enabled,
   responsive endpoint (Options → LLM Endpoint).
 
+## Analyze Matches — LLM Coverage Fix — Definition of Done
+
+Plan: `docs/plans/analyze-matches-llm-coverage.md`. Delivered on branch
+`analyze-matches-llm-coverage` (worktree), committed per phase, merged to `main`.
+
+Requirement: "Analyze Matches" must honor the Options → Runtime **"Jobs through the LLM"**
+(`llm_fraction`) slider — **100% = every job through the LLM (if available); 50% = the top 50%
+by embedding/rerank**. It was only doing "~20%" because the fraction was applied to the
+missing-verdict gap, not the full analyzed set.
+
+- [x] (1/3) Worktree + plan doc
+- [x] (2/3) `service._select_llm_indices` selects the coverage set over **all** analyzed jobs
+  (top `ceil(llm_fraction × N)` by semantic+bm25, then the `top_n_llm` cap), and only then
+  applies the gap-fill (`llm_only_missing`) filter; `_llm_rerank` + `analyze_jobs`' progress
+  count both use it. Two tests added (fraction over the full set; 100% covers all but gap-fills
+  only the missing) + a scripted proof that fraction is a share of the whole set
+- [x] (3/3) Docs (`recommendation.md`, `data-flow.md`, `api-contract.md`, this checklist) + merge
+- [x] Offline `tests/recommend` subset green (the one pre-existing model-dependent failure,
+  `test_analyze_api_and_report`, also fails unmodified on `main` — needs the bge model cached),
+  `import app` clean
+- [ ] **Live coverage with a real LLM endpoint** — the selection/gap-fill is covered by
+  mocked-client tests; issuing real verdicts for the covered jobs needs an enabled endpoint
+  (Options → LLM Endpoint) + "LLM re-rank" on.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
