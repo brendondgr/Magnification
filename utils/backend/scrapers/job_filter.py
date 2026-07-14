@@ -195,6 +195,9 @@ def filter_and_mark_jobs(job_ids: List[int]) -> Dict[str, Any]:
     block rules (blocked companies, title blocklist, scoped keyword groups),
     and sets ignore=1 for jobs that don't pass either.
 
+    Jobs the user has explicitly **saved** (``saved=1``) are an intentional keep
+    and are never auto-hidden here — they are counted as kept and skipped.
+
     Args:
         job_ids: List of job IDs to filter
 
@@ -215,6 +218,10 @@ def filter_and_mark_jobs(job_ids: List[int]) -> Dict[str, Any]:
     ignored_count = 0
 
     for job in jobs:
+        if job.get('saved'):
+            # Saved is an explicit user keep — never auto-hide it.
+            kept_count += 1
+            continue
         keep = apply_filters(job, filter_config) and not profile_filter.job_blocked_by_profile(job, profile)
         if keep:
             kept_count += 1
@@ -242,6 +249,10 @@ def apply_profile_filters(job_ids: Optional[List[int]] = None,
     the current feed, not just the next scrape. One-directional: only sets ignore=1 on currently
     visible jobs; never un-hides. Pass ``job_ids`` to scope to specific jobs, else all jobs.
 
+    Jobs the user has explicitly **saved** (``saved=1``) are an intentional keep and are never
+    auto-hidden here, even when they match a block rule — so a saved job the user un-hid stays
+    visible across profile saves / block-company actions.
+
     Returns a summary dict with the number of jobs newly blocked.
     """
     from ..database.operations import (
@@ -257,6 +268,8 @@ def apply_profile_filters(job_ids: Optional[List[int]] = None,
 
     blocked = 0
     for job in jobs:
+        if job.get('saved'):
+            continue  # explicit user keep — never auto-hide it
         if job.get('ignore'):
             continue  # already hidden — leave it
         if profile_filter.job_blocked_by_profile(job, profile):
