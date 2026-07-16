@@ -642,6 +642,7 @@ def _job_to_dict(job: Job) -> Dict[str, Any]:
         'link': job.link,
         'description': job.description,
         'compensation': job.compensation,
+        'compensation_checked': bool(job.compensation_checked),
         'site': job.site,
         'ignore': job.ignore,
         'saved': job.saved,

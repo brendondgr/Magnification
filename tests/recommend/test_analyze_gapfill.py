@@ -148,7 +148,39 @@ def test_recover_compensation_fills_and_persists(monkeypatch):
     assert n == 1
     assert jobs[0]["compensation"] == "$100,000 a year"
     assert jobs[1]["compensation"] == "$50/hr"          # untouched
-    assert calls == [(1, {"compensation": "$100,000 a year"})]
+    # The recovered job is persisted with pay AND flagged checked so it isn't re-queried.
+    assert calls == [(1, {"compensation_checked": 1, "compensation": "$100,000 a year"})]
+
+
+def test_recover_compensation_marks_no_pay_jobs_checked(monkeypatch):
+    """A job whose description states no pay is flagged checked so later runs skip it."""
+    _enable_llm(monkeypatch, [{"compensation": None}])   # LLM finds no pay
+    calls = []
+    monkeypatch.setattr(service.db_ops, "update_job",
+                        lambda jid, updates: calls.append((jid, updates)) or True)
+    jobs = [{"id": 7, "description": "No salary listed here.", "compensation": ""}]
+    n = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
+    assert n == 0                                        # nothing recovered
+    assert jobs[0]["compensation"] == ""                 # still blank
+    assert calls == [(7, {"compensation_checked": 1})]   # but flagged as checked
+
+    # Second run: the job is now checked, so recovery skips it entirely (no LLM, no update).
+    calls.clear()
+    jobs[0]["compensation_checked"] = True
+    n2 = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
+    assert n2 == 0 and calls == []
+
+
+def test_recover_compensation_force_reattempts_checked_job(monkeypatch):
+    """force=True (reanalyze) re-queries even a job already flagged checked."""
+    _enable_llm(monkeypatch, [{"compensation": "$90k"}])
+    calls = []
+    monkeypatch.setattr(service.db_ops, "update_job",
+                        lambda jid, updates: calls.append((jid, updates)) or True)
+    jobs = [{"id": 9, "description": "We pay well.", "compensation": "", "compensation_checked": True}]
+    n = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2}, force=True)
+    assert n == 1
+    assert calls == [(9, {"compensation_checked": 1, "compensation": "$90k"})]
 
 
 def test_recover_compensation_disabled_toggle_is_noop(monkeypatch):

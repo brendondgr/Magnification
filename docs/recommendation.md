@@ -46,7 +46,8 @@ Scrape completes → scraping_service (if runtime.enable_analysis and an active 
            title blocklist, scoped keyword groups — see docs/profile.md]
         → embed missing job descriptions (parallel, fastembed)         [embed-on-retrieve]
         → recover missing compensation from descriptions (LLM, when enable_llm_compensation
-          + endpoint enabled) and persist it                            [gap-fill]
+          + endpoint enabled); flag each attempted job compensation_checked so a no-pay job
+          is queried once, not every run, and persist any recovered value   [gap-fill, once]
         → extract skills — reuse each job's stored extracted_skills; only (re)extract
           jobs that lack them (gazetteer, or LLM batch if enabled)   [reuse, like embeddings]
         → ranker.rank_batch → semantic/bm25/keyword/skill scores

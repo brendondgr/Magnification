@@ -30,6 +30,10 @@ class Job(Base):
         link: URL to the job posting
         description: Full job description
         compensation: Salary/compensation information
+        compensation_checked: Flag recording that LLM compensation extraction has already
+            run for this job (0=not yet, 1=checked). Set once the LLM has been asked —
+            whether or not it found pay — so no-pay jobs are not re-queried on every
+            "Analyze Matches"/scrape run. A forced reanalyze re-attempts regardless.
         site: The job board site where the job was found
         ignore: Flag to exclude from application tracking (0=track, 1=ignore)
         saved: Flag pinning the job to the Saved lane (0=not saved, 1=saved). Saved jobs
@@ -47,6 +51,7 @@ class Job(Base):
     link = Column(String(2048), nullable=True)
     description = Column(Text, nullable=True)
     compensation = Column(String(255), nullable=True)
+    compensation_checked = Column(Integer, default=0)
     site = Column(String(50), nullable=True)
     ignore = Column(Integer, default=0)
     saved = Column(Integer, default=0)

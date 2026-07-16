@@ -56,12 +56,13 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     _report(progress_callback, "embedding", 10, f"Embedding {len(jobs)} jobs…")
     job_vecs = _ensure_embeddings(jobs, runtime)
 
-    from .compensation import needs_compensation
-    n_missing_comp = sum(1 for j in jobs if needs_compensation(j))
+    from .compensation import needs_compensation_recovery
+    comp_force = not llm_only_missing
+    n_missing_comp = sum(1 for j in jobs if needs_compensation_recovery(j, force=comp_force))
     _report(progress_callback, "compensation", 40,
             (f"Recovering compensation for {n_missing_comp} job(s)…" if n_missing_comp
-             else "Compensation already present — nothing to recover."))
-    comp_recovered = _recover_compensation(jobs, runtime)
+             else "Compensation already checked — nothing to recover."))
+    comp_recovered = _recover_compensation(jobs, runtime, force=comp_force)
 
     # Reuse each job's stored extracted_skills (skills come from the description alone, so they
     # don't change between runs); only extract for jobs that lack them — or, on a forced
@@ -440,7 +441,8 @@ def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True)
     return updated
 
 
-def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any]) -> int:
+def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any],
+                          force: bool = False) -> int:
     """
     Fill in missing compensation for the given (non-ignored) jobs by extracting it from the
     description via the LLM, persisting each recovered value. Returns the number recovered.
@@ -448,23 +450,30 @@ def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any]) -
     Gated by the ``enable_llm_compensation`` runtime toggle and the LLM endpoint being
     enabled; a no-op (returns 0) otherwise. Mirrors the scraping-pipeline recovery so the
     "Analyze Matches" action also backfills pay the board listing never provided.
+
+    Only jobs that still lack pay **and** have not been checked before are queried (see
+    :func:`needs_compensation_recovery`); every attempted job is flagged
+    ``compensation_checked`` afterwards — whether or not pay was found — so no-pay jobs are
+    not re-queried on later runs. Pass ``force=True`` (a reanalyze) to re-attempt regardless.
     """
     if not runtime.get("enable_llm_compensation"):
         return 0
     cfg = load_llm_endpoint_config()
     if not cfg.get("enabled"):
         return 0
-    from .compensation import extract_compensation_llm, needs_compensation
-    pending = [j for j in jobs if needs_compensation(j)]
+    from .compensation import extract_compensation_llm, needs_compensation_recovery
+    pending = [j for j in jobs if needs_compensation_recovery(j, force=force)]
     if not pending:
         return 0
     try:
         client = OpenAIClient.from_config(cfg)
         extracted = extract_compensation_llm(
-            jobs, client, max_workers=int(runtime.get("llm_workers", 4)))
+            pending, client, max_workers=int(runtime.get("llm_workers", 4)))
         for j in pending:
+            updates = {"compensation_checked": 1}
             if j.get("compensation"):
-                db_ops.update_job(j["id"], {"compensation": j["compensation"]})
+                updates["compensation"] = j["compensation"]
+            db_ops.update_job(j["id"], updates)
         return extracted
     except Exception as e:
         logger.warning(f"Compensation recovery failed (non-fatal): {e}")

@@ -115,7 +115,8 @@ Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
                                     progress_callback=…)   [staged progress: embedding→
                                     compensation→skills→scoring→llm→completed, w/ job counts]
        → embed missing job descriptions (fastembed, parallel)   [embed-on-retrieve]
-       → recover missing compensation from descriptions (LLM)   [gap-fill, non-ignored jobs]
+       → recover missing compensation from descriptions (LLM; flag compensation_checked so
+         no-pay jobs are queried once, not every run)            [gap-fill, non-ignored jobs]
        → extract skills (reuse stored extracted_skills; only extract jobs missing them)
        → ranker.rank_batch (semantic + bm25 + keyword-group + skill → rag_score)
        → LLM fit verdict: coverage = top ceil(llm_fraction × N) of ALL analyzed jobs by
