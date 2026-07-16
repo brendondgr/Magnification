@@ -28,6 +28,19 @@ def test_needs_compensation():
     assert not comp.needs_compensation({"description": "", "compensation": ""})  # no text
 
 
+def test_needs_compensation_recovery_respects_checked_flag():
+    # Missing pay + not yet checked -> recover.
+    assert comp.needs_compensation_recovery({"description": "pays well", "compensation": ""})
+    # Missing pay but already checked -> skip (don't re-query a known no-pay job).
+    assert not comp.needs_compensation_recovery(
+        {"description": "pays well", "compensation": "", "compensation_checked": True})
+    # force=True re-attempts even a checked job.
+    assert comp.needs_compensation_recovery(
+        {"description": "pays well", "compensation": "", "compensation_checked": True}, force=True)
+    # Already has pay -> never recover, checked or not.
+    assert not comp.needs_compensation_recovery({"description": "x", "compensation": "$100k"})
+
+
 def test_extract_fills_only_missing():
     jobs = [
         {"title": "A", "description": "We pay $120k-$150k.", "compensation": "Not specified"},

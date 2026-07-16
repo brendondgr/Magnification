@@ -60,7 +60,7 @@ Configures the recommendation system. Config is stored in gitignored JSON (`conf
 | --- | --- | --- |
 | `/api/options/llm` | GET / POST | Get / save the OpenAI-compatible endpoint config (base_url, api_key, model, temperature, max_tokens, timeout, enabled) |
 | `/api/options/llm/test` | POST | Probe the endpoint (uses posted config if given, else saved); returns `{ok, ...}` |
-| `/api/options/runtime` | GET / POST | Get / save runtime knobs (parallel worker counts, analysis toggles, score weights, top_n_llm) |
+| `/api/options/runtime` | GET / POST | Get / save runtime knobs (parallel worker counts, analysis toggles, score weights, llm_fraction) |
 
 ## Profile API (`profile_bp`)
 

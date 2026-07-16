@@ -30,6 +30,21 @@ def needs_compensation(job: Dict[str, Any]) -> bool:
     return bool(desc) and comp in _EMPTY
 
 
+def needs_compensation_recovery(job: Dict[str, Any], force: bool = False) -> bool:
+    """
+    True when LLM compensation recovery should run for a job.
+
+    A job qualifies when it still lacks a usable pay string (:func:`needs_compensation`) **and**
+    the LLM has not already been asked for it (``compensation_checked`` is falsy). This stops
+    jobs whose descriptions genuinely state no pay — which stay blank forever — from being
+    re-queried on every "Analyze Matches"/scrape run. Pass ``force=True`` (a reanalyze) to
+    re-attempt regardless of the checked flag.
+    """
+    if not needs_compensation(job):
+        return False
+    return force or not job.get("compensation_checked")
+
+
 def _parse_comp(raw: Any) -> Optional[str]:
     """Coerce arbitrary LLM output into a clean compensation string, or None."""
     if isinstance(raw, dict):

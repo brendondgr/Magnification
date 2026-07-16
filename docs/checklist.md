@@ -1,5 +1,20 @@
 # Project Checklist — Magnification
 
+## Analyze Matches: Coverage + Redundant Re-work — Definition of Done
+Plan: `docs/plans/analyze-matches-coverage-and-rework.md`.
+- [x] (1/3) Retire `top_n_llm` so the "Jobs through the LLM" slider is the single coverage
+  control — a stale `top_n_llm` no longer silently caps 100% coverage below the verdict-less
+  jobs. Cap removed from `_select_llm_indices`, `DEFAULT_RUNTIME_CONFIG`, and the Options UI;
+  docs + LLM-features/gap-fill/options tests updated; regression test added.
+- [x] (2/3) Reuse stored `extracted_skills` in `analyze_jobs`; only extract jobs missing them
+  (force re-extracts). Reuse + force unit tests; recommendation/data-flow docs updated.
+- [x] (3/3) `jobs.compensation_checked` column (idempotent migration) + `needs_compensation_recovery`
+  so no-pay jobs are queried once, not every run; wired into Analyze Matches and the scrape
+  pipeline; database/data-flow docs + predicate/no-pay/force tests.
+- [x] Offline recommend/database/llm suites green + `import app` clean; merged to `main`
+  (pre-existing offline-only failure `test_analyze_api_and_report` — needs the embedding model
+  cached — deselected).
+
 ## Initialization (this overhaul) — Definition of Done
 
 ### Canonical docs
@@ -225,7 +240,8 @@ the top `top_n_llm` = 30 by `semantic+bm25`).
 - [x] (5/5) Full offline suite green + `import app` clean; merged to `main`
 - [ ] **LLM fit live on all jobs** — the all-jobs path is covered by mocked-client tests; running
   real verdicts for every job needs an enabled endpoint (Options → LLM Endpoint) + "LLM re-rank"
-  on. Note: uncapped fitting issues one LLM call **per analyzed job** — set `top_n_llm` > 0 to cap.
+  on. Note: full coverage issues one LLM call **per analyzed job** — lower the "Jobs through the
+  LLM" (`llm_fraction`) slider to cap cost.
 
 ## Systemd Daily Search (LLM-gated) — Definition of Done
 
@@ -384,7 +400,7 @@ personalized fit, and this must be **adjustable** (default **1.0** = all) in the
 - [ ] **LLM fit live on all searches** — the coverage selection is covered by mocked-client
   tests; issuing real verdicts for every job needs an enabled endpoint (Options → LLM Endpoint)
   + "LLM re-rank" on. Note: `llm_fraction = 1.0` issues one LLM call **per final job** — lower it
-  (or set `top_n_llm` > 0) to cap cost.
+  to cap cost.
 
 ## Find Jobs: Max Results 100 + Max Iterations — Definition of Done
 

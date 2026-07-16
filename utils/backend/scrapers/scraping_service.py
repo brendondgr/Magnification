@@ -405,21 +405,23 @@ def execute_full_scraping_workflow(
                 if comp_rc.get('enable_llm_compensation') and kept_jobs:
                     from ..llm.config import load_llm_endpoint_config
                     if load_llm_endpoint_config().get('enabled'):
-                        from ..recommend.compensation import extract_compensation_llm, needs_compensation
+                        from ..recommend.compensation import extract_compensation_llm, needs_compensation_recovery
                         from ..llm.client import OpenAIClient
                         from ..database.operations import update_job
-                        pending = [j for j in kept_jobs if needs_compensation(j)]
+                        pending = [j for j in kept_jobs if needs_compensation_recovery(j)]
                         if pending:
                             update_progress('extracting_compensation', 93, {
                                 'message': f'Extracting compensation from {len(pending)} description(s) via LLM...'
                             })
                             client = OpenAIClient.from_config()
                             extracted = extract_compensation_llm(
-                                kept_jobs, client, max_workers=comp_rc.get('llm_workers', 4)
+                                pending, client, max_workers=comp_rc.get('llm_workers', 4)
                             )
                             for job in pending:
+                                updates = {'compensation_checked': 1}
                                 if job.get('compensation'):
-                                    update_job(job['id'], {'compensation': job['compensation']})
+                                    updates['compensation'] = job['compensation']
+                                update_job(job['id'], updates)
                             results['steps']['compensation'] = {'candidates': len(pending), 'extracted': extracted}
                             update_progress('extracting_compensation', 95, {
                                 'message': f'Recovered compensation for {extracted} job(s)'

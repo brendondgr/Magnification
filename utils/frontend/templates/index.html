@@ -889,7 +889,6 @@
             <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">Embed workers</label><input type="number" min="1" value="{{ rtEmbedWorkers }}" oninput="{{ onRtEmbedWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)"></div>
             <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LinkedIn workers</label><input type="number" min="1" value="{{ rtLinkedinWorkers }}" oninput="{{ onRtLinkedinWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)"></div>
             <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LLM workers</label><input type="number" min="1" value="{{ rtLlmWorkers }}" oninput="{{ onRtLlmWorkers }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)"></div>
-            <div><label style="display:block;font:600 11px/1 var(--font-mono);color:var(--muted);margin-bottom:7px">LLM top-N (0 = all)</label><input type="number" min="0" value="{{ rtTopN }}" oninput="{{ onRtTopN }}" style="width:100%;height:40px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)"></div>
           </div>
 
           <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">LLM coverage</div>
@@ -1519,7 +1518,7 @@ class Component extends DCLogic {
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60},
-      runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,llm_fraction:1.0,top_n_llm:0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
+      runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,llm_fraction:1.0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
       jobs:[], loading:true
     };
     this.dragId=null;
@@ -2743,7 +2742,6 @@ class Component extends DCLogic {
       rtEmbedWorkers:rt.embed_workers, onRtEmbedWorkers:(e)=>this.rtSet({embed_workers:+e.target.value}),
       rtLinkedinWorkers:rt.linkedin_workers, onRtLinkedinWorkers:(e)=>this.rtSet({linkedin_workers:+e.target.value}),
       rtLlmWorkers:rt.llm_workers, onRtLlmWorkers:(e)=>this.rtSet({llm_workers:+e.target.value}),
-      rtTopN:rt.top_n_llm, onRtTopN:(e)=>this.rtSet({top_n_llm:+e.target.value}),
       rtLlmFraction:(rt.llm_fraction!=null?rt.llm_fraction:1.0), rtLlmFractionPct:Math.round((rt.llm_fraction!=null?rt.llm_fraction:1.0)*100)+'%', onRtLlmFraction:(e)=>this.rtSet({llm_fraction:+e.target.value}),
       weightSliders:[['semantic','Semantic'],['bm25','BM25'],['keyword','Keyword'],['skill','Skill'],['llm','LLM fit']].map(([key,label])=>{ const v=(w[key]!=null?w[key]:0); return {key,label,value:v,pct:Math.round(v*100)+'%',onInput:(e)=>this.rtWeightSet(key,+e.target.value)}; }),
       wTotalLabel:(wTotal.toFixed(2)+(wTotalOk?' ✓':' — must equal 1.00')), wTotalColor:(wTotalOk?'var(--c-offer-text)':'#E5484D'),

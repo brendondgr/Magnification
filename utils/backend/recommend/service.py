@@ -56,15 +56,25 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     _report(progress_callback, "embedding", 10, f"Embedding {len(jobs)} jobs…")
     job_vecs = _ensure_embeddings(jobs, runtime)
 
-    from .compensation import needs_compensation
-    n_missing_comp = sum(1 for j in jobs if needs_compensation(j))
+    from .compensation import needs_compensation_recovery
+    comp_force = not llm_only_missing
+    n_missing_comp = sum(1 for j in jobs if needs_compensation_recovery(j, force=comp_force))
     _report(progress_callback, "compensation", 40,
             (f"Recovering compensation for {n_missing_comp} job(s)…" if n_missing_comp
-             else "Compensation already present — nothing to recover."))
-    comp_recovered = _recover_compensation(jobs, runtime)
+             else "Compensation already checked — nothing to recover."))
+    comp_recovered = _recover_compensation(jobs, runtime, force=comp_force)
 
-    _report(progress_callback, "skills", 45, "Extracting skills…")
-    skills_map = _extract_skills_for_jobs(jobs, profile, runtime)
+    # Reuse each job's stored extracted_skills (skills come from the description alone, so they
+    # don't change between runs); only extract for jobs that lack them — or, on a forced
+    # reanalyze, for every job. Mirrors how embeddings are reused by _ensure_embeddings.
+    n_skill_missing = sum(
+        1 for j in jobs
+        if (not llm_only_missing) or not ((stored.get(j["id"]) or {}).get("extracted_skills")))
+    _report(progress_callback, "skills", 45,
+            (f"Extracting skills for {n_skill_missing} job(s)…" if n_skill_missing
+             else "Skills already extracted — reusing stored."))
+    skills_map = _extract_skills_for_jobs(
+        jobs, profile, runtime, stored=stored, force=not llm_only_missing)
 
     _report(progress_callback, "scoring", 75, "Scoring against profile…")
     profile_query = ranker.build_profile_query(profile)
@@ -97,8 +107,8 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
         llm_new = _llm_rerank(jobs, analyses, profile, runtime,
                               llm_only_missing=llm_only_missing)
 
-    # Fold the LLM verdict into rag_score. Jobs with no verdict (offline, or excluded by an
-    # optional top_n_llm cap) renormalize over the remaining signals (combined_score handles it).
+    # Fold the LLM verdict into rag_score. Jobs with no verdict (offline, or outside the
+    # llm_fraction coverage share) renormalize over the remaining signals (combined_score handles it).
     for an in analyses:
         signals = {
             "semantic": an["semantic_score"], "bm25": an["bm25_score"],
@@ -275,37 +285,57 @@ def _ensure_embeddings(jobs: List[Dict[str, Any]], runtime: Dict[str, Any]) -> D
     return vecs
 
 
-def _extract_skills_for_jobs(jobs, profile, runtime) -> Dict[int, List[str]]:
-    """Extract skills per job — LLM batch when enabled+configured, else the fast gazetteer."""
+def _extract_skills_for_jobs(jobs, profile, runtime, stored=None, force=False) -> Dict[int, List[str]]:
+    """
+    Return an ``{id: skills}`` map for every job, reusing prior work.
+
+    Skills are derived from the job description alone, so a job's stored ``extracted_skills``
+    stay valid across runs. Jobs that already have a non-empty stored list are reused as-is;
+    only the remainder is (re)extracted — LLM batch when enabled+configured, else the fast
+    gazetteer. Pass ``force=True`` to re-extract every job regardless of stored skills.
+    """
     profile_skills = profile.get("skills") or []
-    if runtime.get("enable_llm_skills"):
-        cfg = load_llm_endpoint_config()
-        if cfg.get("enabled"):
-            try:
-                client = OpenAIClient.from_config(cfg)
-                messages = [[
-                    {"role": "system", "content": skills.LLM_SKILLS_PROMPT},
-                    {"role": "user", "content": (j.get("description") or "")[:6000]},
-                ] for j in jobs]
-                results = client.chat_many(
-                    messages, max_workers=int(runtime.get("llm_workers", 4)), as_json=True
-                )
-                out: Dict[int, List[str]] = {}
-                for j, r in zip(jobs, results):
-                    if isinstance(r, dict):
-                        r = r.get("skills")
-                    if isinstance(r, list) and r:
-                        out[j["id"]] = [str(x).strip() for x in r if str(x).strip()]
-                    else:  # fall back per-job
-                        out[j["id"]] = skills.extract_skills(
-                            j.get("description") or "", extra_skills=profile_skills)
-                return out
-            except Exception as e:
-                logger.warning(f"LLM skill extraction failed, using gazetteer: {e}")
-    return {
-        j["id"]: skills.extract_skills(j.get("description") or "", extra_skills=profile_skills)
-        for j in jobs
-    }
+    stored = stored or {}
+    reused: Dict[int, List[str]] = {}
+    pending = []
+    for j in jobs:
+        prev = (stored.get(j["id"]) or {}).get("extracted_skills")
+        if prev and not force:
+            reused[j["id"]] = prev
+        else:
+            pending.append(j)
+
+    extracted: Dict[int, List[str]] = {}
+    if pending:
+        if runtime.get("enable_llm_skills"):
+            cfg = load_llm_endpoint_config()
+            if cfg.get("enabled"):
+                try:
+                    client = OpenAIClient.from_config(cfg)
+                    messages = [[
+                        {"role": "system", "content": skills.LLM_SKILLS_PROMPT},
+                        {"role": "user", "content": (j.get("description") or "")[:6000]},
+                    ] for j in pending]
+                    results = client.chat_many(
+                        messages, max_workers=int(runtime.get("llm_workers", 4)), as_json=True
+                    )
+                    for j, r in zip(pending, results):
+                        if isinstance(r, dict):
+                            r = r.get("skills")
+                        if isinstance(r, list) and r:
+                            extracted[j["id"]] = [str(x).strip() for x in r if str(x).strip()]
+                        else:  # fall back per-job
+                            extracted[j["id"]] = skills.extract_skills(
+                                j.get("description") or "", extra_skills=profile_skills)
+                except Exception as e:
+                    logger.warning(f"LLM skill extraction failed, using gazetteer: {e}")
+        for j in pending:
+            if j["id"] not in extracted:
+                extracted[j["id"]] = skills.extract_skills(
+                    j.get("description") or "", extra_skills=profile_skills)
+
+    reused.update(extracted)
+    return reused
 
 
 _LLM_VERDICT_PROMPT = (
@@ -326,13 +356,11 @@ def _select_llm_indices(analyses: List[Dict[str, Any]], runtime: Dict[str, Any],
 
     Coverage is computed over the **full** analyzed set — not just the jobs still missing a
     verdict — so the fraction means what the Options copy says: 100% covers every job, 50% the
-    top half. Two composing knobs, both read from ``runtime``:
+    top half. The single knob, read from ``runtime``:
 
     * ``llm_fraction`` (default ``1.0``) — keep the top ``ceil(fraction × N)`` of **all**
       analyses by **semantic + bm25**. ``1.0`` covers every job (manual searches and the daily
       bot alike); ``<1.0`` keeps only that top share. Clamped to ``[0, 1]``.
-    * ``top_n_llm`` — an optional absolute cost cap applied **after** the fraction: ``0`` (or
-      missing/negative) means no cap; ``N>0`` limits the coverage to that many top candidates.
 
     The gap-fill filter is applied **last**: when ``llm_only_missing`` is True, jobs in the
     coverage set that already carry a verdict are dropped, so repeat runs stay cheap while 100%
@@ -363,10 +391,6 @@ def _select_llm_indices(analyses: List[Dict[str, Any]], runtime: Dict[str, Any],
     else:
         coverage = all_idx
 
-    top_n = int(runtime.get("top_n_llm", 0) or 0)
-    if top_n > 0:
-        coverage = _by_relevance(coverage)[:top_n]
-
     if llm_only_missing:
         coverage = [i for i in coverage if analyses[i].get("llm_score") is None]
     return coverage
@@ -379,9 +403,9 @@ def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True)
 
     Coverage (which jobs get a verdict) is decided by ``_select_llm_indices``: the
     ``llm_fraction`` "Jobs through the LLM" slider selects the top share of the **full**
-    analyzed set, ``top_n_llm`` optionally caps it, and — when ``llm_only_missing`` is True —
-    jobs that already carry a verdict (e.g. seeded from a prior analysis) are skipped so
-    "Analyze Matches" only fills the gaps within that coverage.
+    analyzed set, and — when ``llm_only_missing`` is True — jobs that already carry a verdict
+    (e.g. seeded from a prior analysis) are skipped so "Analyze Matches" only fills the gaps
+    within that coverage.
     """
     cfg = load_llm_endpoint_config()
     if not cfg.get("enabled"):
@@ -417,7 +441,8 @@ def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True)
     return updated
 
 
-def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any]) -> int:
+def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any],
+                          force: bool = False) -> int:
     """
     Fill in missing compensation for the given (non-ignored) jobs by extracting it from the
     description via the LLM, persisting each recovered value. Returns the number recovered.
@@ -425,23 +450,30 @@ def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any]) -
     Gated by the ``enable_llm_compensation`` runtime toggle and the LLM endpoint being
     enabled; a no-op (returns 0) otherwise. Mirrors the scraping-pipeline recovery so the
     "Analyze Matches" action also backfills pay the board listing never provided.
+
+    Only jobs that still lack pay **and** have not been checked before are queried (see
+    :func:`needs_compensation_recovery`); every attempted job is flagged
+    ``compensation_checked`` afterwards — whether or not pay was found — so no-pay jobs are
+    not re-queried on later runs. Pass ``force=True`` (a reanalyze) to re-attempt regardless.
     """
     if not runtime.get("enable_llm_compensation"):
         return 0
     cfg = load_llm_endpoint_config()
     if not cfg.get("enabled"):
         return 0
-    from .compensation import extract_compensation_llm, needs_compensation
-    pending = [j for j in jobs if needs_compensation(j)]
+    from .compensation import extract_compensation_llm, needs_compensation_recovery
+    pending = [j for j in jobs if needs_compensation_recovery(j, force=force)]
     if not pending:
         return 0
     try:
         client = OpenAIClient.from_config(cfg)
         extracted = extract_compensation_llm(
-            jobs, client, max_workers=int(runtime.get("llm_workers", 4)))
+            pending, client, max_workers=int(runtime.get("llm_workers", 4)))
         for j in pending:
+            updates = {"compensation_checked": 1}
             if j.get("compensation"):
-                db_ops.update_job(j["id"], {"compensation": j["compensation"]})
+                updates["compensation"] = j["compensation"]
+            db_ops.update_job(j["id"], updates)
         return extracted
     except Exception as e:
         logger.warning(f"Compensation recovery failed (non-fatal): {e}")

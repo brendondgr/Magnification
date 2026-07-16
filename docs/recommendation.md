@@ -13,7 +13,7 @@ Computed per job by `utils/backend/recommend/ranker.py` and combined into `rag_s
 | **bm25** | `bm25.BM25Index` over the job corpus | Lexical overlap of the profile query vs descriptions, normalized 0..1. |
 | **keyword** | `ranker.keyword_group_score` | Fraction of the profile's keyword groups satisfied — **AND across groups, OR within**, and **scope-aware**: each group's `scopes` (⊆ title/description) picks where its terms are matched. Groups also act as a **hard filter** at scrape time (see `docs/profile.md`). |
 | **skill** | `skills.match_profile_skills` | Fraction of the job's extracted skills the profile covers. |
-| **llm** | `service._llm_rerank` verdict | The LLM's 0-100 fit score (÷100), computed for **every analyzed job** by default (see Flow). Coverage is dialed by `llm_fraction` (default `1.0` = all; `<1.0` keeps the top `ceil(fraction × N)` by semantic+bm25), with an optional `top_n_llm` absolute cap composing on top (`0` = all; `N>0` = top-N by semantic+bm25). Absent when offline or excluded by the fraction/cap. |
+| **llm** | `service._llm_rerank` verdict | The LLM's 0-100 fit score (÷100), computed for **every analyzed job** by default (see Flow). Coverage is dialed by the single `llm_fraction` knob (default `1.0` = all; `<1.0` keeps the top `ceil(fraction × N)` by semantic+bm25). Absent when offline or outside that coverage share. |
 
 Weights are configurable in **Options → Runtime** (`runtime_config.weights`) as sliders that
 must total exactly **1.00**; default `semantic 0.30 / bm25 0.15 / keyword 0.10 / skill 0.05 /
@@ -46,17 +46,19 @@ Scrape completes → scraping_service (if runtime.enable_analysis and an active 
            title blocklist, scoped keyword groups — see docs/profile.md]
         → embed missing job descriptions (parallel, fastembed)         [embed-on-retrieve]
         → recover missing compensation from descriptions (LLM, when enable_llm_compensation
-          + endpoint enabled) and persist it                            [gap-fill]
-        → extract skills (gazetteer, or LLM batch if enabled)
+          + endpoint enabled); flag each attempted job compensation_checked so a no-pay job
+          is queried once, not every run, and persist any recovered value   [gap-fill, once]
+        → extract skills — reuse each job's stored extracted_skills; only (re)extract
+          jobs that lack them (gazetteer, or LLM batch if enabled)   [reuse, like embeddings]
         → ranker.rank_batch → semantic/bm25/keyword/skill scores
         → seed any existing stored LLM verdict onto the fresh analysis  [preserve]
         → pick the coverage set over ALL analyzed jobs: top ceil(`llm_fraction` × N) by
-          semantic+bm25 (default 1.0 = every job; <1.0 = that top share), then optional
-          `top_n_llm` cap (0 = no cap, N>0 = top-N); THEN gap-fill — issue an LLM fit verdict
-          only for jobs in the coverage set that don't already have one (2-3 sentences, weighs
-          what the company wants) → fold `llm` into rag_score (renormalized when absent). So
-          100% guarantees every job ends up with a verdict while repeat runs stay cheap; 50% =
-          the top 50% of all jobs. Applies to manual searches and the daily bot (shared workflow).
+          semantic+bm25 (default 1.0 = every job; <1.0 = that top share) — the slider is the
+          single coverage control; THEN gap-fill — issue an LLM fit verdict only for jobs in
+          the coverage set that don't already have one (2-3 sentences, weighs what the company
+          wants) → fold `llm` into rag_score (renormalized when absent). So 100% guarantees
+          every job ends up with a verdict while repeat runs stay cheap; 50% = the top 50% of
+          all jobs. Applies to manual searches and the daily bot (shared workflow).
         → save_job_analysis per job (JobAnalysis table)
 
 Manual: POST /api/recommend/analyze  ("Analyze Matches" — gap-fills LLM fit + compensation for

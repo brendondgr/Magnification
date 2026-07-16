@@ -41,9 +41,11 @@ def _run_migrations():
     from .migrate_profile_blocklists import migrate as migrate_profile_blocklists
     from .migrate_profile_llm_instructions import migrate as migrate_profile_llm_instructions
     from .migrate_job_saved import migrate as migrate_job_saved
+    from .migrate_job_compensation_checked import migrate as migrate_job_compensation_checked
     migrate_profile_blocklists()
     migrate_profile_llm_instructions()
     migrate_job_saved()
+    migrate_job_compensation_checked()
 
 
 def _seed_documents():

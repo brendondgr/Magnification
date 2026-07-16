@@ -106,6 +106,33 @@ def test_full_coverage_gapfills_only_missing(monkeypatch):
     assert analyses[2]["llm_score"] == 88.0  # gap filled
 
 
+def test_full_coverage_ignores_stale_top_n_cap(monkeypatch):
+    """Regression: the retired top_n_llm no longer caps 100% coverage.
+
+    Reproduces the reported bug — the top-relevance jobs already carry a verdict while the
+    LOW-relevance jobs lack one. A leftover top_n_llm (=2) used to cap coverage to the top 2
+    (already-verdicted) jobs, so the gap-fill filter found nothing and "Analyze Matches"
+    reported everything already covered. With top_n_llm ignored, 100% coverage reaches the
+    verdict-less low-relevance jobs and fills them.
+    """
+    _enable_llm(monkeypatch, [{"score": 30, "rationale": "r"}, {"score": 31, "rationale": "r"}])
+    jobs = [{"id": i, "title": f"J{i}", "description": "d"} for i in range(1, 5)]
+    analyses = [
+        {"job_id": 1, "semantic_score": 0.9, "bm25_score": 0.9, "llm_score": 90.0},  # top, verdicted
+        {"job_id": 2, "semantic_score": 0.8, "bm25_score": 0.8, "llm_score": 91.0},  # top, verdicted
+        {"job_id": 3, "semantic_score": 0.2, "bm25_score": 0.2},                     # low, gap
+        {"job_id": 4, "semantic_score": 0.1, "bm25_score": 0.1},                     # low, gap
+    ]
+    new = service._llm_rerank(jobs, analyses, {"interests_paragraph": "x"},
+                              {"llm_fraction": 1.0, "top_n_llm": 2, "llm_workers": 2},
+                              llm_only_missing=True)
+    assert new == 2                                  # both low-relevance gaps filled despite top_n_llm=2
+    assert analyses[2].get("llm_score") is not None
+    assert analyses[3].get("llm_score") is not None
+    assert analyses[0]["llm_score"] == 90.0          # existing verdicts preserved
+    assert analyses[1]["llm_score"] == 91.0
+
+
 # ---- compensation recovery ----
 
 def test_recover_compensation_fills_and_persists(monkeypatch):
@@ -121,7 +148,39 @@ def test_recover_compensation_fills_and_persists(monkeypatch):
     assert n == 1
     assert jobs[0]["compensation"] == "$100,000 a year"
     assert jobs[1]["compensation"] == "$50/hr"          # untouched
-    assert calls == [(1, {"compensation": "$100,000 a year"})]
+    # The recovered job is persisted with pay AND flagged checked so it isn't re-queried.
+    assert calls == [(1, {"compensation_checked": 1, "compensation": "$100,000 a year"})]
+
+
+def test_recover_compensation_marks_no_pay_jobs_checked(monkeypatch):
+    """A job whose description states no pay is flagged checked so later runs skip it."""
+    _enable_llm(monkeypatch, [{"compensation": None}])   # LLM finds no pay
+    calls = []
+    monkeypatch.setattr(service.db_ops, "update_job",
+                        lambda jid, updates: calls.append((jid, updates)) or True)
+    jobs = [{"id": 7, "description": "No salary listed here.", "compensation": ""}]
+    n = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
+    assert n == 0                                        # nothing recovered
+    assert jobs[0]["compensation"] == ""                 # still blank
+    assert calls == [(7, {"compensation_checked": 1})]   # but flagged as checked
+
+    # Second run: the job is now checked, so recovery skips it entirely (no LLM, no update).
+    calls.clear()
+    jobs[0]["compensation_checked"] = True
+    n2 = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
+    assert n2 == 0 and calls == []
+
+
+def test_recover_compensation_force_reattempts_checked_job(monkeypatch):
+    """force=True (reanalyze) re-queries even a job already flagged checked."""
+    _enable_llm(monkeypatch, [{"compensation": "$90k"}])
+    calls = []
+    monkeypatch.setattr(service.db_ops, "update_job",
+                        lambda jid, updates: calls.append((jid, updates)) or True)
+    jobs = [{"id": 9, "description": "We pay well.", "compensation": "", "compensation_checked": True}]
+    n = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2}, force=True)
+    assert n == 1
+    assert calls == [(9, {"compensation_checked": 1, "compensation": "$90k"})]
 
 
 def test_recover_compensation_disabled_toggle_is_noop(monkeypatch):
