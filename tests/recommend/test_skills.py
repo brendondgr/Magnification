@@ -56,3 +56,41 @@ def test_extract_skills_llm_with_fake_client():
 
     out = extract_skills_llm("…", FakeClient())
     assert out == ["Python", "RAG"]
+
+
+# ---- reuse of stored extracted_skills (service._extract_skills_for_jobs) ----
+
+def test_extract_skills_reuses_stored_and_only_fills_gaps(monkeypatch):
+    """Jobs with stored skills are reused verbatim; only jobs missing them are (re)extracted."""
+    from utils.backend.recommend import service
+
+    calls = []
+
+    def _spy_extract(desc, extra_skills=None):
+        calls.append(desc)
+        return ["Gazetteer"]
+
+    monkeypatch.setattr(service.skills, "extract_skills", _spy_extract)
+
+    jobs = [{"id": 1, "description": "job one"}, {"id": 2, "description": "job two"}]
+    stored = {1: {"extracted_skills": ["Python", "AWS"]}}  # job 1 already has skills; job 2 doesn't
+
+    out = service._extract_skills_for_jobs(jobs, {"skills": []}, {}, stored=stored)
+    assert out[1] == ["Python", "AWS"]     # reused, not recomputed
+    assert out[2] == ["Gazetteer"]         # the only gap was extracted
+    assert calls == ["job two"]            # extractor ran exactly once (job 2 only)
+
+
+def test_extract_skills_force_reextracts_all(monkeypatch):
+    """force=True (reanalyze_all) re-extracts every job even when stored skills exist."""
+    from utils.backend.recommend import service
+
+    calls = []
+    monkeypatch.setattr(service.skills, "extract_skills",
+                        lambda desc, extra_skills=None: calls.append(desc) or ["X"])
+
+    jobs = [{"id": 1, "description": "one"}, {"id": 2, "description": "two"}]
+    stored = {1: {"extracted_skills": ["Python"]}, 2: {"extracted_skills": ["Rust"]}}
+    out = service._extract_skills_for_jobs(jobs, {"skills": []}, {}, stored=stored, force=True)
+    assert out == {1: ["X"], 2: ["X"]}
+    assert sorted(calls) == ["one", "two"]  # both re-extracted

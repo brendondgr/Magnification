@@ -47,7 +47,8 @@ Scrape completes → scraping_service (if runtime.enable_analysis and an active 
         → embed missing job descriptions (parallel, fastembed)         [embed-on-retrieve]
         → recover missing compensation from descriptions (LLM, when enable_llm_compensation
           + endpoint enabled) and persist it                            [gap-fill]
-        → extract skills (gazetteer, or LLM batch if enabled)
+        → extract skills — reuse each job's stored extracted_skills; only (re)extract
+          jobs that lack them (gazetteer, or LLM batch if enabled)   [reuse, like embeddings]
         → ranker.rank_batch → semantic/bm25/keyword/skill scores
         → seed any existing stored LLM verdict onto the fresh analysis  [preserve]
         → pick the coverage set over ALL analyzed jobs: top ceil(`llm_fraction` × N) by

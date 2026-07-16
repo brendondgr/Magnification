@@ -63,8 +63,17 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
              else "Compensation already present — nothing to recover."))
     comp_recovered = _recover_compensation(jobs, runtime)
 
-    _report(progress_callback, "skills", 45, "Extracting skills…")
-    skills_map = _extract_skills_for_jobs(jobs, profile, runtime)
+    # Reuse each job's stored extracted_skills (skills come from the description alone, so they
+    # don't change between runs); only extract for jobs that lack them — or, on a forced
+    # reanalyze, for every job. Mirrors how embeddings are reused by _ensure_embeddings.
+    n_skill_missing = sum(
+        1 for j in jobs
+        if (not llm_only_missing) or not ((stored.get(j["id"]) or {}).get("extracted_skills")))
+    _report(progress_callback, "skills", 45,
+            (f"Extracting skills for {n_skill_missing} job(s)…" if n_skill_missing
+             else "Skills already extracted — reusing stored."))
+    skills_map = _extract_skills_for_jobs(
+        jobs, profile, runtime, stored=stored, force=not llm_only_missing)
 
     _report(progress_callback, "scoring", 75, "Scoring against profile…")
     profile_query = ranker.build_profile_query(profile)
@@ -275,37 +284,57 @@ def _ensure_embeddings(jobs: List[Dict[str, Any]], runtime: Dict[str, Any]) -> D
     return vecs
 
 
-def _extract_skills_for_jobs(jobs, profile, runtime) -> Dict[int, List[str]]:
-    """Extract skills per job — LLM batch when enabled+configured, else the fast gazetteer."""
+def _extract_skills_for_jobs(jobs, profile, runtime, stored=None, force=False) -> Dict[int, List[str]]:
+    """
+    Return an ``{id: skills}`` map for every job, reusing prior work.
+
+    Skills are derived from the job description alone, so a job's stored ``extracted_skills``
+    stay valid across runs. Jobs that already have a non-empty stored list are reused as-is;
+    only the remainder is (re)extracted — LLM batch when enabled+configured, else the fast
+    gazetteer. Pass ``force=True`` to re-extract every job regardless of stored skills.
+    """
     profile_skills = profile.get("skills") or []
-    if runtime.get("enable_llm_skills"):
-        cfg = load_llm_endpoint_config()
-        if cfg.get("enabled"):
-            try:
-                client = OpenAIClient.from_config(cfg)
-                messages = [[
-                    {"role": "system", "content": skills.LLM_SKILLS_PROMPT},
-                    {"role": "user", "content": (j.get("description") or "")[:6000]},
-                ] for j in jobs]
-                results = client.chat_many(
-                    messages, max_workers=int(runtime.get("llm_workers", 4)), as_json=True
-                )
-                out: Dict[int, List[str]] = {}
-                for j, r in zip(jobs, results):
-                    if isinstance(r, dict):
-                        r = r.get("skills")
-                    if isinstance(r, list) and r:
-                        out[j["id"]] = [str(x).strip() for x in r if str(x).strip()]
-                    else:  # fall back per-job
-                        out[j["id"]] = skills.extract_skills(
-                            j.get("description") or "", extra_skills=profile_skills)
-                return out
-            except Exception as e:
-                logger.warning(f"LLM skill extraction failed, using gazetteer: {e}")
-    return {
-        j["id"]: skills.extract_skills(j.get("description") or "", extra_skills=profile_skills)
-        for j in jobs
-    }
+    stored = stored or {}
+    reused: Dict[int, List[str]] = {}
+    pending = []
+    for j in jobs:
+        prev = (stored.get(j["id"]) or {}).get("extracted_skills")
+        if prev and not force:
+            reused[j["id"]] = prev
+        else:
+            pending.append(j)
+
+    extracted: Dict[int, List[str]] = {}
+    if pending:
+        if runtime.get("enable_llm_skills"):
+            cfg = load_llm_endpoint_config()
+            if cfg.get("enabled"):
+                try:
+                    client = OpenAIClient.from_config(cfg)
+                    messages = [[
+                        {"role": "system", "content": skills.LLM_SKILLS_PROMPT},
+                        {"role": "user", "content": (j.get("description") or "")[:6000]},
+                    ] for j in pending]
+                    results = client.chat_many(
+                        messages, max_workers=int(runtime.get("llm_workers", 4)), as_json=True
+                    )
+                    for j, r in zip(pending, results):
+                        if isinstance(r, dict):
+                            r = r.get("skills")
+                        if isinstance(r, list) and r:
+                            extracted[j["id"]] = [str(x).strip() for x in r if str(x).strip()]
+                        else:  # fall back per-job
+                            extracted[j["id"]] = skills.extract_skills(
+                                j.get("description") or "", extra_skills=profile_skills)
+                except Exception as e:
+                    logger.warning(f"LLM skill extraction failed, using gazetteer: {e}")
+        for j in pending:
+            if j["id"] not in extracted:
+                extracted[j["id"]] = skills.extract_skills(
+                    j.get("description") or "", extra_skills=profile_skills)
+
+    reused.update(extracted)
+    return reused
 
 
 _LLM_VERDICT_PROMPT = (
