@@ -9,7 +9,7 @@ Combines up to five signals into a single ``rag_score`` (0..1):
   * llm      — the LLM fit verdict (0..1), added by the service layer for the analyzed jobs
 
 The combine step **renormalizes over whichever signals are present**, so a job with no LLM
-verdict (offline, or excluded by an optional ``top_n_llm`` cap) is scored over the remaining
+verdict (offline, or outside the ``llm_fraction`` coverage share) is scored over the remaining
 weights — e.g. with ``llm`` weighted 0.40, such a job's score is computed out of the other 0.60.
 
 The service layer (``service.py``) supplies embeddings + extracted skills + the LLM verdict;

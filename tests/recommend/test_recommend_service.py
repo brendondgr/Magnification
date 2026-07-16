@@ -89,7 +89,7 @@ def test_llm_verdict_folds_into_rag(profile_and_jobs, monkeypatch):
                         classmethod(lambda cls, *a, **k: FakeClient()))
 
     ids = [profile_and_jobs["good"], profile_and_jobs["bad"]]
-    runtime = {"enable_llm_rerank": True, "top_n_llm": 30, "embed_batch_size": 32,
+    runtime = {"enable_llm_rerank": True, "embed_batch_size": 32,
                "embed_workers": 2, "llm_workers": 2, "weights": ranker.DEFAULT_WEIGHTS}
     service.analyze_jobs(job_ids=ids, runtime=runtime)
 

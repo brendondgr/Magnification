@@ -32,8 +32,7 @@ DEFAULT_RUNTIME_CONFIG: Dict[str, Any] = {
     "linkedin_delay": 0.5,          # seconds between requests (jittered) — eases rate-limiting
     "llm_workers": 4,
     # ranking
-    "llm_fraction": 1.0,            # LLM-fit coverage: 1.0 = every final job → LLM; <1.0 = top share by semantic+bm25
-    "top_n_llm": 0,                 # optional LLM-fit cap: 0 = all jobs; N>0 = top-N (semantic+bm25) only
+    "llm_fraction": 1.0,            # LLM-fit coverage dial: 1.0 = every final job → LLM; <1.0 = top share by semantic+bm25
     "weights": {                    # must sum to 1.0; `llm` renormalized out when absent
         "semantic": 0.30,
         "bm25": 0.15,

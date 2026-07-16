@@ -55,20 +55,23 @@ def test_seed_from_profile():
 
 # ---- LLM re-rank ----
 
-def test_llm_rerank_sets_score_on_top(monkeypatch):
+def test_llm_rerank_sets_score_on_top_share(monkeypatch):
+    """A <1.0 llm_fraction covers only the top share by semantic+bm25."""
     monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": True, "base_url": "x"})
     monkeypatch.setattr(service.OpenAIClient, "from_config",
                         classmethod(lambda cls, cfg, **kw: FakeClient(many_result=[{"score": 88, "rationale": "great fit"}])))
     jobs = [{"id": 1, "title": "ML Eng", "description": "ml"}, {"id": 2, "title": "Sales", "description": "x"}]
-    analyses = [{"job_id": 1, "rag_score": 0.9}, {"job_id": 2, "rag_score": 0.2}]
-    service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"}, {"top_n_llm": 1, "llm_workers": 2})
+    # Job 1 is the top by semantic+bm25, so a 0.5 fraction covers only it.
+    analyses = [{"job_id": 1, "rag_score": 0.9, "semantic_score": 0.9, "bm25_score": 0.9},
+                {"job_id": 2, "rag_score": 0.2, "semantic_score": 0.1, "bm25_score": 0.1}]
+    service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"}, {"llm_fraction": 0.5, "llm_workers": 2})
     assert analyses[0]["llm_score"] == 88.0
     assert analyses[0]["llm_rationale"] == "great fit"
-    assert "llm_score" not in analyses[1]  # below the positive top_n_llm cap, untouched
+    assert "llm_score" not in analyses[1]  # outside the top-share coverage, untouched
 
 
 def test_llm_rerank_covers_all_jobs_by_default(monkeypatch):
-    """With no top_n_llm cap (0/absent), EVERY analyzed job gets an LLM fit verdict."""
+    """With the default full coverage (llm_fraction 1.0/absent), EVERY analyzed job gets a verdict."""
     monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": True, "base_url": "x"})
     monkeypatch.setattr(service.OpenAIClient, "from_config",
                         classmethod(lambda cls, cfg, **kw: FakeClient(
@@ -76,20 +79,20 @@ def test_llm_rerank_covers_all_jobs_by_default(monkeypatch):
     jobs = [{"id": 1, "title": "ML Eng", "description": "ml"}, {"id": 2, "title": "Sales", "description": "x"}]
     analyses = [{"job_id": 1, "rag_score": 0.9, "semantic_score": 0.1, "bm25_score": 0.1},
                 {"job_id": 2, "rag_score": 0.2, "semantic_score": 0.9, "bm25_score": 0.9}]
-    # No top_n_llm key → uncapped → all jobs scored (not just the single top-ranked one).
+    # No llm_fraction key → full coverage → all jobs scored.
     service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"}, {"llm_workers": 2})
     assert analyses[0]["llm_score"] == 70.0
     assert analyses[1]["llm_score"] == 40.0
-    # top_n_llm: 0 is equivalent to absent (explicit "all jobs").
+    # Explicit llm_fraction 1.0 is equivalent to absent.
     analyses2 = [{"job_id": 1, "rag_score": 0.9}, {"job_id": 2, "rag_score": 0.2}]
-    service._llm_rerank(jobs, analyses2, {"interests_paragraph": "ml"}, {"top_n_llm": 0})
+    service._llm_rerank(jobs, analyses2, {"interests_paragraph": "ml"}, {"llm_fraction": 1.0})
     assert "llm_score" in analyses2[0] and "llm_score" in analyses2[1]
 
 
 def test_llm_rerank_disabled_is_noop(monkeypatch):
     monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": False})
     analyses = [{"job_id": 1, "rag_score": 0.9}]
-    service._llm_rerank([{"id": 1, "title": "x", "description": "x"}], analyses, {}, {"top_n_llm": 5})
+    service._llm_rerank([{"id": 1, "title": "x", "description": "x"}], analyses, {}, {"llm_workers": 2})
     assert "llm_score" not in analyses[0]
 
 
@@ -148,13 +151,14 @@ def test_llm_fraction_ceil_covers_at_least_one(monkeypatch):
     assert analyses[3].get("llm_score") == 60.0  # job 4, the top by semantic+bm25
 
 
-def test_llm_fraction_composes_with_top_n_cap(monkeypatch):
-    """llm_fraction selects the top share, then top_n_llm caps it further."""
-    _enable_fake(monkeypatch, [{"score": 88, "rationale": "r"}])
+def test_llm_fraction_is_the_only_coverage_knob(monkeypatch):
+    """A stale top_n_llm key is ignored: the coverage share is decided solely by llm_fraction."""
+    _enable_fake(monkeypatch, [{"score": 88, "rationale": "r"}] * 3)
     jobs, analyses = _four_jobs_analyses()
-    # fraction 0.75 → top 3 (jobs 2,3,4); top_n_llm 1 → just the single best (job 4).
+    # fraction 0.75 → top 3 (jobs 2,3,4); a leftover top_n_llm no longer caps it.
     n = service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"},
                             {"llm_fraction": 0.75, "top_n_llm": 1, "llm_workers": 2})
-    assert n == 1
-    assert analyses[3].get("llm_score") == 88.0
-    assert all(analyses[i].get("llm_score") is None for i in (0, 1, 2))
+    assert n == 3
+    scored = {a["job_id"] for a in analyses if a.get("llm_score") is not None}
+    assert scored == {2, 3, 4}
+    assert analyses[0].get("llm_score") is None  # job 1, outside the top-75% share

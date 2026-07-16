@@ -73,14 +73,14 @@ def test_runtime_options_roundtrip(client):
     assert "weights" in defaults and "embed_workers" in defaults
 
     save = client.post("/api/options/runtime", json={
-        "enable_llm_rerank": True, "top_n_llm": 5,
+        "enable_llm_rerank": True, "llm_fraction": 0.5,
         "weights": {"semantic": 0.7},
     })
     assert save.status_code == 200 and save.get_json()["success"] is True
 
     loaded = client.get("/api/options/runtime").get_json()
     assert loaded["enable_llm_rerank"] is True
-    assert loaded["top_n_llm"] == 5
+    assert loaded["llm_fraction"] == 0.5
     assert loaded["weights"]["semantic"] == 0.7
     # Unspecified weights keep their defaults (deep-merge).
     assert loaded["weights"]["bm25"] == 0.15

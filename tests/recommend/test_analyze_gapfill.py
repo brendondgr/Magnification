@@ -106,6 +106,33 @@ def test_full_coverage_gapfills_only_missing(monkeypatch):
     assert analyses[2]["llm_score"] == 88.0  # gap filled
 
 
+def test_full_coverage_ignores_stale_top_n_cap(monkeypatch):
+    """Regression: the retired top_n_llm no longer caps 100% coverage.
+
+    Reproduces the reported bug — the top-relevance jobs already carry a verdict while the
+    LOW-relevance jobs lack one. A leftover top_n_llm (=2) used to cap coverage to the top 2
+    (already-verdicted) jobs, so the gap-fill filter found nothing and "Analyze Matches"
+    reported everything already covered. With top_n_llm ignored, 100% coverage reaches the
+    verdict-less low-relevance jobs and fills them.
+    """
+    _enable_llm(monkeypatch, [{"score": 30, "rationale": "r"}, {"score": 31, "rationale": "r"}])
+    jobs = [{"id": i, "title": f"J{i}", "description": "d"} for i in range(1, 5)]
+    analyses = [
+        {"job_id": 1, "semantic_score": 0.9, "bm25_score": 0.9, "llm_score": 90.0},  # top, verdicted
+        {"job_id": 2, "semantic_score": 0.8, "bm25_score": 0.8, "llm_score": 91.0},  # top, verdicted
+        {"job_id": 3, "semantic_score": 0.2, "bm25_score": 0.2},                     # low, gap
+        {"job_id": 4, "semantic_score": 0.1, "bm25_score": 0.1},                     # low, gap
+    ]
+    new = service._llm_rerank(jobs, analyses, {"interests_paragraph": "x"},
+                              {"llm_fraction": 1.0, "top_n_llm": 2, "llm_workers": 2},
+                              llm_only_missing=True)
+    assert new == 2                                  # both low-relevance gaps filled despite top_n_llm=2
+    assert analyses[2].get("llm_score") is not None
+    assert analyses[3].get("llm_score") is not None
+    assert analyses[0]["llm_score"] == 90.0          # existing verdicts preserved
+    assert analyses[1]["llm_score"] == 91.0
+
+
 # ---- compensation recovery ----
 
 def test_recover_compensation_fills_and_persists(monkeypatch):

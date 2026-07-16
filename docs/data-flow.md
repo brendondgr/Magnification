@@ -45,9 +45,9 @@ the keyword filter — not the full scraped batch. LinkedIn descriptions are fet
 **serially** (one at a time) to avoid rate-limiting. The analysis stage runs over **only the
 keyword-filtered remainder** (non-ignored jobs): embed → rank by semantic+bm25 → pick the LLM
 coverage set over **all** analyzed jobs — top ceil(`llm_fraction` × N) by semantic+bm25
-(default `1.0` = every job; lower it to send only that top share), optional `top_n_llm` cap on
-top (`0` = no cap, `N>0` = top-N) — then issue the fit verdict for jobs in that set (gap-fill:
-only those still missing one) → fold the `llm` signal into `rag_score` (renormalized when no
+(default `1.0` = every job; lower it to send only that top share; the slider is the single
+coverage control) — then issue the fit verdict for jobs in that set (gap-fill: only those
+still missing one) → fold the `llm` signal into `rag_score` (renormalized when no
 verdict). This holds for
 **both** manual Web-UI searches (`/api/scrape/start`) and the automatic daily bot
 (`utils/backend/scheduler`) — both run through the same `execute_full_scraping_workflow`. See
@@ -119,7 +119,7 @@ Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
        → extract skills (gazetteer, or LLM batch if enabled)
        → ranker.rank_batch (semantic + bm25 + keyword-group + skill → rag_score)
        → LLM fit verdict: coverage = top ceil(llm_fraction × N) of ALL analyzed jobs by
-         semantic+bm25 (+ top_n_llm cap), then gap-fill within it — only jobs missing one
+         semantic+bm25, then gap-fill within it — only jobs missing one
          (reanalyze_all re-scores every covered job)
        → save_job_analysis → JobAnalysis table
 Read: GET /api/jobs?with_analysis=1  /  GET /api/recommend/report  → match badges + detail breakdown
