@@ -28,7 +28,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 | Area | State keys | Key methods |
 | --- | --- | --- |
-| Jobs / Tracker / Saved | `jobs, tab, selectedId, search, page, dragOverCol` | `loadJobs`, `mapDbJob`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
+| Jobs / Tracker / Saved | `jobs, tab, selectedId, searchNew, searchSaved, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `mapDbJob`, `keywordMatch`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, useLLM` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
@@ -40,6 +40,15 @@ tab is a grid (mirroring the New Jobs card) of every job with `saved=1`, shown r
 ignore/applied state; saved jobs are excluded from the New Jobs feed. A **Save** button sits to
 the right of the Hide (Ignore) button on each card and in the job detail panel (`toggleSave` →
 `PATCH /api/jobs/<id>/save`).
+
+**Per-page search + sort:** New Jobs and Saved each own an **independent** in-page search box
+(`searchNew` / `searchSaved`). `keywordMatch(job, query)` matches across **every** card field —
+title, company, location, compensation, site, description, and the analyzed skill lists
+(`skill_match.matched`/`.missing`) — requiring every whitespace-separated token to appear
+(case-insensitive substring; empty query = all). New Jobs keeps its Newest/Match toggle
+(`sortByMatch`); Saved adds one (`savedSortByMatch`) defaulting to **Newest** (`createdAt` desc)
+and toggling to **Match** (score desc, no-score last). The former single sidebar search box +
+`matchSearch` were removed; the Tracker is no longer filtered by a global search term.
 
 Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options** (Profile left of Find
 Jobs, Options right). Profile + Options are right-side slide-over panels mirroring the job

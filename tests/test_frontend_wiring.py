@@ -123,6 +123,24 @@ def test_index_has_application_mode(client):
     assert "docViewOpen" not in html
 
 
+def test_index_has_per_page_search_and_saved_sort(client):
+    """New Jobs and Saved each own an independent keyword search; Saved has a Newest/Match sort."""
+    html = client.get("/").get_data(as_text=True)
+    # Independent per-page search handlers + bindings.
+    for token in ("searchNew", "onSearchNew", "searchSaved", "onSearchSaved", "keywordMatch"):
+        assert token in html, f"missing search token: {token}"
+    # Saved Newest/Match sort control.
+    for token in ("toggleSavedSort", "savedSortLabel", "savedSortStyle", "savedSortByMatch"):
+        assert token in html, f"missing Saved-sort token: {token}"
+    # Both in-page inputs render.
+    assert "Search jobs…" in html
+    assert "Search saved…" in html
+    # The retired global sidebar search must be gone.
+    assert "onSearch" not in html.replace("onSearchNew", "").replace("onSearchSaved", "")
+    assert "Title or company…" not in html
+    assert "matchSearch" not in html
+
+
 def test_index_has_two_column_latex_workspace(client):
     """The workspace wires the two-column (process ‖ PDF) layout + LaTeX/PDF preview plumbing."""
     html = client.get("/").get_data(as_text=True)

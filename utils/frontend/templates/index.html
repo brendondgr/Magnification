@@ -87,14 +87,6 @@
     <aside data-desk="" style="{{ sidebarStyle }}">
       <div style="display:flex;flex-direction:column;gap:22px;width:258px;padding:22px">
         <div>
-          <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Search</div>
-          <div style="position:relative">
-            <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%)" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-            <input value="{{ search }}" oninput="{{ onSearch }}" placeholder="Title or company…" style="width:100%;height:42px;padding:0 12px 0 36px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)">
-          </div>
-        </div>
-
-        <div>
           <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Pipeline</div>
           <div style="display:flex;flex-direction:column;gap:7px">
             <sc-for list="{{ pipelineStats }}" as="p" hint-placeholder-count="4">
@@ -185,6 +177,10 @@
               <p style="margin:8px 0 0;font:400 14px/1 var(--font-body);color:var(--muted)">{{ gridCountLabel }}</p>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div style="position:relative;flex:0 0 auto">
+                <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%)" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+                <input value="{{ searchNew }}" oninput="{{ onSearchNew }}" placeholder="Search jobs…" style="width:230px;max-width:100%;height:40px;padding:0 12px 0 36px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)">
+              </div>
               <sc-if value="{{ anyMatches }}" hint-placeholder-val="">
                 <button onclick="{{ toggleSort }}" style="{{ sortStyle }}" style-hover="background:var(--surface2)">{{ sortLabel }}</button>
               </sc-if>
@@ -284,6 +280,15 @@
             <div>
               <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">Saved</h1>
               <p style="margin:8px 0 0;font:400 14px/1 var(--font-body);color:var(--muted)">{{ savedCountLabel }}</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div style="position:relative;flex:0 0 auto">
+                <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%)" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+                <input value="{{ searchSaved }}" oninput="{{ onSearchSaved }}" placeholder="Search saved…" style="width:230px;max-width:100%;height:40px;padding:0 12px 0 36px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)">
+              </div>
+              <sc-if value="{{ savedAnyMatches }}" hint-placeholder-val="">
+                <button onclick="{{ toggleSavedSort }}" style="{{ savedSortStyle }}" style-hover="background:var(--surface2)">{{ savedSortLabel }}</button>
+              </sc-if>
             </div>
           </div>
 
@@ -1483,9 +1488,9 @@ class Component extends DCLogic {
     super(props);
     const tab = (props && props.startView==='tracker') ? 'tracker' : 'newjobs';
     this.state = {
-      theme:'editorial', tab, sidebarOpen:true, search:'', showIgnored:false, page:0,
+      theme:'editorial', tab, sidebarOpen:true, searchNew:'', searchSaved:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null, clearMenuOpen:false,
-      sortByMatch:false, analyzing:false, matchInfoId:null,
+      sortByMatch:false, savedSortByMatch:false, analyzing:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
       groups:[], maxResults:25, maxIterations:1, useLLM:true, fromProfile:false,
@@ -1606,7 +1611,16 @@ class Component extends DCLogic {
     };
   }
   plain(t){ return (t||'').replace(/[#*]/g,'').replace(/^- /gm,'').replace(/\n+/g,'  ').replace(/\s+/g,' ').trim(); }
-  matchSearch(j){ const q=this.state.search.trim().toLowerCase(); if(!q)return true; return (j.title+' '+j.company).toLowerCase().includes(q); }
+  // Keyword search across every field visible on a card: title, company, location, compensation,
+  // site, description, and the analyzed skill lists. Multi-word queries match only when EVERY
+  // whitespace-separated token appears somewhere in that text (case-insensitive substring).
+  keywordMatch(j, query){
+    const q=(query||'').trim().toLowerCase(); if(!q) return true;
+    const an=j.analysis||{}; const sm=an.skill_match||{};
+    const skills=[].concat(sm.matched||[], sm.missing||[]).join(' ');
+    const hay=[j.title,j.company,j.location,j.compensation,j.site,j.description,skills].join(' ').toLowerCase();
+    return q.split(/\s+/).every(tok=>hay.includes(tok));
+  }
   showToast(m){ clearTimeout(this._tt); this.setState({toast:m}); this._tt=setTimeout(()=>this.setState({toast:''}),2400); }
   todayStr(){ return new Date().toISOString().split('T')[0]; }
 
@@ -2400,7 +2414,7 @@ class Component extends DCLogic {
 
     // tracker columns
     const columns=Component.COLS.map(c=>{
-      const jobs=s.jobs.filter(j=>j.applied&&j.column===c.key&&this.matchSearch(j)).map(j=>this.decorate(j));
+      const jobs=s.jobs.filter(j=>j.applied&&j.column===c.key).map(j=>this.decorate(j));
       const over=s.dragOverCol===c.key;
       return {key:c.key,label:c.label,count:jobs.length,jobs,empty:jobs.length===0,
         dot:'width:9px;height:9px;border-radius:3px;background:var('+c.c+')',
@@ -2414,7 +2428,7 @@ class Component extends DCLogic {
     const pipelineStats=Component.COLS.map(c=>({label:c.label,count:s.jobs.filter(j=>j.applied&&j.column===c.key).length,dot:'width:9px;height:9px;border-radius:3px;flex:0 0 auto;background:var('+c.c+')'}));
 
     // new jobs grid (saved jobs are pulled out into the Saved lane)
-    const all=s.jobs.filter(j=>!j.applied&&!j.saved&&this.matchSearch(j));
+    const all=s.jobs.filter(j=>!j.applied&&!j.saved&&this.keywordMatch(j, s.searchNew));
     const visibleUnsorted=all.filter(j=>s.showIgnored||!j.ignore);
     const visible=s.sortByMatch
       ? visibleUnsorted.slice().sort((a,b)=>((b.match==null?-1:b.match)-(a.match==null?-1:a.match)))
@@ -2425,8 +2439,13 @@ class Component extends DCLogic {
     const hasIgnored=all.some(j=>j.ignore);
     const totalPages=Math.max(1,Math.ceil(visible.length/PAGE));
 
-    // saved lane: every saved job, always (regardless of applied/ignore status)
-    const savedList=s.jobs.filter(j=>j.saved&&this.matchSearch(j));
+    // saved lane: every saved job, always (regardless of applied/ignore status).
+    // Sorted Newest (createdAt desc) by default; toggles to Match (desc, nulls last).
+    const savedFiltered=s.jobs.filter(j=>j.saved&&this.keywordMatch(j, s.searchSaved));
+    const savedAnyMatches=savedFiltered.some(j=>j.match!=null);
+    const savedList=savedFiltered.slice().sort(s.savedSortByMatch
+      ? (a,b)=>((b.match==null?-1:b.match)-(a.match==null?-1:a.match))
+      : (a,b)=>((Date.parse(b.createdAt)||0)-(Date.parse(a.createdAt)||0)));
     const savedJobs=savedList.map(j=>this.decorate(j));
 
     // selected job
@@ -2566,7 +2585,12 @@ class Component extends DCLogic {
       navTabs, mobTabs,
       toggleSidebar:()=>this.setState(st=>({sidebarOpen:!st.sidebarOpen})),
       sidebarStyle:'flex:0 0 auto;overflow:hidden;background:var(--surface);border-right:var(--bw) solid var(--border);transition:width .28s cubic-bezier(.4,0,.2,1);width:'+(s.sidebarOpen?'258px':'0px'),
-      search:s.search, onSearch:(e)=>this.setState({search:e.target.value,page:0}),
+      searchNew:s.searchNew, onSearchNew:(e)=>this.setState({searchNew:e.target.value,page:0}),
+      searchSaved:s.searchSaved, onSearchSaved:(e)=>this.setState({searchSaved:e.target.value}),
+      savedAnyMatches, savedSortByMatch:s.savedSortByMatch,
+      toggleSavedSort:()=>this.setState(st=>({savedSortByMatch:!st.savedSortByMatch})),
+      savedSortLabel:s.savedSortByMatch?'Sort: Match':'Sort: Newest',
+      savedSortStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease;border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.savedSortByMatch?'var(--surface2)':'transparent'),
       pipelineStats,
       clearMenuOpen:s.clearMenuOpen,
       toggleClearMenu:()=>this.setState(st=>({clearMenuOpen:!st.clearMenuOpen})),

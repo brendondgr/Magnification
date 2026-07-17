@@ -1,5 +1,28 @@
 # Project Checklist — Magnification
 
+## Per-Page Search + Saved Sort — Definition of Done
+Plan: `docs/plans/jobs-search-and-saved-sort.md`. Delivered on branch
+`claude/jobs-search-sort-9da760` (worktree), committed per phase, merged to `main`.
+
+Requirement: a search bar on **each** of the New Jobs and Saved pages (independent per page),
+doing **keyword** search across the title and **everything else** on the card; and a
+**Newest / Match** sort button on Saved (replacing the disliked alphabetical order).
+
+- [x] (1/4) Plan doc + resolved design forks (independent per-page search; Saved defaults Newest).
+- [x] (2/4) `utils/frontend/templates/index.html`: `keywordMatch(job, query)` matches across
+  title/company/location/compensation/site/description/analyzed-skills (multi-token AND,
+  case-insensitive substring); independent `searchNew`/`searchSaved` state + in-page search inputs
+  on the New Jobs and Saved headers; Saved `savedSortByMatch` Newest(`createdAt` desc)↔Match(desc,
+  no-score last) toggle. The shared sidebar Search box + `matchSearch` removed; Tracker no longer
+  filtered by the retired global search. Verified live on the preview (22 saved / 4775 jobs): New
+  Jobs search 18→16 (`python`) → 3 (`remote engineer`) → 0 + empty state (gibberish); Saved sort
+  Newest→Match ordered 94,94,94,93,92; Saved search 22→13 matching on description/skills; no
+  console errors.
+- [x] (3/4) Wiring test `tests/test_frontend_wiring.py::test_index_has_per_page_search_and_saved_sort`
+  (both inputs, Saved-sort tokens, sidebar-search removal) + docs (`component-map.md`, this checklist).
+- [x] (4/4) Merged to `main`.
+- [x] `tests/test_frontend_wiring.py` green (10 passed), `import app` clean.
+
 ## Analyze Matches: Model Load Failure — Definition of Done
 Plan: `docs/plans/fix-embedder-model-load.md`. Delivered on branch
 `claude/analyze-matches-model-load-1f2491` (worktree), merged to `main`.
