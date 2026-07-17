@@ -1,5 +1,26 @@
 # Project Checklist — Magnification
 
+## Analyze Matches: Model Load Failure — Definition of Done
+Plan: `docs/plans/fix-embedder-model-load.md`. Delivered on branch
+`claude/analyze-matches-model-load-1f2491` (worktree), merged to `main`.
+
+Fixes the reported "Failed — Could not load model BAAI/bge-small-en-v1.5 from any source" on
+clicking **Analyze Matches**. Root cause: `embedder.get_model()` let `huggingface_hub`
+implicitly attach a **stale/invalid** cached HF token to the (public) model download, which the
+Hub rejected and fastembed reported as an unrecoverable load failure; the default cache
+(`$TMPDIR/fastembed_cache`) was also wiped on reboot, forcing a re-download every boot.
+- [x] `utils/backend/recommend/embedder.py`: `_force_anonymous_hf()` (disable implicit token via
+  env var **and** the already-bound `huggingface_hub.constants` flag) + `_resolve_cache_dir()`
+  (persistent `~/.cache/fastembed`, overridable with `FASTEMBED_CACHE_PATH`); `get_model()` wires
+  both. Public repo → no auth needed; a user's explicit `HF_TOKEN` is unaffected.
+- [x] Offline unit tests (`tests/recommend/test_embedder.py`): cache-dir default/env + get_model
+  forces anonymous access and the persistent cache without constructing the real model.
+- [x] Docs (`docs/workflow.md` cache note corrected, this checklist, plan doc).
+- [x] Live proof: with the invalid token still present and no env overrides, `embed_text()`
+  downloads once to `~/.cache/fastembed` and succeeds; Analyze Matches completes end-to-end.
+- [x] Offline `tests/recommend` + `tests/database` green (the pre-existing, unrelated
+  `test_analyze_api_and_report` shared-DB failure is unchanged from `main`), `import app` clean.
+
 ## Analyze Matches: Coverage + Redundant Re-work — Definition of Done
 Plan: `docs/plans/analyze-matches-coverage-and-rework.md`.
 - [x] (1/3) Retire `top_n_llm` so the "Jobs through the LLM" slider is the single coverage

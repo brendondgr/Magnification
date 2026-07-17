@@ -28,9 +28,14 @@ without touching the lock:
 uv pip install --only-binary=:all: fastembed rank-bm25 pypdf requests
 ```
 
-The bge embedding model (~130 MB) is downloaded from HuggingFace on **first embed** and cached
-under `~/.cache/`; that one call needs network. Tests that depend on the model skip when it is
-not cached, and all LLM-dependent tests run against a mocked endpoint (no network/keys needed).
+The bge embedding model (~130 MB) is downloaded from the **public** HuggingFace repo
+`qdrant/bge-small-en-v1.5-onnx-q` on **first embed** and cached under `~/.cache/fastembed`
+(override with `FASTEMBED_CACHE_PATH`); that one call needs network. The load forces
+**anonymous** HF access (`utils/backend/recommend/embedder._force_anonymous_hf`) so a
+stale/invalid stored HuggingFace token (`~/.cache/huggingface/token`) can't 401 the public
+download — the failure mode behind "Could not load model BAAI/bge-small-en-v1.5 from any
+source" on Analyze Matches. Tests that depend on the model skip when it is not cached, and all
+LLM-dependent tests run against a mocked endpoint (no network/keys needed).
 
 ## Commands
 

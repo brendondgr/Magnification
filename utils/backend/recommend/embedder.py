@@ -1,13 +1,26 @@
 """
 CPU embeddings via fastembed (BAAI/bge-small-en-v1.5).
 
-The model is a lazily-loaded process-wide singleton (it downloads ~130 MB from HuggingFace
-on first use and caches under ~/.cache). Embeddings are batched and can be computed in
+The model is a lazily-loaded process-wide singleton. On first use fastembed downloads the
+model (~130 MB from the **public** HuggingFace repo ``qdrant/bge-small-en-v1.5-onnx-q``) into
+a persistent cache and reuses it thereafter. Embeddings are batched and can be computed in
 parallel across CPU cores. Vectors are stored in the DB as packed float32 bytes.
+
+Two environment hazards are handled here so the load can't fail spuriously:
+
+* **Stale/invalid stored HF token.** ``huggingface_hub`` implicitly attaches the cached token
+  (``~/.cache/huggingface/token``) to every request. When that token is expired/invalid the
+  Hub rejects the *authenticated* request and the download fails with
+  "Could not load model ... from any source" — even though the repo is public and needs no
+  auth. ``_force_anonymous_hf()`` suppresses the implicit token for the load.
+* **Ephemeral cache.** fastembed's default cache is ``$TMPDIR/fastembed_cache`` (wiped on
+  reboot). ``_resolve_cache_dir()`` uses a persistent directory so the model downloads once.
 """
 
+import os
 import struct
 import threading
+from pathlib import Path
 from typing import List, Optional, Sequence
 
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
@@ -17,14 +30,44 @@ _model = None
 _lock = threading.Lock()
 
 
+def _resolve_cache_dir() -> str:
+    """
+    Persistent fastembed cache directory so the model downloads once and survives reboots.
+
+    Honors ``FASTEMBED_CACHE_PATH`` when set; otherwise ``~/.cache/fastembed`` (never the
+    default ``$TMPDIR/fastembed_cache``, which is cleared on reboot).
+    """
+    env = os.environ.get("FASTEMBED_CACHE_PATH")
+    return env if env else str(Path.home() / ".cache" / "fastembed")
+
+
+def _force_anonymous_hf() -> None:
+    """
+    Ensure the (public) model download is not blocked by a stale/invalid cached HF token.
+
+    ``HF_HUB_DISABLE_IMPLICIT_TOKEN`` is read into ``huggingface_hub.constants`` at import
+    time, so setting only the env var is unreliable once the module is imported — set both the
+    env var and the already-bound constant. A user with a valid ``HF_TOKEN`` env var is
+    unaffected (that path is explicit); only the implicit cached-token attachment is suppressed,
+    and the repo is public so no token is required either way.
+    """
+    os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
+    try:  # pragma: no cover - depends on huggingface_hub internals
+        import huggingface_hub.constants as hf_constants
+        hf_constants.HF_HUB_DISABLE_IMPLICIT_TOKEN = True
+    except Exception:
+        pass
+
+
 def get_model():
     """Return the shared TextEmbedding model, loading it on first call."""
     global _model
     if _model is None:
         with _lock:
             if _model is None:
+                _force_anonymous_hf()
                 from fastembed import TextEmbedding
-                _model = TextEmbedding(model_name=MODEL_NAME)
+                _model = TextEmbedding(model_name=MODEL_NAME, cache_dir=_resolve_cache_dir())
     return _model
 
 
