@@ -91,20 +91,23 @@ def test_jobs_api_shape_and_status_roundtrip(client):
 
 
 def test_index_has_documents_sidebar_wiring(client):
-    """The served page wires the Profile & Documents tabbed sidebar + ingestion handlers."""
+    """The served page wires the simplified Profile sidebar (Candidate | Guidance) + the editable
+    Document Guidance handlers."""
     html = client.get("/").get_data(as_text=True)
-    # Panel + tabs.
+    # Panel + the two remaining tabs.
     assert "Profile &amp; Documents" in html
-    for token in ("setDocsBehavioral", "setDocsWriting", "setDocsTemplates",
-                  "docsTabBehavioral", "docsTabTemplates"):
+    for token in ("setDocsCandidate", "setDocsGuidance", "docsTabCandidate", "docsTabGuidance"):
         assert token in html, f"missing sidebar token: {token}"
-    # Ingestion + save handlers.
-    for token in ("onBehFile", "onWriFile", "ingestDoc", "saveBehavioral",
-                  "saveWriting", "saveTemplate", "loadDocuments"):
+    # Guidance load/edit/save/reset handlers.
+    for token in ("loadDocuments", "guidanceText", "onGuidanceText", "saveGuidance",
+                  "resetGuidance"):
         assert token in html, f"missing handler token: {token}"
-    # Visible labels.
-    assert "Save Writing Style" in html
-    assert "Document Templates" in html
+    # Visible labels for the new tab.
+    assert "Document Guidance" in html
+    assert "Reset to default" in html
+    # The retired tabs are gone.
+    for token in ("setDocsBehavioral", "setDocsWriting", "setDocsTemplates", "ingestDoc"):
+        assert token not in html, f"retired token still present: {token}"
 
 
 def test_index_has_disable_thinking_toggle(client):
