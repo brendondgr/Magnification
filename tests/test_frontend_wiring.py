@@ -110,13 +110,15 @@ def test_index_has_documents_sidebar_wiring(client):
         assert token not in html, f"retired token still present: {token}"
 
 
-def test_index_has_disable_thinking_toggle(client):
-    """The LLM Endpoint options tab wires the 'Disable model thinking' toggle."""
+def test_index_has_thinking_budget_input(client):
+    """The LLM Endpoint options tab wires the thinking-token-budget input (replaced the toggle)."""
     html = client.get("/").get_data(as_text=True)
-    for token in ("toggleLlmThinking", "llmThinkingRow", "llmThinkingChk",
-                  "llmDisableThinking", "disable_thinking"):
-        assert token in html, f"missing thinking-toggle token: {token}"
-    assert "Disable model thinking" in html
+    for token in ("llmThinkingBudget", "onLlmThinkingBudget", "thinking_token_budget"):
+        assert token in html, f"missing thinking-budget token: {token}"
+    assert "Thinking token budget" in html
+    # The retired on/off toggle is gone.
+    assert "toggleLlmThinking" not in html
+    assert "Disable model thinking" not in html
 
 
 def test_index_has_application_mode(client):
