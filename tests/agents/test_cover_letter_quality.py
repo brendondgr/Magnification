@@ -81,6 +81,48 @@ def test_prompts_defer_to_the_editable_document_guidance():
         assert "DOCUMENT GUIDANCE" in prompt
 
 
+def test_prompts_forbid_company_flattery_and_asserted_fit():
+    """Show-don't-tell (the forced-fit fix): the writer must not flatter the company or declare
+    fit, the critic must penalize it, and the default guidance must carry the same rule."""
+    w = prompts.WRITE_LETTER_PROMPT.lower()
+    assert "shows a clear commitment" in w      # the canonical banned construction (user report)
+    assert "great fit/match because" in w       # asserted-fit ban
+    assert "concludes the fit themselves" in w  # the show-don't-tell target
+    c = prompts.CRITIQUE_PROMPT.lower()
+    assert "flatters the company" in c and "shows a clear" in c
+    from utils.backend.agents.document_guidance import DEFAULT_GUIDANCE
+    g = DEFAULT_GUIDANCE.lower()
+    assert "show the fit, never assert it" in g and "pandering" in g
+
+
+def test_flow_prompts_target_forced_fit_writing():
+    """The audit names all three failure modes; the rewriter fixes only what was flagged."""
+    a = prompts.AUDIT_FLOW_PROMPT.lower()
+    assert "shows a clear commitment" in a      # (a) company flattery / narrated virtue
+    assert "asserted fit" in a                  # (b) declared rather than demonstrated
+    assert "transitions" in a                   # (c) spliced/pasted connective tissue
+    assert "empty flags list" in a              # a clean letter must terminate the loop
+    r = prompts.REWRITE_FLOW_PROMPT.lower()
+    assert "only what the flags require" in r
+    assert "never fabricate" in r
+    assert "300-400" in r                       # the fix must not shrink the letter
+
+
+def test_normalize_flow_audit_tolerates_malformed_output():
+    ok = prompts.normalize_flow_audit({"flags": [
+        {"quote": "X shows a clear commitment.", "problem": "flattery", "fix": "show it"},
+        "bare string flag",
+        {"quote": "", "problem": "dropped: no quote"},
+        42,
+    ]})
+    assert ok["flags"][0]["quote"] == "X shows a clear commitment."
+    assert ok["flags"][1] == {"quote": "bare string flag", "problem": "", "fix": ""}
+    assert len(ok["flags"]) == 2
+    # Garbage in → no flags out (the flow pass then leaves the letter alone).
+    assert prompts.normalize_flow_audit(None) == {"flags": []}
+    assert prompts.normalize_flow_audit({"flags": "nope"}) == {"flags": []}
+
+
 # ==================== graph integration ====================
 
 @pytest.fixture()
