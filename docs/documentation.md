@@ -74,10 +74,11 @@ These existing references remain canonical for their subsystems:
   Guidance**, retiring the Behavioral/Writing-Style/Template subsystems and the upload-ingestion
   pipeline. See `docs/plans/agentic-documents-system.md` and
   `docs/plans/documents-sidebar-simplify.md`.
-- **Reasoning-endpoint LLM fitting fixed:** the OpenAI-compatible client suppresses a
-  reasoning model's hidden chain-of-thought by default (`disable_thinking`, toggle in
-  Options → LLM Endpoint), so verdict/skill/compensation calls stop exhausting `max_tokens`
-  on reasoning and return parseable JSON; verdict parsing also tolerates nested/string score
-  shapes. This is what "Analyze Matches" needs to fit **every** job rather than a couple per
+- **Reasoning-endpoint LLM fitting fixed:** the OpenAI-compatible client bounds a reasoning
+  model's hidden chain-of-thought with a **thinking token budget** (`thinking_token_budget`,
+  default & minimum 1024, tunable in Options → LLM Endpoint), and raises the effective
+  `max_tokens` by that budget so calls stop exhausting `max_tokens` on reasoning and return
+  parseable JSON; verdict parsing also tolerates nested/string score shapes. This is what
+  "Analyze Matches" needs to fit **every** job rather than a couple per
   run. See `docs/plans/llm-fit-reasoning-exhaustion.md`.
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.
