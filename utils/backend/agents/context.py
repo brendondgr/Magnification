@@ -17,7 +17,8 @@ from .orchestrator import GraphError
 def resolve_client(client=None) -> Optional[OpenAIClient]:
     """Return the injected client, or build one from config; ``None`` when no endpoint is enabled.
 
-    Mirrors ``agents.ingestion.agent._resolve_client`` so every agent shares one no-LLM contract.
+    Every agent shares one no-LLM contract: when no endpoint is enabled the graphs run their
+    deterministic fallbacks instead of raising.
     """
     if client is not None:
         return client

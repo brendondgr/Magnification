@@ -2,8 +2,9 @@
 Document-generation API (design §5.2) — runs the cover-letter / résumé graphs as background
 tasks and reads back the generated documents.
 
-Kept in its own blueprint (``generation_bp``) so ``documents_routes`` stays focused on ingestion
-+ supporting-document CRUD. Follows the async task+poll contract of ``recommend_routes`` exactly:
+Kept in its own blueprint (``generation_bp``) so ``documents_routes`` stays focused on the
+job-evaluation + generated-documents read routes. Follows the async task+poll contract of
+``recommend_routes`` exactly:
 ``.../start`` returns a ``task_id``; ``/status/<task_id>`` polls ``{status, progress, events,
 results}``; ``/<task_id>/resume`` delivers a checkpoint decision to a paused graph.
 """

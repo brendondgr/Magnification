@@ -171,19 +171,15 @@ def test_generation_endpoints_registered(client):
     assert client.post("/api/documents/cover-letter/start", json={}).status_code == 400
 
 
-def test_documents_endpoints_served(client):
-    """The documents blueprint is registered and its read endpoints return the seeds."""
-    templates = client.get("/api/templates").get_json()["templates"]
-    assert len(templates) >= 5
-    kinds = {t["kind"] for t in templates}
-    assert {"cover_letter", "resume", "job_evaluation"} <= kinds
-
-    beh = client.get("/api/behavioral-profile").get_json()
-    assert beh["exists"] is True
-    wri = client.get("/api/writing-style").get_json()
-    assert wri["exists"] is True
-    uploaded = client.get("/api/documents/uploaded").get_json()
-    assert "documents" in uploaded and isinstance(uploaded["documents"], list)
+def test_document_guidance_endpoint_served(client):
+    """The guidance blueprint is registered and returns the editable house-style document."""
+    body = client.get("/api/document-guidance").get_json()
+    assert body["success"] is True
+    assert isinstance(body["guidance"], str) and body["guidance"].strip()
+    assert "is_default" in body
+    # The retired subsystems' routes are gone.
+    assert client.get("/api/templates").status_code == 404
+    assert client.get("/api/behavioral-profile").status_code == 404
 
 
 def test_config_save_creates_dir_and_roundtrips(client):
