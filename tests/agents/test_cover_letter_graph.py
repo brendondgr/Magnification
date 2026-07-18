@@ -16,7 +16,6 @@ from sqlalchemy.pool import StaticPool
 from utils.backend.database import init_db
 from utils.backend.database import operations as db_ops
 from utils.backend.database import documents_ops as docs_ops
-from utils.backend.database.seed_documents import seed_documents_if_empty
 from utils.backend.database.models import Base
 from utils.backend.agents import context, cover_letter
 from utils.backend.agents.orchestrator import Orchestrator, Checkpoint
@@ -34,7 +33,6 @@ def temp_db(monkeypatch):
 
 
 def _seed_job_and_profile():
-    seed_documents_if_empty()  # cover-letter templates + example behavioral/writing
     db_ops.upsert_active_profile({
         "name": "default",
         "resume_text": "Built ML systems in Python. Shipped production services.",

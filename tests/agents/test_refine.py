@@ -10,7 +10,6 @@ from sqlalchemy.pool import StaticPool
 
 from utils.backend.database import init_db
 from utils.backend.database import operations as db_ops
-from utils.backend.database.seed_documents import seed_documents_if_empty
 from utils.backend.database.models import Base
 from utils.backend.agents import prompts, context, cover_letter, resume
 from utils.backend.agents.orchestrator import Orchestrator
@@ -70,7 +69,6 @@ def test_guidance_block():
 
 
 def _seed_job():
-    seed_documents_if_empty()
     db_ops.upsert_active_profile({"name": "default", "resume_text": "I write Python.",
                                   "skills": ["Python"], "job_titles": ["ML Engineer"]})
     return db_ops.add_job({"title": "ML Engineer", "company": "Acme", "location": "Remote",

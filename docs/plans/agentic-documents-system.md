@@ -1,5 +1,11 @@
 # Plan — Agentic Document System + Application Mode
 
+> **Superseded in part (2026-07):** the Behavioral / Writing-Style / Document-Template subsystems
+> and the upload-ingestion agent described below were **removed** in favor of a single editable
+> **Document Guidance** document that steers both generation graphs. See
+> `docs/plans/documents-sidebar-simplify.md`. The cover-letter/résumé graphs and Application Mode
+> shipped and remain current.
+
 **Status:** Design only — no implementation. This document is an actionable plan, not code.
 **Stack:** Python + LangGraph, riding on Magnification's existing Flask/SQLite/OpenAI-compatible-LLM stack.
 **Autonomy model:** Semi-automatic (runs end-to-end, pauses at a small number of checkpoints when confidence is low or the user opts in).

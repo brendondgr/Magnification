@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 from loguru import logger
 
 from . import prompts
-from .nodes_shared import _chat_json, _chat_text, profile_summary
+from .nodes_shared import _chat_json, _chat_text, profile_summary, guidance_preamble
 
 _DEFAULT_RESUME_BODY = (
     "# {{candidate_name}}\n{{contact_line}}\n\n## Summary\n{{summary}}\n\n"
@@ -93,7 +93,8 @@ def plan_edits(state: Dict[str, Any], orch) -> None:
         try:
             job = state["job"]
             resume_text = (state.get("profile") or {}).get("resume_text") or ""
-            user = (prompts.guidance_block(state.get("instructions", "")) +
+            user = (guidance_preamble(state) +
+                    prompts.guidance_block(state.get("instructions", "")) +
                     f"Résumé:\n{resume_text[:4000]}\n\n"
                     f"Job description:\n{(job.get('description') or '')[:2500]}\n\n"
                     f"Missing skills: {', '.join(gap.get('missing_skills') or [])}\n"
@@ -140,7 +141,8 @@ def rewrite_resume(state: Dict[str, Any], orch) -> None:
             job = state["job"]
             gap = state.get("gap") or {}
             plan = state.get("plan") or {}
-            user = (prompts.guidance_block(state.get("instructions", ""),
+            user = (guidance_preamble(state) +
+                    prompts.guidance_block(state.get("instructions", ""),
                                            state.get("prior_content", "")) +
                     f"Original résumé:\n{resume_text[:5000]}\n\n"
                     f"Job description:\n{(job.get('description') or '')[:2500]}\n\n"
@@ -180,8 +182,7 @@ def _fallback_resume_slot(slot: str, state: Dict[str, Any], rewrite: str) -> str
 
 def ats_format(state: Dict[str, Any], orch) -> None:
     orch.report("ats_format", 70, "Formatting for ATS…")
-    template = state.get("template") or {}
-    body = template.get("body") or _DEFAULT_RESUME_BODY
+    body = _DEFAULT_RESUME_BODY
     rewrite = state.get("rewrite") or ""
     slots = prompts.find_slots(body)
 

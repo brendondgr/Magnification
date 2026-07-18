@@ -71,29 +71,29 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 
 ## Documents (`documents_bp`)
 
-Data + ingestion foundation for the agentic documents system (see `docs/plans/agentic-documents-system.md` §8.1–§8.2). The cover-letter/résumé generation graphs are a deferred later phase; these endpoints only ingest, draft, and persist source records.
+Per-job application-fit evaluations and the generated-document store. (The former ingestion /
+behavioral / writing-style / template routes were retired in favor of the editable Document
+Guidance — see `docs/plans/documents-sidebar-simplify.md`.)
 
-- `POST /api/documents/ingest` — multipart `{file, doc_type?}` (`doc_type` optional; one of `resume|behavioral|writing|reference|other`, inferred when omitted) → runs the in-house ingestion agent (extract → classify → summarize/normalize) and returns `{success, filename, doc_type, target_table, draft, summary, raw_text, llm_used, llm_error}`. Nothing is persisted by this call. Degrades to an empty editable draft with `llm_used: false` (no `500`) when no LLM endpoint is configured or the upload can't be parsed.
-- `POST /api/documents/ingest/save` — body: `{doc_type, target_table, record, filename?, raw_text?, summary?}` → upserts the approved `record` into its target table (`profiles`, `behavioral_profiles`, or `writing_style_profiles`; a summary-only upload for `reference`/`other` skips the upsert) and logs an `uploaded_documents` row linking the upload to the produced record. Returns `{success, derived_table, derived_id, uploaded_id}`.
-- `GET /api/documents/uploaded` → `{documents:[...]}` — the raw-upload log (`uploaded_documents`: id, filename, doc_type, raw_text, summary, derived_table, derived_id, status `draft|saved`, uploaded_at), newest first.
-- `GET /api/behavioral-profile` → the single active `behavioral_profiles` row: `{exists, id, name, is_active, traits, strengths, work_style_paragraph, source_filename, created_at, updated_at}` (or `{exists:false}` + empty fields).
-- `POST /api/behavioral-profile` — body: any of `{name, traits, strengths, work_style_paragraph, source_filename}` → single-active upsert (mirrors `profile_bp`'s pattern). Returns `{success, profile, id}`.
-- `GET /api/writing-style` → the single active `writing_style_profiles` row: `{exists, id, name, is_active, tone, formality, sentence_length, sample_text, dos, donts, source_filename, created_at, updated_at}` (or `{exists:false}` + empty fields).
-- `POST /api/writing-style` — body: any of `{name, tone, formality, sentence_length, sample_text, dos, donts, source_filename}` → single-active upsert. Returns `{success, profile, id}`.
-- `GET /api/templates` — query `kind?` (one of `cover_letter|resume|job_evaluation`; omit for all) → `{templates:[...]}` (`document_templates`: id, kind, name, body, format `markdown|latex|docx`, is_default, created_at, updated_at).
-- `POST /api/templates` — body: `{kind, name, body, format?, is_default?}` → creates a template; if `is_default: true`, clears `is_default` on other templates of the same `kind` (default-per-kind). Returns `{success, template}`.
-- `GET /api/templates/<int:id>` → a single template record, or `404` if missing.
-- `PATCH /api/templates/<int:id>` — body: any subset of `{name, body, format, is_default}` → updates the template (same default-per-kind exclusivity when `is_default: true` is set). Returns `{success, template}`, or `404` if missing.
-- `DELETE /api/templates/<int:id>` → deletes the template. Returns `{success: true}`, or `404` if missing.
 - `GET /api/job-evaluation/<int:job_id>` → the `job_evaluations` row for that job (1:1, distinct from `recommend_bp`'s analysis): `{exists, id, job_id, profile_id, verdict, fit_score, emphasize, gaps, risks, talking_points, created_at, updated_at}` (or `{exists:false}` + empty fields).
 - `POST /api/job-evaluation/<int:job_id>` — body: `{verdict, fit_score, emphasize, gaps, risks, talking_points}` → upserts by `job_id` (unique). Returns `{success, evaluation}`, or `404` if the job doesn't exist.
-- `GET /api/documents` — query `job_id` → `{documents:[...]}`, the `generated_documents` rows (kind `cover_letter|resume`) for that job. Empty until the deferred generation graphs land; the table (content, format, status `draft|approved`, match_before, match_after, revision, checkpoint_state) exists as dormant substrate.
+- `GET /api/documents` — query `job_id` (required) → `{documents:[...]}`, the `generated_documents` rows (kind `cover_letter|resume`) for that job; `400` without `job_id`.
+
+## Document Guidance (`guidance_bp`)
+
+The single editable house-style document (`config/document_guidance.json`, resolved through the
+shared project root) injected into every cover-letter and résumé generation and refine. Default =
+the cover-letter Winning Formula + résumé tailoring principles.
+
+- `GET /api/document-guidance` → `{success, guidance, is_default}`.
+- `PUT /api/document-guidance` — body: `{guidance}` (string; blank reverts to the default) → `{success, guidance, is_default}`; `400` if `guidance` is not a string.
+- `POST /api/document-guidance/reset` → clears the override → `{success, guidance, is_default: true}`.
 
 ## Document Generation (`generation_bp`)
 
 Runs the cover-letter and résumé agent graphs as background tasks, using the same async task+poll pattern as `/api/recommend/analyze/start` — plus a resume path for human-in-the-loop checkpoints.
 
-- `POST /api/documents/cover-letter/start` — body: `{job_id, template_id?, interactive?, instructions?, revise_from?}` (`template_id`, `interactive`, `instructions`, `revise_from` all optional) → starts the cover-letter agent graph in the background. `instructions` is folded (high-priority) into the writer/strategist prompts so the re-run follows it; `revise_from` (an existing `generated_documents` id) makes the run update that document in place (bumping `revision`) instead of creating a new row, loading its current content as the prior draft to build on. Returns immediately: `{success, task_id, kind: "cover_letter", job_id}`.
+- `POST /api/documents/cover-letter/start` — body: `{job_id, interactive?, instructions?, revise_from?}` (`interactive`, `instructions`, `revise_from` all optional) → starts the cover-letter agent graph in the background. The editable Document Guidance is always injected; `instructions` is folded (high-priority) into the writer/strategist prompts so the re-run follows it; `revise_from` (an existing `generated_documents` id) makes the run update that document in place (bumping `revision`) instead of creating a new row, loading its current content as the prior draft to build on. Returns immediately: `{success, task_id, kind: "cover_letter", job_id}`.
 - `POST /api/documents/resume/start` — same request/response shape as above, with `kind: "resume"` (`instructions` folds into the planner/rewriter prompts instead of writer/strategist).
 - `GET /api/documents/status/<task_id>` — poll a background generation task → `{status, kind, job_id, progress:{stage, percent, details:{message}}, events:[{t, stage, percent, message}], results, checkpoint}`. `results` is `null` until the task finishes. On completion: cover letter → `{success, document_id, job_id, kind: "cover_letter", content, needs_review, evaluation, critique}`; résumé → `{success, document_id, kind: "resume", content, needs_review, match_before, match_after, lift}`. The returned `content` is now **LaTeX** (a full `\documentclass{article}` document, `format: "latex"`) rather than markdown. For the résumé, `match_before`/`match_after`/`lift` are computed on the plain tailored text before the LaTeX render, so keyword scoring isn't polluted by TeX markup. When the graph pauses at a human-in-the-loop checkpoint, `status` is `"paused"` and `checkpoint` is `{name: "angle" | "plan", payload:{...}}`.
 - `POST /api/documents/<task_id>/resume` — body: `{decision: "approve" | "edit" | "reject"}` (`"edit"` also carries `edits`: `{thesis}` for the cover-letter graph or `{plan}` for the résumé graph) → resumes the paused graph from its checkpoint. Returns `{success, task: {...same shape as the status endpoint...}}`.

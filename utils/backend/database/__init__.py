@@ -20,10 +20,6 @@ from .models import (
     Base,
     Job,
     ApplicationStatus,
-    UploadedDocument,
-    BehavioralProfile,
-    WritingStyleProfile,
-    DocumentTemplate,
     JobEvaluation,
     GeneratedDocument,
 )
@@ -82,10 +78,6 @@ __all__ = [
     'Base',
     'Job',
     'ApplicationStatus',
-    'UploadedDocument',
-    'BehavioralProfile',
-    'WritingStyleProfile',
-    'DocumentTemplate',
     'JobEvaluation',
     'GeneratedDocument',
     # Init

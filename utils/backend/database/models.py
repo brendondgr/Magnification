@@ -236,150 +236,20 @@ class JobAnalysis(Base):
 
 
 # ============================================================================
-# Agentic Document System — supporting-document + generation tables.
+# Agentic Document System — per-job generation tables.
 #
-# These back the Profile & Documents sidebar and the (future) cover-letter /
-# résumé agent graphs. They are brand-new tables, so ``Base.metadata.create_all``
-# adds them to both fresh and pre-existing databases — no column migration is
-# needed. The two "profile-like" tables (BehavioralProfile, WritingStyleProfile)
-# keep a single ``is_active`` row, exactly like ``Profile``. Job-linked tables FK
-# to ``jobs.id`` with cascade delete, mirroring ``JobAnalysis``.
+# These back the cover-letter / résumé agent graphs. They are additive tables, so
+# ``Base.metadata.create_all`` adds them to both fresh and pre-existing databases —
+# no column migration is needed. Job-linked tables FK to ``jobs.id`` with cascade
+# delete, mirroring ``JobAnalysis``.
+#
+# The former supporting-document tables (UploadedDocument, BehavioralProfile,
+# WritingStyleProfile, DocumentTemplate) and the ingestion pipeline that fed them
+# were retired in favor of a single editable Document Guidance document; see
+# ``utils/backend/agents/document_guidance.py``. Existing databases keep those
+# tables as harmless orphans (no destructive migration).
 # See docs/plans/agentic-documents-system.md §1.2.
 # ============================================================================
-
-
-class UploadedDocument(Base):
-    """
-    A raw source file the user drops into the Profile & Documents sidebar,
-    stored before/after summarization by the ingestion agent.
-
-    Attributes:
-        filename: original upload filename.
-        doc_type: inferred/declared type (resume | behavioral | writing | reference | other).
-        raw_text: extracted plain text of the upload.
-        summary: agent summary (used directly for reference/other docs).
-        derived_table / derived_id: link to the structured record the ingestion agent
-            produced from this upload (e.g. ('behavioral_profiles', 3)), so the user can
-            always trace "this record came from that file".
-        status: draft (ingested, not yet saved) | saved.
-        uploaded_at: upload timestamp.
-    """
-    __tablename__ = 'uploaded_documents'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    filename = Column(String(512), nullable=True)
-    doc_type = Column(String(50), nullable=True)
-    raw_text = Column(Text, nullable=True)
-    summary = Column(Text, nullable=True)
-    derived_table = Column(String(64), nullable=True)
-    derived_id = Column(Integer, nullable=True)
-    status = Column(String(32), default='draft')
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
-
-    __table_args__ = (
-        Index('idx_uploaded_documents_doc_type', 'doc_type'),
-    )
-
-    def __repr__(self):
-        return f"<UploadedDocument(id={self.id}, filename='{self.filename}', doc_type='{self.doc_type}')>"
-
-
-class BehavioralProfile(Base):
-    """
-    DISC/PI-style work-style traits that shape the *tone and framing* of generated
-    documents. Single-active-row pattern (mirrors ``Profile``).
-
-    Attributes:
-        traits: JSON of work-style traits (e.g. {"dominance": "high", ...} or a list).
-        strengths: JSON list of strength strings.
-        work_style_paragraph: a cohesive paragraph describing how the candidate works.
-        source_filename: the upload this was derived from, if any.
-    """
-    __tablename__ = 'behavioral_profiles'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(120), nullable=False, default='default')
-    is_active = Column(Integer, default=0)
-    traits = Column(JSON, nullable=True)
-    strengths = Column(JSON, nullable=True)
-    work_style_paragraph = Column(Text, nullable=True)
-    source_filename = Column(String(512), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index('idx_behavioral_profiles_active', 'is_active'),
-    )
-
-    def __repr__(self):
-        return f"<BehavioralProfile(id={self.id}, name='{self.name}', is_active={self.is_active})>"
-
-
-class WritingStyleProfile(Base):
-    """
-    Tone, structure, do's/don'ts, and a real writing sample to imitate. Single-active-row
-    pattern (mirrors ``Profile``).
-
-    Attributes:
-        tone: high-level tone label (e.g. "warm-professional").
-        formality: formality label (e.g. "semi-formal").
-        sentence_length: preferred cadence label (e.g. "medium, varied").
-        sample_text: a representative writing sample the Voice agent imitates.
-        dos / donts: JSON lists of do / don't guidance.
-        source_filename: the upload this was derived from, if any.
-    """
-    __tablename__ = 'writing_style_profiles'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(120), nullable=False, default='default')
-    is_active = Column(Integer, default=0)
-    tone = Column(String(120), nullable=True)
-    formality = Column(String(60), nullable=True)
-    sentence_length = Column(String(60), nullable=True)
-    sample_text = Column(Text, nullable=True)
-    dos = Column(JSON, nullable=True)
-    donts = Column(JSON, nullable=True)
-    source_filename = Column(String(512), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index('idx_writing_style_profiles_active', 'is_active'),
-    )
-
-    def __repr__(self):
-        return f"<WritingStyleProfile(id={self.id}, name='{self.name}', is_active={self.is_active})>"
-
-
-class DocumentTemplate(Base):
-    """
-    A reusable cover-letter / résumé skeleton, or a job-evaluation rubric. Multiple rows;
-    ``is_default`` marks the default within a ``kind``.
-
-    Attributes:
-        kind: cover_letter | resume | job_evaluation.
-        name: human label (e.g. "Classic", "Narrative", "Referral").
-        body: the template body, with slots like {{hook}}, {{why_them}}, {{why_you}}, {{close}}.
-        format: markdown | latex | docx.
-        is_default: 1 if this is the default template for its kind.
-    """
-    __tablename__ = 'document_templates'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    kind = Column(String(32), nullable=False, default='cover_letter')
-    name = Column(String(120), nullable=False, default='Untitled')
-    body = Column(Text, nullable=True)
-    format = Column(String(16), default='markdown')
-    is_default = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index('idx_document_templates_kind', 'kind'),
-    )
-
-    def __repr__(self):
-        return f"<DocumentTemplate(id={self.id}, kind='{self.kind}', name='{self.name}')>"
 
 
 class JobEvaluation(Base):

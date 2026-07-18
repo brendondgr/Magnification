@@ -19,7 +19,6 @@ from app import application
 from utils.backend.database import init_db
 from utils.backend.database import operations as db_ops
 from utils.backend.database import documents_ops as docs_ops
-from utils.backend.database.seed_documents import seed_documents_if_empty
 from utils.backend.database.models import Base
 from utils.backend.agents import context
 
@@ -49,7 +48,6 @@ def client(monkeypatch, tmp_path):
 
 
 def _seed():
-    seed_documents_if_empty()
     db_ops.upsert_active_profile({"name": "Jane Doe", "resume_text": "Engineer. Python & C++.",
                                   "skills": ["Python", "PyTorch"], "job_titles": ["ML Engineer"]})
     job_id = db_ops.add_job({"title": "ML Engineer", "company": "R&D Labs & Co", "location": "Remote",

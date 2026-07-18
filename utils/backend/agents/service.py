@@ -69,8 +69,8 @@ def _persist(kind: str, job_id: int, state: Dict[str, Any],
     ``revision``) so a refine loop keeps one evolving draft per kind instead of accumulating rows."""
     payload: Dict[str, Any] = {
         "content": state.get("final") or "",
-        # The graphs now render LaTeX; fall back to the template's format only if a graph didn't set one.
-        "format": state.get("format") or (state.get("template") or {}).get("format") or "markdown",
+        # The graphs set format="latex" on their final node; default only if one didn't.
+        "format": state.get("format") or "markdown",
         "status": "draft",
         "checkpoint_state": _checkpoint_snapshot(state),
     }
@@ -112,7 +112,7 @@ def _result_payload(kind: str, job_id: int, doc_id: int, state: Dict[str, Any]) 
     return out
 
 
-def _run(task_id: str, kind: str, job_id: int, template_id: Optional[int],
+def _run(task_id: str, kind: str, job_id: int,
          interactive: bool, instructions: str = "", prior_content: str = "",
          revise_from: Optional[int] = None) -> None:
     rec = generation_tasks[task_id]
@@ -135,7 +135,7 @@ def _run(task_id: str, kind: str, job_id: int, template_id: Optional[int],
                           edits=decision.get("edits") or {})
 
     try:
-        state = context.load_context(job_id, kind, template_id,
+        state = context.load_context(job_id, kind,
                                      instructions=instructions, prior_content=prior_content)
         state["interactive"] = interactive
         orch = Orchestrator(report=report, resume_fn=resume_fn if interactive else None)
@@ -151,7 +151,7 @@ def _run(task_id: str, kind: str, job_id: int, template_id: Optional[int],
         rec["end_time"] = time.time()
 
 
-def start_generation(kind: str, job_id: int, template_id: Optional[int] = None,
+def start_generation(kind: str, job_id: int,
                      interactive: bool = False, instructions: str = "",
                      prior_content: str = "", revise_from: Optional[int] = None) -> str:
     """Create a task record + spawn the graph in a daemon thread. Returns the task id.
@@ -177,7 +177,7 @@ def start_generation(kind: str, job_id: int, template_id: Optional[int] = None,
     }
     thread = threading.Thread(
         target=_run,
-        args=(task_id, kind, job_id, template_id, interactive, instructions, prior_content, revise_from),
+        args=(task_id, kind, job_id, interactive, instructions, prior_content, revise_from),
         daemon=True)
     thread.start()
     return task_id

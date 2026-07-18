@@ -1,5 +1,43 @@
 # Project Checklist — Magnification
 
+## Profile Sidebar Simplify + Editable Document Guidance — Definition of Done
+Plan: `docs/plans/documents-sidebar-simplify.md`. Delivered on branch
+`docs-sidebar-simplify` (worktree), committed per phase, merged to `main`.
+
+Requirement: collapse the Profile sidebar's Behavioral/Writing/Templates tabs into **one**
+tab, and make the generation skill a **single editable document** the user maintains — the main
+thing guiding both cover letters and résumés, on the first generation and every refresh.
+Decisions (user-confirmed): **full removal** of the three subsystems (UI + backend + DB + graph
+usage), and **one shared editable guidance document** driving both graphs.
+
+- [x] (1/7) Plan doc + worktree + resolved forks (full removal; one shared doc; ingestion pipeline
+  removed as orphaned; physical tables left as harmless orphans).
+- [x] (2/7) `utils/backend/agents/document_guidance.py` — one editable, persisted house-style doc
+  (default = cover-letter Winning Formula + résumé tailoring principles) with get/set/reset/
+  is_default at `config/document_guidance.json`; `guidance_bp` (GET/PUT `/api/document-guidance`,
+  POST `.../reset`) registered in `app.py`; store + API tests on an isolated temp config.
+- [x] (3/7) Both graphs consume the editable guidance at call time (`context` loads it,
+  `nodes_shared.guidance_preamble` injects it into strategize/write/critique + plan/rewrite);
+  prompts reverted to defer to the guidance; `cover_letter_skill.py` removed; behavioral/writing/
+  template plumbing dropped (built-in bodies + default voice); `template_id` removed from service +
+  route; agent tests assert the guidance reaches the writer on first pass + refine.
+- [x] (4/7) Backend removal: behavioral/writing/template/ingest/uploaded routes, models, CRUD,
+  seeding, and the `agents/ingestion` package deleted; `documents_routes` slimmed to job-evaluation
+  + generated-documents; tests trimmed/deleted accordingly. Physical SQLite tables left as orphans.
+- [x] (5/7) Sidebar collapsed to **Candidate | Guidance** (a textarea + Save + Reset-to-default);
+  all beh/wri/tpl/uploaded markup, JS, state, and getters removed; wiring test updated. Verified
+  live from the worktree server (tabs render Candidate | Guidance, Guidance loads the default with
+  the Winning Formula + résumé section, Save/Reset present, no console errors; shared config left
+  untouched — no live save).
+- [x] (6/7) Docs updated (`structure.md`, `documentation.md`, `routes.md`, `api-contract.md`,
+  `component-map.md`, `database.md`, `data-flow.md`, this checklist) + full offline validation.
+- [x] (7/7) Merged to `main`.
+- [x] Offline `tests/agents` + `tests/documents` + `tests/database` + `tests/test_frontend_wiring.py`
+  green; `import app` clean.
+- [ ] **Best-quality prose still needs a real LLM endpoint** — the guidance wiring is covered by
+  mocked-client + offline-fallback tests; the model-authored documents are best exercised with an
+  enabled endpoint (Options → LLM Endpoint).
+
 ## Analyze Matches — LLM Fit Reasoning-Token Exhaustion — Definition of Done
 Plan: `docs/plans/llm-fit-reasoning-exhaustion.md`. Delivered on branch
 `fix-llm-fit-reasoning-exhaustion` (worktree), committed per phase, merged to `main`.

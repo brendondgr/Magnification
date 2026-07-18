@@ -32,7 +32,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, useLLM` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
-| **Profile & Documents** | `profileOpen, docsTab, profile{llm_instructions,interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy, pfSkillsExpanded, beh{...}, wri{...}, behTraitsText, templates, tplSelId, uploadedDocs` | `openProfile` (now also calls `loadDocuments`), `loadProfile`, `saveProfile`, `blockCompany`, `addSkillToProfile`, `onResumeFile`, `rebuildProfile` (unions `skills` + `blocked_companies`), `pfSet`; docs: `loadDocuments`, `loadTemplates`, `loadUploadedDocs`, `behSet`/`wriSet`, `onBehFile`/`onWriFile`, `ingestDoc`, `saveBehavioral`, `saveWriting`, `tplSet`/`addTemplate`/`saveTemplate`/`deleteTemplate` |
+| **Profile & Documents** | `profileOpen, docsTab('candidate'\|'guidance'), profile{llm_instructions,interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy, pfSkillsExpanded, guidanceText, guidanceBusy, guidanceStatus, guidanceIsDefault` | `openProfile` (now also calls `loadDocuments`), `loadProfile`, `saveProfile`, `blockCompany`, `addSkillToProfile`, `onResumeFile`, `rebuildProfile` (unions `skills` + `blocked_companies`), `pfSet`; guidance: `loadDocuments` (loads the guidance), `saveGuidance`, `resetGuidance` |
 | **Options** | `optionsOpen, optionsTab, llm{...}, runtime{...}, llmTest` | `openOptions`, `loadOptions`, `saveLlmOptions`, `testLlmOptions`, `saveRuntimeOptions`, `llmSet`/`rtSet`/`rtWeightSet` |
 
 Main-view tabs: **New Jobs · Saved · Tracker** (desktop nav + mobile bottom nav). The **Saved**
@@ -102,28 +102,24 @@ methods and the `docGen`/`docView`/`docsByJob` state are gone.
 
 ### Profile & Documents sidebar tabs
 
-The Profile slide-over is a tabbed **"Profile & Documents"** sidebar (`docsTab` selects the
+The Profile slide-over is a two-tab **"Profile & Documents"** sidebar (`docsTab` selects the
 active tab):
 
 | Tab | Purpose | Endpoints called |
 | --- | --- | --- |
-| **Candidate** | The original résumé/profile fields (unchanged) | `/api/profile*` |
-| **Behavioral** | Upload zone → agent drafts a behavioral profile (traits JSON, strengths tags, work-style paragraph) for per-field editing, then save | `POST /api/documents/ingest`, `POST /api/documents/ingest/save` (falls back to `GET`/`POST /api/behavioral-profile` when there is no pending upload) |
-| **Writing** | Upload zone → agent drafts a writing-style profile (tone/formality/sentence_length, sample text, dos/donts tags) for per-field editing, then save | `POST /api/documents/ingest`, `POST /api/documents/ingest/save` (falls back to `GET`/`POST /api/writing-style` when there is no pending upload) |
-| **Templates** | List + edit body + set-default-per-kind + New + Delete for `cover_letter`/`resume`/`job_evaluation` templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/<id>` |
+| **Candidate** | The résumé/profile fields (unchanged) | `/api/profile*` |
+| **Guidance** | A textarea holding the single editable **Document Guidance** that steers every cover letter + résumé, with Save + Reset-to-default | `GET/PUT /api/document-guidance`, `POST /api/document-guidance/reset` |
 
-Both the Behavioral and Writing tabs share the same upload → draft → edit → save flow: a file
-dropped in the upload zone is posted to `POST /api/documents/ingest`, which runs the in-house
-ingestion agent and returns an editable **draft** (nothing is persisted yet); approving it posts
-to `POST /api/documents/ingest/save`, which upserts the record into its target table and logs a
-`GET /api/documents/uploaded` row. A "Recent uploads" list (`uploadedDocs`, via `loadUploadedDocs`)
-traces each uploaded file to the record it produced.
+The Guidance tab loads the guidance on open (`loadDocuments` → `GET /api/document-guidance`), edits
+it in place (`guidanceText`), and `saveGuidance` / `resetGuidance` persist or clear the override. The
+former Behavioral / Writing / Templates tabs and their upload-ingestion flow were removed (see
+`docs/plans/documents-sidebar-simplify.md`).
 
 ## Backend the frontend talks to
 
 Same-origin `fetch` to the Flask JSON API (`/api/jobs*`, `/api/config*`, `/api/scrape*`,
 `/api/profile*`, `/api/options/*`, `/api/recommend/*`, `/api/documents*`,
-`/api/behavioral-profile`, `/api/writing-style`, `/api/templates*`, `/api/job-evaluation/<job_id>`).
+`/api/document-guidance*`, `/api/job-evaluation/<job_id>`).
 See `docs/routes.md`.
 
 > When/if a full React overhaul replaces dc-runtime, this map is replaced by a React

@@ -40,6 +40,17 @@ def profile_summary(profile: Dict[str, Any]) -> str:
     return ranker.build_profile_query(profile or {})[:2000]
 
 
+def guidance_preamble(state: Dict[str, Any]) -> str:
+    """The user-editable Document Guidance, as a labelled preamble for a generation node's user
+    message. Returns ``""`` when no guidance is present. Injected at call time (not baked into the
+    prompt constants) so a user's edit takes effect on the very next generation or refine."""
+    guidance = (state.get("guidance") or "").strip()
+    if not guidance:
+        return ""
+    return ("DOCUMENT GUIDANCE (the house style to follow — the user maintains this; obey it):\n"
+            + guidance + "\n\n")
+
+
 def letter_word_count(text: str) -> int:
     """Word count of letter prose, excluding the salutation/signature scaffold lines.
 

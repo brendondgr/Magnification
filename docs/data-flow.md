@@ -140,46 +140,26 @@ See `docs/recommendation.md`. Stored embeddings are reused on re-analysis; analy
 scrape pipeline is gated by `runtime_config.enable_analysis` + an active profile and is
 non-fatal (a scrape still succeeds if the embedding model is unavailable).
 
-## Document Ingestion Flow
+## Document Guidance Flow
 
-Uploading a résumé/behavioral/writing-style file drafts a structured record via an in-house
-agent (plain Python, no LangGraph) before anything is saved — the user reviews/edits the draft,
-then explicitly saves it:
+Both generation graphs are steered by one **editable Document Guidance** document — plain text held
+in `config/document_guidance.json` (resolved through the shared project root), with a built-in
+default (the cover-letter Winning Formula + résumé tailoring principles). It is edited from the
+Profile sidebar's **Guidance** tab and injected into every generation and refine:
 
 ```
-Upload zone (Profile & Documents sidebar) → POST /api/documents/ingest  {file, doc_type?}
-   → agents.ingestion.ingest_document(filename, data, doc_type, client)
-       → extract_resume_text (recommend.profile_builder)          [text extraction]
-       → classify doc_type (resume|behavioral|writing|reference|other) when not given
-       → summarize/normalize into a target-table-shaped record
-           via build_profile_from_text + OpenAIClient                [OPTIONAL — LLM]
-   → DRAFT returned to the client — NOT persisted
-       {success, filename, doc_type, target_table, draft, summary, raw_text,
-        llm_used, llm_error}
-(no LLM endpoint configured → degrades to an empty, still-editable draft, llm_used=False;
- malformed uploads never 500)
-
-User edits the drafted fields in the sidebar (strengths tags + traits JSON + work-style
-paragraph, or tone/formality/sentence_length + sample_text + dos/donts tags), then Save:
-
-POST /api/documents/ingest/save  {doc_type, target_table, record, filename?, raw_text?, summary?}
-   → documents_ops upsert of `record` into its target table
-       (profiles | behavioral_profiles | writing_style_profiles — single-active row upsert;
-        reference/other kept summary-only, no target-table row)
-   → documents_ops logs an uploaded_documents row (raw_text, summary, status=saved,
-       derived_table + derived_id pointing at the row just upserted)
-   → {success, derived_table, derived_id, uploaded_id}
-
-Read: GET /api/documents/uploaded → uploaded_documents log (traces each file to the record
-      it produced) — rendered as the "Recent uploads" list.
+Profile & Documents sidebar → Guidance tab
+   GET  /api/document-guidance          → {guidance, is_default}      (loads into a textarea)
+   PUT  /api/document-guidance {guidance} → persists the edit (blank string ⇒ revert to default)
+   POST /api/document-guidance/reset    → clears the override (built-in default back in effect)
 ```
 
 `job_evaluations` (per-job application-fit: verdict, fit_score, emphasize, gaps, risks,
-talking_points) is a separate 1:1-per-job table from `JobAnalysis` — it is conceptually seeded
-from a `JobAnalysis` verdict but written independently via `GET/POST /api/job-evaluation/<job_id>`;
-it is not produced by the ingestion agent above. `document_templates` (cover_letter/resume/
-job_evaluation, default-per-kind) and `generated_documents` are unrelated to ingestion; they are
-the substrate for the cover-letter/résumé generation graphs below.
+talking_points) is a separate 1:1-per-job table from `JobAnalysis` — conceptually seeded from a
+`JobAnalysis` verdict but written independently via `GET/POST /api/job-evaluation/<job_id>`.
+`generated_documents` is the store for the produced cover letters/résumés below. (The former
+upload-ingestion pipeline and the behavioral/writing/template tables were retired — see
+`docs/plans/documents-sidebar-simplify.md`.)
 
 ## Document Generation Flow
 
@@ -188,10 +168,10 @@ Cover letters and tailored résumés are produced by two in-house, plain-Python 
 loading the job's existing analysis rather than fetching anything new:
 
 ```
-utils/backend/agents/context.py load_context(job_id, kind, template_id)
+utils/backend/agents/context.py load_context(job_id, kind)
    → Job + JobAnalysis (skill_match, keyword hits, llm_rationale, stored embedding)
-   → active Profile + active BehavioralProfile + active WritingStyleProfile
-   → chosen DocumentTemplate
+   → active Profile
+   → the editable Document Guidance (document_guidance.get_guidance())
 ```
 
 **Cover Letter graph** (`utils/backend/agents/cover_letter.py`):
@@ -209,12 +189,12 @@ seeded from `JobAnalysis.skill_match` + `llm_rationale` and refined by the LLM. 
 plus résumé/skills) so the letter's motivation is grounded in the candidate's own words rather
 than invented; the prompts target a **300-400 word** letter, and the revision loop enforces a
 minimum length (`COVER_MIN_WORDS`) on the LLM path — a short first draft triggers another pass.
-Every letter is written to a fixed **house style** — the *Winning Formula* (Opening Hook →
-two-paragraph, quantified Value Proposition → Why-This-Company → Strong Close) plus writing rules
-(quantify achievements, strong openers, avoid the classic mistakes). It is distilled once in
-`utils/backend/agents/cover_letter_skill.py` and folded into the `strategize`/`write`/`critique`
-system prompts, so it is referenced on **every** generation and every Application-Mode
-refine/regenerate — independent of the selected template. The prompts also forbid echoing the job
+Every letter is written to the user-editable **Document Guidance** (default = the *Winning Formula*:
+Opening Hook → two-paragraph, quantified Value Proposition → Why-This-Company → Strong Close, plus
+writing rules). It is read from `utils/backend/agents/document_guidance.py` and injected at call time
+(via `nodes_shared.guidance_preamble`) into the `strategize`/`write`/`critique` nodes, so it is
+referenced on **every** generation and every Application-Mode refine/regenerate, and a user edit
+takes effect on the next run. The prompts also forbid echoing the job
 posting's wording/jargon and manufacturing motivation from JD keywords (the JD is passed as
 *context only*), and the critic penalizes JD-parroting / AI-generic voice **and a letter missing any
 part of the formula or with an unquantified value proposition** — so the letter reads like the

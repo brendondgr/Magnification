@@ -91,27 +91,9 @@ RAG scoring of jobs against the active profile (see `docs/recommendation.md`).
 
 ## Documents API (`documents_bp`)
 
-Agentic ingestion of supporting documents (résumé/behavioral/writing-style/reference uploads), template management, per-job application-fit evaluations, and the generated-document store — the data + ingestion foundation described in `docs/plans/agentic-documents-system.md` (§8.1–§8.2). Registered in `app.py`.
-
-**Ingestion**
-
-| Path | Method | Purpose |
-| --- | --- | --- |
-| `/api/documents/ingest` | POST | Multipart `{file, doc_type?}` — runs the in-house ingestion agent (extract → classify → summarize/normalize) and returns a **draft** (`{success, filename, doc_type, target_table, draft, summary, raw_text, llm_used, llm_error}`); nothing is persisted |
-| `/api/documents/ingest/save` | POST | `{doc_type, target_table, record, filename?, raw_text?, summary?}` — upserts the approved draft into its target table (`profiles` / `behavioral_profiles` / `writing_style_profiles`) or keeps a summary-only upload for `reference`/`other`; logs an `uploaded_documents` row (`{success, derived_table, derived_id, uploaded_id}`) |
-| `/api/documents/uploaded` | GET | List raw-upload log entries (`{documents: [...]}`) |
-
-**Supporting-doc CRUD**
-
-| Path | Method | Purpose |
-| --- | --- | --- |
-| `/api/behavioral-profile` | GET | Load the active behavioral profile (`{exists, ...}`) |
-| `/api/behavioral-profile` | POST | Upsert the active behavioral profile (`{traits, strengths, work_style_paragraph, ...}` → `{success, profile, id}`) |
-| `/api/writing-style` | GET | Load the active writing-style profile (`{exists, ...}`) |
-| `/api/writing-style` | POST | Upsert the active writing-style profile (`{tone, formality, sentence_length, sample_text, dos, donts, ...}` → `{success, profile, id}`) |
-| `/api/templates` | GET | List templates, optionally filtered by kind (query: `kind`) → `{templates: [...]}` |
-| `/api/templates` | POST | Create a template (`{kind, name, body, format?, is_default?}` → `{success, template}`) |
-| `/api/templates/<id>` | GET / PATCH / DELETE | Fetch / update / delete a single template |
+Per-job application-fit evaluations and the generated-document store. Registered in `app.py`.
+(The former ingestion / behavioral / writing-style / template routes were retired — see
+`docs/plans/documents-sidebar-simplify.md`.)
 
 **Job evaluation**
 
@@ -125,6 +107,17 @@ Agentic ingestion of supporting documents (résumé/behavioral/writing-style/ref
 | Path | Method | Purpose |
 | --- | --- | --- |
 | `/api/documents` | GET | List generated documents for a job (query: `job_id`) → `{documents: [...]}` — populated by the Document Generation API below |
+
+## Document Guidance API (`guidance_bp`)
+
+The single editable **Document Guidance** document that steers both generation graphs (the Profile
+sidebar's **Guidance** tab). Registered in `app.py`.
+
+| Path | Method | Purpose |
+| --- | --- | --- |
+| `/api/document-guidance` | GET | Return the current guidance (`{success, guidance, is_default}`) |
+| `/api/document-guidance` | PUT | Save edited guidance (`{guidance}` → `{success, guidance, is_default}`; a blank string reverts to the default) |
+| `/api/document-guidance/reset` | POST | Clear the override so the built-in default is used again (`{success, guidance, is_default: true}`) |
 
 ## Document Generation API (`generation_bp`)
 
