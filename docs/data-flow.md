@@ -209,9 +209,16 @@ seeded from `JobAnalysis.skill_match` + `llm_rationale` and refined by the LLM. 
 plus résumé/skills) so the letter's motivation is grounded in the candidate's own words rather
 than invented; the prompts target a **300-400 word** letter, and the revision loop enforces a
 minimum length (`COVER_MIN_WORDS`) on the LLM path — a short first draft triggers another pass.
-The prompts also forbid echoing the job posting's wording/jargon and manufacturing motivation from
-JD keywords (the JD is passed as *context only*), and the critic penalizes JD-parroting / AI-generic
-voice — so the letter reads like the candidate, not the posting. The deterministic fallback (used
+Every letter is written to a fixed **house style** — the *Winning Formula* (Opening Hook →
+two-paragraph, quantified Value Proposition → Why-This-Company → Strong Close) plus writing rules
+(quantify achievements, strong openers, avoid the classic mistakes). It is distilled once in
+`utils/backend/agents/cover_letter_skill.py` and folded into the `strategize`/`write`/`critique`
+system prompts, so it is referenced on **every** generation and every Application-Mode
+refine/regenerate — independent of the selected template. The prompts also forbid echoing the job
+posting's wording/jargon and manufacturing motivation from JD keywords (the JD is passed as
+*context only*), and the critic penalizes JD-parroting / AI-generic voice **and a letter missing any
+part of the formula or with an unquantified value proposition** — so the letter reads like the
+candidate, not the posting. The deterministic fallback (used
 when no endpoint is configured or every LLM call fails) is plain and honest: it never parrots the
 JD, manufactures motivation, or splices third-person hooks into first-person prose. `finalize`
 persists `generated_documents(kind='cover_letter')`.
