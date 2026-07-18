@@ -74,6 +74,20 @@ def test_prompts_forbid_jd_parroting_and_ai_voice():
     assert "echo" in c and "ai-generated" in c
 
 
+def test_prompts_embed_the_winning_formula():
+    """The house-style structure must be baked into the strategist, writer, and critic prompts so
+    every generation is written to the Winning Formula — not just the deterministic fallback."""
+    for prompt in (prompts.WRITE_LETTER_PROMPT, prompts.STRATEGIZE_PROMPT, prompts.CRITIQUE_PROMPT):
+        low = prompt.lower()
+        assert "opening hook" in low
+        assert "value proposition" in low
+        assert "why this company" in low
+        assert "strong close" in low
+        assert "quantify" in low
+    # The composed guidance is the single source of truth, present verbatim in the writer prompt.
+    assert prompts.cover_letter_skill.WINNING_FORMULA in prompts.WRITE_LETTER_PROMPT
+
+
 # ==================== graph integration ====================
 
 @pytest.fixture()
@@ -115,6 +129,7 @@ class _CapturingClient:
 
     def __init__(self, styled_words: int):
         self.user_by_node = {}
+        self.system_by_node = {}
         self._styled = "Dear Hiring Manager,\n\n" + " ".join(["word"] * styled_words) + \
                        "\n\nSincerely,\n[Your Name]"
 
@@ -123,9 +138,11 @@ class _CapturingClient:
         user = messages[1]["content"]
         if "cover-letter strategist" in s:
             self.user_by_node["strategist"] = user
+            self.system_by_node["strategist"] = messages[0]["content"]
             return {"thesis": "You fit this ML role.", "hooks": ["Python"], "confidence": 0.9}
         if "filling the slots" in s:
             self.user_by_node["writer"] = user
+            self.system_by_node["writer"] = messages[0]["content"]
             return {"hook": "Excited.", "why_them": "Acme.", "why_you": "Python.", "close": "Thanks."}
         if "research a company" in s:
             return {"mission": "ML", "values": [], "angle": "ML work"}
@@ -189,3 +206,28 @@ def test_short_letter_triggers_review_on_llm_path(temp_db):
     result = cover_letter.run(state, Orchestrator())
     # Length gate refuses to accept a half-length letter even with a clean critic + truthfulness.
     assert result["needs_review"] is True
+
+
+def test_skill_reaches_writer_on_first_pass_and_refine(temp_db):
+    """The house style must be referenced on the writer's system prompt whether this is a first
+    pass OR an Application-Mode refine (instructions + prior_content set) — the core requirement."""
+    job_id = _seed()
+
+    # First pass: no user guidance.
+    client = _CapturingClient(styled_words=350)
+    state = context.load_context(job_id, "cover_letter", client=client)
+    cover_letter.run(state, Orchestrator())
+    assert "OPENING HOOK" in client.system_by_node["writer"]
+    assert "VALUE PROPOSITION" in client.system_by_node["writer"]
+
+    # Refine: user feedback + a prior draft to build on. Same guaranteed structure.
+    client2 = _CapturingClient(styled_words=350)
+    refine_state = context.load_context(
+        job_id, "cover_letter", client=client2,
+        instructions="Make the opening punchier.",
+        prior_content="Dear Hiring Manager,\n\nAn earlier draft.\n\nSincerely,\n[Your Name]")
+    cover_letter.run(refine_state, Orchestrator())
+    assert "OPENING HOOK" in client2.system_by_node["writer"]
+    assert "STRONG CLOSE" in client2.system_by_node["writer"]
+    # The refine guidance is also present (folded into the user message, not replacing the skill).
+    assert "Make the opening punchier." in client2.user_by_node["writer"]

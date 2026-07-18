@@ -10,6 +10,13 @@ the node functions) so prose and control flow stay readable, mirroring
 import re
 from typing import Any, Dict, List
 
+from . import cover_letter_skill
+
+# The distilled cover-letter house style (Winning Formula + writing rules), composed once and
+# folded into the strategize/write/critique prompts below so every generation — first pass and
+# refine alike — is written to the same structure. Single source of truth: cover_letter_skill.py.
+_HOUSE_STYLE = cover_letter_skill.skill_guidance()
+
 # ==================== template-slot rendering ====================
 
 _SLOT_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
@@ -98,7 +105,12 @@ STRATEGIZE_PROMPT = (
     "and what the role needs — expressed in the candidate's own plain words, NOT in the job "
     "posting's vocabulary or keywords. The candidate's motivation must come from their stated "
     "interests: never invent interests, aspirations, or reasons they want the job, and never "
-    "manufacture a reason by echoing a phrase from the job description. Return ONLY a JSON object "
+    "manufacture a reason by echoing a phrase from the job description.\n\n"
+    "The angle you pick must set up the house structure the letter will be written in — a strong "
+    "hook, a quantified value proposition, a genuine why-this-company, and a clear close — so favor "
+    "hooks that can be evidenced with the candidate's real, quantifiable accomplishments:\n\n"
+    + _HOUSE_STYLE + "\n\n"
+    "Return ONLY a JSON object "
     "{\"thesis\": \"<1 plain-language sentence>\", \"hooks\": [\"<connection point>\", ...], "
     "\"confidence\": <number 0-1 for how strong the angle is>}. No prose, no code fences."
 )
@@ -109,6 +121,12 @@ WRITE_LETTER_PROMPT = (
     "given the slot names, the angle, competencies to demonstrate, the candidate's stated interests "
     "& real background, and the job posting (as CONTEXT ONLY). The finished letter (all slots "
     "together) must be a substantial 300-400 words of developed paragraphs — not one-liners.\n\n"
+    "Write the letter to this house style. Map the parts onto the slots you are given: the "
+    "hook/opening slot carries the Opening Hook, the main body slot(s) carry the two-paragraph "
+    "Value Proposition, the company/interest slot carries Why This Company, and the closing slot "
+    "carries the Strong Close. If the template has fewer slots, fold the parts in without dropping "
+    "any:\n\n"
+    + _HOUSE_STYLE + "\n\n"
     "Hard rules:\n"
     "1. Do NOT quote or closely paraphrase the job posting. Do not echo its distinctive phrases, "
     "jargon, acronyms, or buzzwords back at the reader — describe the work in your own ordinary "
@@ -143,10 +161,14 @@ STYLE_PROMPT = (
 
 CRITIQUE_PROMPT = (
     "You are a demanding cover-letter critic. Score the letter on whether it reads as a specific "
-    "real person writing about their own work. HEAVILY penalize a letter that (a) echoes the job "
-    "posting's distinctive wording, jargon, acronyms, or buzzwords; (b) reads as AI-generated or "
-    "generic; or (c) manufactures motivation by naming a requirement/keyword as the reason for "
-    "interest. Reward plain, specific, human writing grounded in the candidate's own experience. "
+    "real person writing about their own work AND follows the house structure. HEAVILY penalize a "
+    "letter that (a) echoes the job posting's distinctive wording, jargon, acronyms, or buzzwords; "
+    "(b) reads as AI-generated or generic; or (c) manufactures motivation by naming a "
+    "requirement/keyword as the reason for interest. Also penalize a letter that is MISSING any part "
+    "of the structure below, that opens with a weak/templated line, or whose value proposition is "
+    "vague and UNQUANTIFIED. Reward plain, specific, human writing grounded in the candidate's own "
+    "experience with concrete, quantified accomplishments.\n\n"
+    + _HOUSE_STYLE + "\n\n"
     "Flag the offending phrases. Return ONLY a JSON object {\"score\": <integer 0-100>, "
     "\"generic_flags\": [\"<quoted phrase>\", ...], \"suggestions\": [\"<concrete fix>\", ...]}. "
     "No prose, no code fences."

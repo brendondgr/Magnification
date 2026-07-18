@@ -1,5 +1,34 @@
 # Project Checklist — Magnification
 
+## Cover-Letter Skill: Structured Output — Definition of Done
+Plan: `docs/plans/cover-letter-skill-structure.md`. Delivered on branch
+`cover-letter-skill` (worktree), committed per phase, merged to `main`.
+
+Requirement: convert an attached cover-letter Office Skill (the *Winning Formula* + writing rules)
+into the generator's structured output, and ensure the skill is **always referenced** — on the
+first generation and on every Application-Mode refresh/adjust — because the prior output was
+"lackluster."
+
+- [x] (1/5) Plan doc + worktree + resolved design forks (skill lives as a runtime code module, not
+  a `docs/skills/` pointer-file skill; template reorder is alignment, prompt injection is enforcement).
+- [x] (2/5) `utils/backend/agents/cover_letter_skill.py` — the Winning Formula (hook →
+  two-paragraph quantified value proposition → why-this-company → strong close) + writing rules
+  (quantify, strong openers, mistakes to avoid) as one runtime source of truth via
+  `skill_guidance()`; unit tests (`tests/agents/test_cover_letter_skill.py`).
+- [x] (3/5) `prompts.py` folds `skill_guidance()` into `STRATEGIZE_PROMPT`, `WRITE_LETTER_PROMPT`,
+  and `CRITIQUE_PROMPT` (always-present system prompts → always referenced, first pass and refine);
+  `seed_documents._CLASSIC` reordered to the formula for new installs; quality tests assert the
+  formula reaches the writer on a first pass **and** a refine, and that existing anti-parrot /
+  stated-interests rules are retained.
+- [x] (4/5) Docs (`structure.md`, `data-flow.md`, this checklist) + full offline validation.
+- [x] (5/5) Merged to `main`.
+- [x] Offline agent/document subset green (`tests/agents`, `tests/documents`, `tests/database`,
+  `tests/test_frontend_wiring.py`), `import app` clean.
+- [ ] **Best-quality prose needs a real LLM endpoint** — the structure/wiring is covered by
+  mocked-client + offline-fallback tests; the model-authored letter is best exercised with an
+  enabled, responsive endpoint (Options → LLM Endpoint). The deterministic fallback stays valid
+  offline but cannot fully realize the quantified value proposition.
+
 ## Per-Page Search + Saved Sort — Definition of Done
 Plan: `docs/plans/jobs-search-and-saved-sort.md`. Delivered on branch
 `claude/jobs-search-sort-9da760` (worktree), committed per phase, merged to `main`.
