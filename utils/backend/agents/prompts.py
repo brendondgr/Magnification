@@ -136,7 +136,15 @@ WRITE_LETTER_PROMPT = (
     "'passionate about', 'I am particularly drawn to', 'leverage', 'proven track record', 'hit the "
     "ground running', \"today's fast-paced\", 'high-stakes environments', 'excited about the "
     "opportunity', 'I am confident that'. Vary sentence length; do not stack tricolons or "
-    "em-dashes.\n\n"
+    "em-dashes.\n"
+    "6. SHOW the fit, never assert it. Do not compliment the company or narrate what its work "
+    "'shows', 'demonstrates', 'reflects', or 'is a testament to' (never sentences like '<Company>'s "
+    "deployment of X shows a clear commitment to Y' — the hiring manager knows their own company, "
+    "and it reads as pandering). Do not declare fit ('I would be a great fit/match because...'). "
+    "Instead, connect through the candidate's own life: what they actually build, study, and read "
+    "about, flowing naturally into the work this team does — 'I build X and follow Y, which is "
+    "exactly the problem your team works on' — so the reader concludes the fit themselves. The "
+    "connection must marinate across a sentence or two of real substance, not be bolted on.\n\n"
     "Return ONLY a JSON object mapping each requested slot name to its filled text. No prose, no "
     "code fences."
 )
@@ -155,8 +163,12 @@ CRITIQUE_PROMPT = (
     "You are a demanding cover-letter critic. Score the letter on whether it reads as a specific "
     "real person writing about their own work AND follows the house structure. HEAVILY penalize a "
     "letter that (a) echoes the job posting's distinctive wording, jargon, acronyms, or buzzwords; "
-    "(b) reads as AI-generated or generic; or (c) manufactures motivation by naming a "
-    "requirement/keyword as the reason for interest. Also penalize a letter that is MISSING any part "
+    "(b) reads as AI-generated or generic; (c) manufactures motivation by naming a "
+    "requirement/keyword as the reason for interest; or (d) flatters the company or TELLS the fit "
+    "instead of showing it — sentences that narrate what the company's work 'shows a clear "
+    "commitment to' / 'demonstrates' / 'reflects', or that assert 'I would be a great fit because' "
+    "rather than demonstrating the overlap through the candidate's own concrete work and interests. "
+    "Also penalize a letter that is MISSING any part "
     "of the structure in the DOCUMENT GUIDANCE (provided in the user message), that opens with a "
     "weak/templated line, or whose value proposition is vague and UNQUANTIFIED. Reward plain, "
     "specific, human writing grounded in the candidate's own experience with concrete, quantified "
@@ -164,6 +176,42 @@ CRITIQUE_PROMPT = (
     "Flag the offending phrases. Return ONLY a JSON object {\"score\": <integer 0-100>, "
     "\"generic_flags\": [\"<quoted phrase>\", ...], \"suggestions\": [\"<concrete fix>\", ...]}. "
     "No prose, no code fences."
+)
+
+AUDIT_FLOW_PROMPT = (
+    "You are a forced-fit detector for cover letters. Read the letter sentence by sentence and flag "
+    "every place where the candidate-to-company connection is TOLD instead of SHOWN — the writing a "
+    "hiring manager reads as pandering or copy-pasted:\n"
+    "(a) company flattery / narrated virtue: sentences about what the company's work 'shows a clear "
+    "commitment to', 'demonstrates', 'reflects', 'is a testament to', or empty praise ('impressive', "
+    "'industry-leading', 'aligns perfectly with');\n"
+    "(b) asserted fit: 'I would be a great fit/match because ...', 'my skills align with ...' — fit "
+    "declared rather than demonstrated through concrete work;\n"
+    "(c) forced or spliced transitions: keyword lists posing as motivation ('because of this and "
+    "this and this'), abrupt jumps between what the candidate does and what the company does, or "
+    "claims that read pasted-in rather than flowing from the surrounding sentences.\n\n"
+    "Do NOT flag sentences that already show the connection through the candidate's real work and "
+    "interests, and do not flag ordinary courtesies (greeting, thanks, sign-off). If the letter is "
+    "clean, return an empty flags list.\n\n"
+    "Return ONLY a JSON object {\"flags\": [{\"quote\": \"<the offending sentence, verbatim>\", "
+    "\"problem\": \"<which failure and why>\", \"fix\": \"<how to rewrite it as a shown, flowing "
+    "connection>\"}, ...]}. No prose, no code fences."
+)
+
+REWRITE_FLOW_PROMPT = (
+    "You are a line editor fixing the flagged sentences of a cover letter. You are given the "
+    "letter, a list of flagged sentences (each with the problem and a fix direction), and the "
+    "candidate's real background and stated interests. Rewrite the letter so that every flagged "
+    "sentence is replaced by a SHOWN connection: state what the candidate actually builds, studies, "
+    "or follows, and let that flow into the work this team does, so the reader concludes the fit "
+    "themselves — never compliment the company, never narrate what its work 'shows' or "
+    "'demonstrates', never declare 'I would be a great fit'. Weave each fix into the surrounding "
+    "sentences so the paragraph reads as one continuous thought, not a patch.\n\n"
+    "Change ONLY what the flags require (plus the minimal surrounding wording needed for flow). "
+    "Keep everything else — facts, structure, paragraphing, voice, and length (roughly 300-400 "
+    "words) — exactly as it is. Never fabricate experience, metrics, or interests: ground every "
+    "rewritten claim in the candidate material provided. Return ONLY the rewritten letter text — "
+    "no commentary, no code fences."
 )
 
 # ==================== résumé prompts ====================
@@ -251,6 +299,27 @@ def normalize_critique(raw: Any) -> Dict[str, Any]:
         "generic_flags": _as_str_list(raw.get("generic_flags")),
         "suggestions": _as_str_list(raw.get("suggestions")),
     }
+
+
+def normalize_flow_audit(raw: Any) -> Dict[str, Any]:
+    """Coerce the forced-fit audit to ``{"flags": [{"quote", "problem", "fix"}, ...]}``.
+
+    A malformed audit degrades to no flags (the flow pass then leaves the letter alone) rather
+    than triggering a rewrite from garbage.
+    """
+    raw = raw if isinstance(raw, dict) else {}
+    flags: List[Dict[str, str]] = []
+    raw_flags = raw.get("flags")
+    for f in (raw_flags if isinstance(raw_flags, list) else []):
+        if isinstance(f, dict) and _as_str(f.get("quote")):
+            flags.append({
+                "quote": _as_str(f.get("quote")),
+                "problem": _as_str(f.get("problem")),
+                "fix": _as_str(f.get("fix")),
+            })
+        elif isinstance(f, str) and f.strip():
+            flags.append({"quote": f.strip(), "problem": "", "fix": ""})
+    return {"flags": flags}
 
 
 def normalize_truthfulness(raw: Any) -> Dict[str, Any]:

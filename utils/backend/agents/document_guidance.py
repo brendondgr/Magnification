@@ -67,6 +67,13 @@ Follow this four-part structure (one page, ~350 words, 3-4 paragraphs):
 - Avoid the classic mistakes: do not just restate the résumé; do not be generic; focus on what the
   candidate OFFERS; keep it to one page; stay positive; never misstate the company name.
 - Sound like one specific human, not AI: no buzzword stacking, no clichés, vary sentence length.
+- SHOW the fit, never assert it. No company flattery and no narrated virtue — never write what the
+  company's work "shows a clear commitment to", "demonstrates", or "reflects" (the hiring manager
+  knows their own company; it reads as pandering), and never declare "I would be a great fit
+  because...". Connect through the candidate's own life instead: what they actually build, study,
+  and follow, flowing naturally into what this team works on, so the reader concludes the fit
+  themselves. Let the connection marinate across a sentence or two of substance — no keyword lists
+  posing as motivation, no pasted-in claims.
 """
 
 

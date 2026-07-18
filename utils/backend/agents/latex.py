@@ -125,7 +125,8 @@ _COVER_PREAMBLE = r"""\documentclass[11pt]{article}
 
 def build_cover_letter_tex(state: Dict[str, Any]) -> str:
     """Wrap the styled letter prose into a compilable single-column letter."""
-    body_text = state.get("styled_draft") or state.get("draft") or ""
+    body_text = (state.get("smoothed_draft") or state.get("styled_draft")
+                 or state.get("draft") or "")
     name = _clean_name(state)
     contact = ((state.get("candidate") or {}).get("contact") or "").strip()
 

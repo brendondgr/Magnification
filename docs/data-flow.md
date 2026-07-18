@@ -179,7 +179,7 @@ utils/backend/agents/context.py load_context(job_id, kind)
 ```
 research_company → evaluate_fit → strategize
    → [Checkpoint 1: approve angle — only when interactive & low confidence]
-   → (write → style → critique + truthfulness) looped up to 2 revisions
+   → (write → style → refine_flow → critique + truthfulness) looped up to 2 revisions
    → render (assemble LaTeX) → finalize
 ```
 
@@ -198,7 +198,21 @@ takes effect on the next run. The prompts also forbid echoing the job
 posting's wording/jargon and manufacturing motivation from JD keywords (the JD is passed as
 *context only*), and the critic penalizes JD-parroting / AI-generic voice **and a letter missing any
 part of the formula or with an unquantified value proposition** — so the letter reads like the
-candidate, not the posting. The deterministic fallback (used
+candidate, not the posting.
+
+**Flow refinement (`refine_flow`, the forced-fit fix):** after styling, a bounded audit → rewrite
+loop hunts down *told-not-shown* fit claims — company flattery / narrated virtue ("…shows a clear
+commitment to…"), asserted fit ("I would be a great fit because…"), and spliced keyword-list
+transitions — and rewrites each flagged sentence into a **shown** connection grounded in
+`candidate_facts` ("I build X and follow Y, which is the problem your team works on"), woven into
+the surrounding prose. It re-audits after each rewrite and stops the moment the audit is clean
+(cap `MAX_FLOW_PASSES = 2` rewrites, then a final audit records any remaining flags in
+`state["flow"]`). The smoothed letter (`smoothed_draft`) is what the critic, truthfulness check,
+`final_text`, and the LaTeX render all consume. The same show-don't-tell rule is enforced
+first-shot by the writer prompt (hard rule 6), the critic (penalty d), and the default Document
+Guidance writing rules. Offline, the stage passes the styled draft through untouched.
+
+The deterministic fallback (used
 when no endpoint is configured or every LLM call fails) is plain and honest: it never parrots the
 JD, manufactures motivation, or splices third-person hooks into first-person prose. `finalize`
 persists `generated_documents(kind='cover_letter')`.
