@@ -10,14 +10,18 @@ from utils.backend.llm.client import OpenAIClient, LLMConfigError, _extract_json
 
 
 class _FakeResp:
-    def __init__(self, content="ok"):
+    def __init__(self, content="ok", status_code=200, finish_reason="stop"):
         self._content = content
+        self.status_code = status_code
+        self._finish = finish_reason
 
     def raise_for_status(self):
-        return None
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
 
     def json(self):
-        return {"choices": [{"message": {"content": self._content}}]}
+        return {"choices": [{"message": {"content": self._content},
+                             "finish_reason": self._finish}]}
 
 
 def test_chat_builds_openai_payload(monkeypatch):
@@ -72,6 +76,74 @@ def test_from_config_requires_enabled():
     c = OpenAIClient.from_config({"enabled": False, "base_url": "http://x/v1"},
                                  require_enabled=False)
     assert c.base_url == "http://x/v1"
+
+
+def test_disable_thinking_injects_chat_template_kwargs(monkeypatch):
+    """Default client suppresses reasoning via chat_template_kwargs."""
+    captured = {}
+    monkeypatch.setattr(
+        llm_client.requests, "post",
+        lambda url, headers=None, json=None, timeout=None: captured.update(json=json) or _FakeResp("ok"),
+    )
+    c = OpenAIClient(base_url="http://x/v1", model="m")  # disable_thinking defaults True
+    c.chat([{"role": "user", "content": "hi"}])
+    assert captured["json"]["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_thinking_off_and_caller_override(monkeypatch):
+    """disable_thinking=False omits the hint; a caller override wins (None opts out)."""
+    seen = []
+    monkeypatch.setattr(
+        llm_client.requests, "post",
+        lambda url, headers=None, json=None, timeout=None: seen.append(json) or _FakeResp("ok"),
+    )
+    OpenAIClient(base_url="http://x/v1", model="m", disable_thinking=False).chat(
+        [{"role": "user", "content": "hi"}])
+    assert "chat_template_kwargs" not in seen[-1]
+
+    # Caller opt-out even when disable_thinking is on.
+    OpenAIClient(base_url="http://x/v1", model="m").chat(
+        [{"role": "user", "content": "hi"}], chat_template_kwargs=None)
+    assert "chat_template_kwargs" not in seen[-1]
+
+    # Caller-supplied kwargs pass through verbatim.
+    OpenAIClient(base_url="http://x/v1", model="m").chat(
+        [{"role": "user", "content": "hi"}], chat_template_kwargs={"enable_thinking": True})
+    assert seen[-1]["chat_template_kwargs"] == {"enable_thinking": True}
+
+
+def test_400_on_kwargs_drops_and_retries(monkeypatch):
+    """An endpoint that 400s on the suppression hint → drop it, retry, and stop sending it."""
+    calls = []
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        calls.append(json)
+        if "chat_template_kwargs" in json:
+            return _FakeResp("", status_code=400)
+        return _FakeResp("recovered")
+
+    monkeypatch.setattr(llm_client.requests, "post", fake_post)
+    c = OpenAIClient(base_url="http://x/v1", model="m")
+    assert c.chat([{"role": "user", "content": "hi"}]) == "recovered"
+    # First attempt had the hint (400), retry dropped it (200).
+    assert "chat_template_kwargs" in calls[0]
+    assert "chat_template_kwargs" not in calls[1]
+    assert c._thinking_param_ok is False
+    # A subsequent call no longer sends the hint at all.
+    calls.clear()
+    c.chat([{"role": "user", "content": "again"}])
+    assert "chat_template_kwargs" not in calls[0]
+
+
+def test_empty_content_retries_once(monkeypatch):
+    """An empty response (reasoning-budget exhaustion) is retried once, then recovers."""
+    responses = iter([_FakeResp("", finish_reason="length"), _FakeResp("finally")])
+    monkeypatch.setattr(
+        llm_client.requests, "post",
+        lambda *a, **k: next(responses),
+    )
+    c = OpenAIClient(base_url="http://x/v1", model="m")
+    assert c.chat([{"role": "user", "content": "hi"}]) == "finally"
 
 
 def test_extract_json_variants():

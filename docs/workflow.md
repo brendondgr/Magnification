@@ -37,6 +37,18 @@ download — the failure mode behind "Could not load model BAAI/bge-small-en-v1.
 source" on Analyze Matches. Tests that depend on the model skip when it is not cached, and all
 LLM-dependent tests run against a mocked endpoint (no network/keys needed).
 
+### Reasoning ("thinking") LLM endpoints
+
+If the configured endpoint is a **reasoning model**, it can spend its whole `max_tokens`
+budget on hidden chain-of-thought and return `finish_reason: "length"` with empty/truncated
+`content` — which fails JSON parsing for the verdict/skill/compensation extraction calls, so
+"Analyze Matches" appears to fit only a handful of jobs per run. The client suppresses this
+by default: `config/llm_endpoint_config.json` carries `disable_thinking` (default `true`),
+which sends `chat_template_kwargs={"enable_thinking": false}` (vLLM/Qwen/Gemma convention).
+On an endpoint that rejects the parameter (e.g. hosted OpenAI) the client drops it and
+retries automatically, and an empty response is retried once. Toggle it in **Options → LLM
+Endpoint → "Disable model thinking."** See `docs/plans/llm-fit-reasoning-exhaustion.md`.
+
 ## Commands
 
 | Task | Command |

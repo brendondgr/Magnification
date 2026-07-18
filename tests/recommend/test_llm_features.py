@@ -89,6 +89,36 @@ def test_llm_rerank_covers_all_jobs_by_default(monkeypatch):
     assert "llm_score" in analyses2[0] and "llm_score" in analyses2[1]
 
 
+def test_coerce_verdict_tolerates_shape_quirks():
+    # Well-formed.
+    assert service._coerce_verdict({"score": 88, "rationale": "great"}) == (88.0, "great")
+    # Numeric string.
+    assert service._coerce_verdict({"score": "40"}) == (40.0, None)
+    # Nested one level (a real model quirk): {"score": {"score": .., "rationale": ..}}.
+    assert service._coerce_verdict(
+        {"score": {"score": 20, "rationale": "mismatch"}}) == (20.0, "mismatch")
+    # Clamped to [0, 100].
+    assert service._coerce_verdict({"score": 150})[0] == 100.0
+    # Unusable → None (also: bool rejected, non-dict rejected).
+    assert service._coerce_verdict({"score": "n/a"}) is None
+    assert service._coerce_verdict({"score": True}) is None
+    assert service._coerce_verdict(None) is None
+
+
+def test_llm_rerank_unwraps_nested_score(monkeypatch):
+    """A nested {"score": {"score": .., ..}} verdict is still recorded (not dropped)."""
+    monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": True, "base_url": "x"})
+    monkeypatch.setattr(service.OpenAIClient, "from_config",
+                        classmethod(lambda cls, cfg, **kw: FakeClient(
+                            many_result=[{"score": {"score": 33, "rationale": "nested"}}])))
+    jobs = [{"id": 1, "title": "a", "description": "b"}]
+    analyses = [{"job_id": 1, "rag_score": 0.5, "semantic_score": 0.5, "bm25_score": 0.5}]
+    n = service._llm_rerank(jobs, analyses, {"interests_paragraph": "ml"}, {"llm_fraction": 1.0})
+    assert n == 1
+    assert analyses[0]["llm_score"] == 33.0
+    assert analyses[0]["llm_rationale"] == "nested"
+
+
 def test_llm_rerank_disabled_is_noop(monkeypatch):
     monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": False})
     analyses = [{"job_id": 1, "rag_score": 0.9}]

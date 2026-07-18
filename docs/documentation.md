@@ -71,4 +71,10 @@ These existing references remain canonical for their subsystems:
   templates, job evaluations), the in-house ingestion agent, and a tabbed "Profile & Documents"
   sidebar have shipped; the cover-letter/résumé generation graphs and Application Mode remain
   deferred. See `docs/plans/agentic-documents-system.md`.
+- **Reasoning-endpoint LLM fitting fixed:** the OpenAI-compatible client suppresses a
+  reasoning model's hidden chain-of-thought by default (`disable_thinking`, toggle in
+  Options → LLM Endpoint), so verdict/skill/compensation calls stop exhausting `max_tokens`
+  on reasoning and return parseable JSON; verdict parsing also tolerates nested/string score
+  shapes. This is what "Analyze Matches" needs to fit **every** job rather than a couple per
+  run. See `docs/plans/llm-fit-reasoning-exhaustion.md`.
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.

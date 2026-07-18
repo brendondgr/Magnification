@@ -27,6 +27,13 @@ DEFAULT_LLM_ENDPOINT: Dict[str, Any] = {
     "temperature": 0.2,
     "max_tokens": 1024,
     "timeout": 60,
+    # Suppress a "thinking"/reasoning model's hidden chain-of-thought for structured calls.
+    # Reasoning models can spend the whole ``max_tokens`` budget on reasoning and never emit
+    # the answer (``finish_reason: "length"``, ``content: null``), which breaks JSON parsing
+    # for verdict/skill/compensation extraction. When True the client sends
+    # ``chat_template_kwargs={"enable_thinking": False}`` (vLLM/Qwen/Gemma convention) and
+    # falls back gracefully on endpoints that reject it. See docs/plans/llm-fit-reasoning-exhaustion.md.
+    "disable_thinking": True,
 }
 
 # Keys the API is allowed to persist (ignore anything else a client posts).
