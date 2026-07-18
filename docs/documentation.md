@@ -67,10 +67,13 @@ These existing references remain canonical for their subsystems:
   user units run the scrape on boot and daily, **gated on the LLM being reachable**
   (re-checks every 10 min ×6, else skips the day; once-per-day stamp). See
   `docs/plans/systemd-daily-search.md`.
-- **Agentic Documents foundation complete:** data layer (behavioral/writing-style profiles,
-  templates, job evaluations), the in-house ingestion agent, and a tabbed "Profile & Documents"
-  sidebar have shipped; the cover-letter/résumé generation graphs and Application Mode remain
-  deferred. See `docs/plans/agentic-documents-system.md`.
+- **Agentic Documents:** the cover-letter + résumé generation graphs and Application Mode have
+  shipped. The generators are steered by a single **editable Document Guidance** document
+  (default = the cover-letter Winning Formula + résumé tailoring principles) injected into every
+  generation and refine; the Profile sidebar was simplified from four tabs to **Candidate |
+  Guidance**, retiring the Behavioral/Writing-Style/Template subsystems and the upload-ingestion
+  pipeline. See `docs/plans/agentic-documents-system.md` and
+  `docs/plans/documents-sidebar-simplify.md`.
 - **Reasoning-endpoint LLM fitting fixed:** the OpenAI-compatible client suppresses a
   reasoning model's hidden chain-of-thought by default (`disable_thinking`, toggle in
   Options → LLM Endpoint), so verdict/skill/compensation calls stop exhausting `max_tokens`
