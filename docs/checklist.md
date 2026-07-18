@@ -1,5 +1,31 @@
 # Project Checklist — Magnification
 
+## Cover-Letter Flow Smoothing (forced-fit fix) — Definition of Done
+Plan: `docs/plans/cover-letter-flow-smoothing.md`. Delivered on branch `letter-flow`
+(worktree), committed per phase, merged to `main`.
+
+Requirement (user report): letters *tell* the company-fit instead of *showing* it — pandering,
+copy-paste claims like "…deployment of thousands of models shows a clear commitment to…".
+Priority 1: a **multi-stage** step after writing that finds and rewrites the forced claims,
+relating them to the candidate's real work until they flow. Priority 2: prevention on the first
+shot.
+
+- [x] (1/5) Plan doc + worktree.
+- [x] (2/5) Prevention layer: `WRITE_LETTER_PROMPT` hard rule 6 (show the fit, never assert it —
+  no company flattery / narrated virtue / declared fit), `CRITIQUE_PROMPT` penalty (d) for the
+  same, `DEFAULT_GUIDANCE` writing rule; new `AUDIT_FLOW_PROMPT` / `REWRITE_FLOW_PROMPT` /
+  `normalize_flow_audit`; prompt + normalizer tests.
+- [x] (3/5) `refine_flow` node (audit → rewrite loop, cap `MAX_FLOW_PASSES = 2`, final audit
+  records remaining flags in `state["flow"]`) wired between `style_letter` and `critique_letter`;
+  `smoothed_draft` feeds critique/truthfulness/`current_document`/`final_text`/LaTeX body;
+  offline + error pass-through. Node loop + graph-order tests (`test_cover_letter_flow.py`).
+- [x] (4/5) Docs (`data-flow.md`, this checklist) + full offline validation.
+- [x] (5/5) Merged to `main`.
+- [x] Offline `tests/agents` green (54, incl. 7 new flow tests + 3 new prompt tests); `import app`
+  clean.
+- [ ] **Live smoothing on a real endpoint** — the loop mechanics are covered by programmable-client
+  tests; real audit/rewrite prose quality needs an enabled endpoint and a real generation to judge.
+
 ## Thinking Token Budget (replace disable_thinking) — Definition of Done
 Plan: `docs/plans/thinking-token-budget.md`. Delivered on branch `thinking-budget`
 (worktree), committed per phase, merged to `main`. Supersedes the `disable_thinking`
