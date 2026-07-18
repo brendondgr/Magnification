@@ -428,17 +428,44 @@ def _llm_rerank(jobs, analyses, profile, runtime, llm_only_missing: bool = True)
         results = client.chat_many(messages, max_workers=int(runtime.get("llm_workers", 4)),
                                    as_json=True)
         for idx, verdict in zip(order, results):
-            if isinstance(verdict, dict):
-                score = verdict.get("score")
-                if isinstance(score, (int, float)):
-                    analyses[idx]["llm_score"] = float(score)
-                    analyses[idx]["llm_rationale"] = verdict.get("rationale")
-                    updated += 1
-                else:
-                    analyses[idx]["llm_score"] = None
+            coerced = _coerce_verdict(verdict)
+            if coerced is not None:
+                analyses[idx]["llm_score"], analyses[idx]["llm_rationale"] = coerced
+                updated += 1
+            elif isinstance(verdict, dict):
+                analyses[idx]["llm_score"] = None
     except Exception as e:
         logger.warning(f"LLM re-rank failed (non-fatal): {e}")
     return updated
+
+
+def _coerce_verdict(verdict: Any):
+    """
+    Pull ``(score, rationale)`` out of a model verdict, tolerating common shape quirks, or
+    return ``None`` when no usable score is present.
+
+    Handles: the well-formed ``{"score": <num>, "rationale": <str>}``; a numeric string
+    score; and one level of accidental nesting (``{"score": {"score": <num>, ...}}``), which
+    some models emit. The score is clamped to ``[0, 100]``.
+    """
+    if not isinstance(verdict, dict):
+        return None
+    obj = verdict
+    score = obj.get("score")
+    # Unwrap a single level of nesting: {"score": {"score": .., "rationale": ..}}.
+    if isinstance(score, dict):
+        obj = score
+        score = obj.get("score")
+    if isinstance(score, bool):  # bool is an int subclass — reject it explicitly.
+        return None
+    if isinstance(score, str):
+        try:
+            score = float(score.strip())
+        except ValueError:
+            return None
+    if not isinstance(score, (int, float)):
+        return None
+    return max(0.0, min(100.0, float(score))), obj.get("rationale")
 
 
 def _recover_compensation(jobs: List[Dict[str, Any]], runtime: Dict[str, Any],
