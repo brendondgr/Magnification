@@ -22,6 +22,12 @@ class LLMConfigError(RuntimeError):
     """Raised when the LLM endpoint is unconfigured or disabled."""
 
 
+_UNSET = object()
+
+# Sent to suppress a reasoning model's hidden chain-of-thought (vLLM/Qwen/Gemma convention).
+_NO_THINKING = {"enable_thinking": False}
+
+
 class OpenAIClient:
     """Minimal OpenAI-compatible chat client."""
 
@@ -33,6 +39,7 @@ class OpenAIClient:
         temperature: float = 0.2,
         max_tokens: int = 1024,
         timeout: int = 60,
+        disable_thinking: bool = True,
     ):
         if not base_url:
             raise LLMConfigError("LLM base_url is not configured.")
@@ -42,6 +49,11 @@ class OpenAIClient:
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
+        # When True, ask the endpoint to skip "thinking" so it emits the answer instead of
+        # exhausting max_tokens on reasoning. Flipped off for the rest of this client's life
+        # if the endpoint rejects the parameter (see _request_content).
+        self.disable_thinking = disable_thinking
+        self._thinking_param_ok = True
 
     # ---- construction -------------------------------------------------
 
@@ -59,6 +71,7 @@ class OpenAIClient:
             temperature=cfg.get("temperature", 0.2),
             max_tokens=cfg.get("max_tokens", 1024),
             timeout=cfg.get("timeout", 60),
+            disable_thinking=cfg.get("disable_thinking", True),
         )
 
     # ---- low-level ----------------------------------------------------
@@ -70,7 +83,14 @@ class OpenAIClient:
         return headers
 
     def chat(self, messages: List[Dict[str, str]], **overrides) -> str:
-        """Send a chat-completion request and return the assistant text content."""
+        """
+        Send a chat-completion request and return the assistant text content.
+
+        When ``disable_thinking`` is on (and the caller hasn't overridden
+        ``chat_template_kwargs``), the request asks the endpoint to skip reasoning so it
+        emits the answer directly — reasoning models otherwise spend the whole ``max_tokens``
+        budget thinking and return empty/truncated content. An empty response is retried once.
+        """
         payload = {
             "model": overrides.get("model", self.model),
             "messages": messages,
@@ -78,16 +98,44 @@ class OpenAIClient:
             "max_tokens": overrides.get("max_tokens", self.max_tokens),
             "stream": False,
         }
-        resp = requests.post(
-            f"{self.base_url}/chat/completions",
-            headers=self._headers(),
-            json=payload,
-            timeout=overrides.get("timeout", self.timeout),
-        )
+        # Thinking suppression: a caller-supplied chat_template_kwargs wins (pass None to opt
+        # out entirely); otherwise inject enable_thinking=False when configured + supported.
+        ctk = overrides.get("chat_template_kwargs", _UNSET)
+        if ctk is not _UNSET:
+            if ctk is not None:
+                payload["chat_template_kwargs"] = ctk
+        elif self.disable_thinking and self._thinking_param_ok:
+            payload["chat_template_kwargs"] = dict(_NO_THINKING)
+
+        timeout = overrides.get("timeout", self.timeout)
+        content, finish = self._request_content(payload, timeout)
+        # Reasoning models occasionally still burn the budget (finish_reason == "length")
+        # and return nothing; a single retry recovers the common transient case.
+        if content is None or not str(content).strip():
+            content, finish = self._request_content(payload, timeout)
+        return content or ""
+
+    def _request_content(self, payload: Dict[str, Any], timeout: int):
+        """
+        POST one chat-completion and return ``(content, finish_reason)``.
+
+        If the endpoint rejects the ``chat_template_kwargs`` suppression hint (HTTP 400),
+        drop it, remember not to send it again on this client, and retry once so a strict
+        endpoint (e.g. hosted OpenAI) still works.
+        """
+        url = f"{self.base_url}/chat/completions"
+        resp = requests.post(url, headers=self._headers(), json=payload, timeout=timeout)
+        if (getattr(resp, "status_code", 200) == 400
+                and "chat_template_kwargs" in payload):
+            logger.warning("Endpoint rejected chat_template_kwargs; retrying without thinking suppression.")
+            self._thinking_param_ok = False
+            payload = {k: v for k, v in payload.items() if k != "chat_template_kwargs"}
+            resp = requests.post(url, headers=self._headers(), json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
         try:
-            return data["choices"][0]["message"]["content"] or ""
+            choice = data["choices"][0]
+            return choice["message"]["content"], choice.get("finish_reason")
         except (KeyError, IndexError, TypeError) as e:
             raise RuntimeError(f"Unexpected chat-completion response shape: {e}") from e
 
