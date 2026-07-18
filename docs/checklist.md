@@ -1,5 +1,40 @@
 # Project Checklist — Magnification
 
+## Analyze Matches — LLM Fit Reasoning-Token Exhaustion — Definition of Done
+Plan: `docs/plans/llm-fit-reasoning-exhaustion.md`. Delivered on branch
+`fix-llm-fit-reasoning-exhaustion` (worktree), committed per phase, merged to `main`.
+
+Reported: "Analyze Matches only fits ~2 jobs per run; ~165 still have no LLM fitting."
+Root cause: the coverage/gap-fill logic was correct (`llm_fraction = 1.0` selects every
+missing-verdict job), but the configured **reasoning** endpoint (`localhost:4000`, `skynet`)
+spent its entire `max_tokens` (4092) on hidden reasoning and returned `finish_reason:
+"length"` with `content: null` (or truncated JSON), which failed to parse and was dropped —
+so only the occasional short-reasoning job landed. A live batch measured **3/10** verdicts in
+52s.
+
+- [x] (1/5) Root-cause plan doc + worktree.
+- [x] (2/5) `utils/backend/llm/config.py` `disable_thinking` default True (auto-whitelisted);
+  `utils/backend/llm/client.py` injects `chat_template_kwargs={"enable_thinking": false}` for
+  every call when on (caller override wins; `None` opts out), drops-and-retries + caches on an
+  HTTP 400 (strict endpoints keep working), and retries once on empty content; unit tests
+  (`tests/llm/test_client.py`). Empirically: `reasoning_effort:low` and `json_object` did **not**
+  fix it; disabling thinking did (3/10 → 9-10/10, ~20× faster).
+- [x] (3/5) Options → LLM Endpoint "Disable model thinking" toggle + state/save/load wiring +
+  embedded default; frontend wiring test. Verified live (worktree preview, DOM): renders ON,
+  flips off; no console errors; not saved (shared config untouched).
+- [x] Robustness follow-on found during verification: `service._coerce_verdict` tolerates a
+  nested `{"score": {"score": N, ...}}` and numeric-string scores (rejects bools; clamps
+  0–100) so a malformed-but-non-empty verdict is no longer dropped; `_llm_rerank` uses it;
+  tests added.
+- [x] (4/5) Docs (`workflow.md` reasoning-endpoint note, `api-contract.md` config key,
+  `documentation.md` status, this checklist, plan doc) + **live end-to-end proof**: the real
+  gap-fill drove the shared DB from **155/167 → 167/167** LLM fits (all missing filled), each
+  pass ~2.4s (vs the original 68s for 2 fits).
+- [x] (5/5) Merged to `main`.
+- [x] Offline subsets green (`tests/llm`, `tests/recommend` — excluding the pre-existing
+  model-cache `test_analyze_api_and_report`, which fails identically on `main`),
+  `tests/test_frontend_wiring.py`; `import app` clean.
+
 ## Cover-Letter Skill: Structured Output — Definition of Done
 Plan: `docs/plans/cover-letter-skill-structure.md`. Delivered on branch
 `cover-letter-skill` (worktree), committed per phase, merged to `main`.

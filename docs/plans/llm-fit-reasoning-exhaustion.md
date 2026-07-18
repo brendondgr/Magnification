@@ -118,4 +118,17 @@ work.
 | Client unit tests | Kwarg on/off, 400 drop-and-retry, empty-content retry | `tests/llm/test_client.py` |
 | Options toggle | "Disable model thinking" control + wiring | `utils/frontend/templates/index.html` |
 | Frontend wiring test | Assert toggle tokens present | `tests/test_frontend_wiring.py` |
+| Verdict-shape resilience | `_coerce_verdict` unwraps nested `{"score":{...}}` + numeric strings | `utils/backend/recommend/service.py` |
 | Docs | workflow / api-contract / documentation / checklist updates | `docs/*.md` |
+
+## 5. Results (delivered)
+
+- **Measured fix:** on the live endpoint a batch of 10 missing verdicts went from **3/10 in
+  52s** (baseline) to **9-10/10 in ~2s** with `enable_thinking=false`. `reasoning_effort:low`
+  and `response_format:json_object` did **not** resolve it.
+- **Live end-to-end:** the real "Analyze Matches" gap-fill drove the shared DB from **155/167
+  to 167/167** jobs with an LLM fit across a few ~2.4s passes (vs the reported "2 fits in 68s").
+- **Follow-on found in verification:** the last stubborn job failed not on reasoning but on a
+  malformed `{"score": {"score": N, ...}}` shape; `service._coerce_verdict` now unwraps one
+  nesting level + accepts numeric strings (rejects bools, clamps 0–100), and `_llm_rerank`
+  uses it — closing the gap to 167/167.
