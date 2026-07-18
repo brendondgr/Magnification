@@ -14,13 +14,16 @@ from . import documents_ops as docs_ops
 
 # ---- Cover-letter templates (slots: {{hook}}, {{why_them}}, {{why_you}}, {{close}}) ----
 
+# Slot order follows the cover-letter house style's Winning Formula
+# (agents/cover_letter_skill.py): Opening Hook -> Value Proposition ({{why_you}}, the body) ->
+# Why This Company ({{why_them}}) -> Strong Close.
 _CLASSIC = """Dear {{hiring_manager}},
 
 {{hook}}
 
-{{why_them}}
-
 {{why_you}}
+
+{{why_them}}
 
 {{close}}
 
