@@ -29,6 +29,9 @@ COVER_MIN_WORDS = 280
 # Cover-letter Critic acceptance score (0..100) and résumé match-lift floor (0..1).
 COVER_SCORE_THRESHOLD = 75
 MATCH_MIN_LIFT = 0.0
+# Max rewrite passes of the cover-letter flow loop (refine_flow: audit → rewrite the forced-fit
+# sentences). Each pass re-audits first, so a clean letter exits immediately.
+MAX_FLOW_PASSES = 2
 
 
 class GraphError(RuntimeError):

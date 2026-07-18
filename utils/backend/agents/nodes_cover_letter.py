@@ -1,10 +1,12 @@
 """
-Cover-letter graph nodes (design §2): strategize → write → style → critique.
+Cover-letter graph nodes (design §2): strategize → write → style → refine_flow → critique.
 
 The design bet is to **separate strategy from prose from voice**: the angle (``strategize``) is
 decided — and optionally approved — before a word is written (``write_letter``), then the voice
-agent (``style_letter``) applies the writing style, and a critic (``critique_letter``) scores the
-result. Each node degrades to a deterministic fallback when no LLM endpoint is configured.
+agent (``style_letter``) applies the writing style, a flow pass (``refine_flow``) audits and
+rewrites forced-fit sentences (company flattery / asserted rather than shown fit), and a critic
+(``critique_letter``) scores the result. Each node degrades to a deterministic fallback when no
+LLM endpoint is configured.
 """
 
 from typing import Any, Dict
@@ -15,6 +17,7 @@ from . import prompts
 from .nodes_shared import (
     _chat_json, _chat_text, candidate_facts, evaluation_json, guidance_preamble,
 )
+from .orchestrator import MAX_FLOW_PASSES
 
 # A minimal built-in letter body used only when no cover-letter template exists at all.
 _DEFAULT_LETTER_BODY = (
@@ -172,6 +175,60 @@ def style_letter(state: Dict[str, Any], orch) -> None:
     state["styled_draft"] = styled
 
 
+# ==================== flow refinement (the forced-fit fix) ====================
+
+def _format_flags(flags) -> str:
+    lines = []
+    for i, f in enumerate(flags, 1):
+        line = f'{i}. "{f.get("quote", "")}"'
+        if f.get("problem"):
+            line += f' — problem: {f["problem"]}'
+        if f.get("fix"):
+            line += f' — fix: {f["fix"]}'
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def refine_flow(state: Dict[str, Any], orch) -> None:
+    """Audit → rewrite loop that hunts down forced-fit writing (company flattery, asserted fit,
+    spliced transitions) and rewrites each flagged sentence into a SHOWN, flowing connection
+    grounded in the candidate's real work — the "write and relate it constantly" stage.
+
+    Runs after ``style_letter``; the critic and truthfulness check score its output. Ends early the
+    moment an audit comes back clean; a final audit after the last rewrite records the remaining
+    flags. Offline (or on any error) it passes the styled draft through untouched.
+    """
+    orch.report("flow", 80, "Smoothing forced connections…")
+    letter = state.get("styled_draft") or state.get("draft") or ""
+    flow: Dict[str, Any] = {"passes": 0, "flags": []}
+    client = state.get("client")
+    if client and letter:
+        try:
+            for attempt in range(MAX_FLOW_PASSES + 1):
+                audit = prompts.normalize_flow_audit(_chat_json(
+                    client, prompts.AUDIT_FLOW_PROMPT,
+                    guidance_preamble(state) + f"Letter:\n{letter}"))
+                state["llm_used"] = True
+                flow["flags"] = audit["flags"]
+                if not audit["flags"] or attempt == MAX_FLOW_PASSES:
+                    break
+                orch.report("flow", 80,
+                            f"Rewriting {len(audit['flags'])} forced claim(s)…")
+                user = (guidance_preamble(state) +
+                        f"Flagged sentences to fix:\n{_format_flags(audit['flags'])}\n\n"
+                        f"{candidate_facts(state.get('profile'))}\n\n"
+                        f"Letter:\n{letter}")
+                out = _chat_text(client, prompts.REWRITE_FLOW_PROMPT, user, max_tokens=1200)
+                if not (out and out.strip()):
+                    break  # a blank rewrite must not eat the letter
+                letter = out.strip()
+                flow["passes"] += 1
+        except Exception as e:
+            logger.warning(f"refine_flow failed: {e}")
+    state["smoothed_draft"] = letter
+    state["flow"] = flow
+
+
 # ==================== critique ====================
 
 def _heuristic_critique(letter: str) -> Dict[str, Any]:
@@ -192,7 +249,8 @@ def _heuristic_critique(letter: str) -> Dict[str, Any]:
 
 def critique_letter(state: Dict[str, Any], orch) -> None:
     orch.report("critique", 85, "Critiquing the draft…")
-    letter = state.get("styled_draft") or state.get("draft") or ""
+    letter = (state.get("smoothed_draft") or state.get("styled_draft")
+              or state.get("draft") or "")
     client = state.get("client")
     if not client:
         state["critique"] = _heuristic_critique(letter)

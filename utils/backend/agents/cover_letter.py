@@ -3,7 +3,7 @@ The Cover Letter graph (design §2.1) — assembled as an in-house node pipeline
 
     research_company → evaluate_fit → strategize
         → [CHECKPOINT 1: approve the angle, when interactive]
-        → (write → style → critique ‖ truthfulness → decide)  × up to MAX_REVISIONS
+        → (write → style → refine_flow → critique ‖ truthfulness → decide)  × up to MAX_REVISIONS
         → finalize
 
 ``run(state, orch)`` runs the pipeline over a ``state`` produced by :func:`context.load_context`
@@ -61,8 +61,10 @@ def run(state: Dict[str, Any], orch) -> Dict[str, Any]:
         state["revision"] = revision
         cl.write_letter(state, orch)
         cl.style_letter(state, orch)
+        cl.refine_flow(state, orch)
         cl.critique_letter(state, orch)
-        state["current_document"] = state.get("styled_draft") or state.get("draft") or ""
+        state["current_document"] = (state.get("smoothed_draft") or state.get("styled_draft")
+                                     or state.get("draft") or "")
         shared.truthfulness_check(state, orch)
 
         critique_ok = (state.get("critique") or {}).get("score", 0) >= COVER_SCORE_THRESHOLD
@@ -80,7 +82,8 @@ def run(state: Dict[str, Any], orch) -> Dict[str, Any]:
     state["needs_review"] = not accepted
     # The critic/truthfulness passes scored the plain prose; the persisted document is LaTeX.
     orch.report("render", 94, "Rendering the letter as LaTeX…")
-    state["final_text"] = state.get("styled_draft") or state.get("draft") or ""
+    state["final_text"] = (state.get("smoothed_draft") or state.get("styled_draft")
+                           or state.get("draft") or "")
     state["final"] = latex.build_cover_letter_tex(state)
     state["format"] = "latex"
     orch.report("finalize", 96, "Finalizing the letter…")
