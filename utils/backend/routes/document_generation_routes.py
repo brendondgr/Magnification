@@ -33,7 +33,6 @@ def _start(kind: str):
         return jsonify({"success": False, "message": "job_id (int) is required"}), 400
     if db_ops.get_job_by_id(job_id) is None:
         return jsonify({"success": False, "message": "Job not found"}), 404
-    template_id = data.get("template_id")
     interactive = bool(data.get("interactive"))
     instructions = (data.get("instructions") or "").strip()
 
@@ -47,7 +46,7 @@ def _start(kind: str):
         revise_from = None
 
     task_id = service.start_generation(
-        kind, job_id, template_id=template_id, interactive=interactive,
+        kind, job_id, interactive=interactive,
         instructions=instructions, prior_content=prior_content, revise_from=revise_from)
     return jsonify({"success": True, "task_id": task_id, "kind": kind, "job_id": job_id})
 
@@ -56,7 +55,7 @@ def _start(kind: str):
 def start_cover_letter():
     """Start a cover-letter generation.
 
-    Body: ``{job_id, template_id?, interactive?, instructions?, revise_from?}``. ``instructions`` is
+    Body: ``{job_id, interactive?, instructions?, revise_from?}``. ``instructions`` is
     Application-Mode guidance for a steered re-run; ``revise_from`` (a doc id) updates that draft in
     place, building on its current content.
     """
@@ -65,7 +64,7 @@ def start_cover_letter():
 
 @generation_bp.route("/api/documents/resume/start", methods=["POST"])
 def start_resume():
-    """Start a résumé fine-tune. Body: ``{job_id, template_id?, interactive?, instructions?,
+    """Start a résumé fine-tune. Body: ``{job_id, interactive?, instructions?,
     revise_from?}`` (same refine semantics as the cover-letter start)."""
     return _start("resume")
 

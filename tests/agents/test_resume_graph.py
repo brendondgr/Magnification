@@ -16,7 +16,6 @@ from sqlalchemy.pool import StaticPool
 
 from utils.backend.database import init_db
 from utils.backend.database import operations as db_ops
-from utils.backend.database.seed_documents import seed_documents_if_empty
 from utils.backend.database.models import Base
 from utils.backend.agents import context, resume
 from utils.backend.agents.orchestrator import Orchestrator, Checkpoint
@@ -40,7 +39,6 @@ def _force_no_endpoint(monkeypatch):
 
 
 def _seed():
-    seed_documents_if_empty()  # résumé ATS skeleton template
     db_ops.upsert_active_profile({
         "name": "default",
         "resume_text": "Software engineer. I wrote Python services.",

@@ -13,7 +13,7 @@ from loguru import logger
 
 from . import prompts
 from .nodes_shared import (
-    _chat_json, _chat_text, candidate_facts, evaluation_json,
+    _chat_json, _chat_text, candidate_facts, evaluation_json, guidance_preamble,
 )
 
 # A minimal built-in letter body used only when no cover-letter template exists at all.
@@ -42,12 +42,10 @@ def strategize(state: Dict[str, Any], orch) -> None:
     client = state.get("client")
     if client:
         try:
-            behavioral = state.get("behavioral") or {}
-            user = (prompts.guidance_block(state.get("instructions", "")) +
+            user = (guidance_preamble(state) +
+                    prompts.guidance_block(state.get("instructions", "")) +
                     f"Application-fit evaluation:\n{evaluation_json(evaluation)}\n\n"
-                    f"{candidate_facts(state.get('profile'))}\n\n"
-                    f"Candidate work-style: {behavioral.get('work_style_paragraph', '')}\n"
-                    f"Strengths: {', '.join(behavioral.get('strengths') or [])}")
+                    f"{candidate_facts(state.get('profile'))}")
             strategy = prompts.normalize_strategy(
                 _chat_json(client, prompts.STRATEGIZE_PROMPT, user))
             state["llm_used"] = True
@@ -105,8 +103,7 @@ def _fallback_slot(slot: str, state: Dict[str, Any]) -> str:
 
 def write_letter(state: Dict[str, Any], orch) -> None:
     orch.report("write", 60, "Writing the draft…")
-    template = state.get("template") or {}
-    body = template.get("body") or _DEFAULT_LETTER_BODY
+    body = _DEFAULT_LETTER_BODY
     slots = prompts.find_slots(body)
 
     values = _context_slot_values(state)
@@ -131,8 +128,9 @@ def write_letter(state: Dict[str, Any], orch) -> None:
                     f"{evaluation.get('emphasize')}\n\n"
                     f"Job posting for {job.get('title', '')} at {job.get('company', '')} — CONTEXT "
                     f"ONLY, do not copy its wording:\n{(job.get('description') or '')[:1800]}")
-            user = prompts.guidance_block(state.get("instructions", ""),
-                                          state.get("prior_content", "")) + user
+            user = (guidance_preamble(state) +
+                    prompts.guidance_block(state.get("instructions", ""),
+                                           state.get("prior_content", "")) + user)
             raw = _chat_json(client, prompts.WRITE_LETTER_PROMPT, user)
             if isinstance(raw, dict):
                 filled = {k: str(v) for k, v in raw.items() if k in prose_slots and v}
@@ -151,28 +149,20 @@ def write_letter(state: Dict[str, Any], orch) -> None:
 
 # ==================== style ====================
 
-def _describe_style(writing: Dict[str, Any]) -> str:
-    parts = []
-    for key in ("tone", "formality", "sentence_length"):
-        if writing.get(key):
-            parts.append(f"{key.replace('_', ' ')}: {writing[key]}")
-    if writing.get("dos"):
-        parts.append("do: " + "; ".join(writing["dos"]))
-    if writing.get("donts"):
-        parts.append("don't: " + "; ".join(writing["donts"]))
-    if writing.get("sample_text"):
-        parts.append(f"sample of the target voice:\n{writing['sample_text'][:800]}")
-    return "\n".join(parts) or "warm-professional, specific, concise"
+# A fixed, sensible default voice. (The former per-user Writing-Style profile was retired; the
+# editable Document Guidance now carries any voice preferences and is applied by the writer.)
+_DEFAULT_VOICE = "warm-professional, specific, concise"
 
 
 def style_letter(state: Dict[str, Any], orch) -> None:
-    orch.report("style", 75, "Matching your writing voice…")
+    orch.report("style", 75, "Polishing the voice…")
     draft = state.get("draft") or ""
     styled = draft
     client = state.get("client")
     if client and draft:
         try:
-            user = f"Target writing style:\n{_describe_style(state.get('writing') or {})}\n\nLetter:\n{draft}"
+            user = (guidance_preamble(state) +
+                    f"Target writing style:\n{_DEFAULT_VOICE}\n\nLetter:\n{draft}")
             out = _chat_text(client, prompts.STYLE_PROMPT, user, max_tokens=1200)
             if out and out.strip():
                 styled = out.strip()
@@ -209,7 +199,8 @@ def critique_letter(state: Dict[str, Any], orch) -> None:
         return
     try:
         job = state["job"]
-        user = f"Job description:\n{(job.get('description') or '')[:3000]}\n\nLetter:\n{letter}"
+        user = (guidance_preamble(state) +
+                f"Job description:\n{(job.get('description') or '')[:3000]}\n\nLetter:\n{letter}")
         state["critique"] = prompts.normalize_critique(
             _chat_json(client, prompts.CRITIQUE_PROMPT, user))
         state["llm_used"] = True

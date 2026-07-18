@@ -9,12 +9,9 @@ chosen template, into the initial ``state`` dict both graphs run over.
 from typing import Any, Dict, Optional
 
 from ..database import operations as db_ops
-from ..database import documents_ops as docs_ops
 from ..llm.client import OpenAIClient
+from . import document_guidance
 from .orchestrator import GraphError
-
-# Which template kind backs each generation kind.
-_TEMPLATE_KIND = {"cover_letter": "cover_letter", "resume": "resume"}
 
 
 def resolve_client(client=None) -> Optional[OpenAIClient]:
@@ -39,16 +36,16 @@ def candidate_name(profile: Dict[str, Any]) -> str:
     return ""
 
 
-def load_context(job_id: int, kind: str, template_id: Optional[int] = None,
-                 client=None, instructions: str = "", prior_content: str = "") -> Dict[str, Any]:
+def load_context(job_id: int, kind: str, client=None,
+                 instructions: str = "", prior_content: str = "") -> Dict[str, Any]:
     """
     Build the initial graph state for a job.
 
-    Reads the job, its analysis (with the stored embedding, needed for the résumé match-lift),
-    the active profile / behavioral / writing-style records, and the chosen (or default)
-    template. ``instructions`` (Application-Mode user guidance) and ``prior_content`` (the current
-    draft to build on) steer a refine re-run; both default empty for a first-pass generation.
-    Raises :class:`GraphError` if the job does not exist.
+    Reads the job, its analysis (with the stored embedding, needed for the résumé match-lift), and
+    the active profile, plus the single user-editable **Document Guidance** that steers both graphs.
+    ``instructions`` (Application-Mode user guidance) and ``prior_content`` (the current draft to
+    build on) steer a refine re-run; both default empty for a first-pass generation. Raises
+    :class:`GraphError` if the job does not exist.
     """
     job = db_ops.get_job_by_id(job_id)
     if not job:
@@ -56,25 +53,13 @@ def load_context(job_id: int, kind: str, template_id: Optional[int] = None,
 
     analysis = db_ops.get_analysis_for_jobs([job_id], include_embedding=True).get(job_id) or {}
     profile = db_ops.get_active_profile() or {}
-    behavioral = docs_ops.get_active_behavioral_profile() or {}
-    writing = docs_ops.get_active_writing_style() or {}
-
-    tpl_kind = _TEMPLATE_KIND.get(kind, "cover_letter")
-    template = None
-    if template_id is not None:
-        template = docs_ops.get_template(template_id)
-    if template is None:
-        template = docs_ops.get_default_template(tpl_kind)
-    template = template or {}
 
     return {
         "kind": kind,
         "job": job,
         "analysis": analysis,
         "profile": profile,
-        "behavioral": behavioral,
-        "writing": writing,
-        "template": template,
+        "guidance": document_guidance.get_guidance(),
         "candidate": {
             "name": candidate_name(profile),
             "contact": "",

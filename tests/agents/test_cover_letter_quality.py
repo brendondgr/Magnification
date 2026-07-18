@@ -16,7 +16,6 @@ from sqlalchemy.pool import StaticPool
 
 from utils.backend.database import init_db
 from utils.backend.database import operations as db_ops
-from utils.backend.database.seed_documents import seed_documents_if_empty
 from utils.backend.database.models import Base
 from utils.backend.agents import context, cover_letter, prompts
 from utils.backend.agents import nodes_shared as shared
@@ -74,18 +73,12 @@ def test_prompts_forbid_jd_parroting_and_ai_voice():
     assert "echo" in c and "ai-generated" in c
 
 
-def test_prompts_embed_the_winning_formula():
-    """The house-style structure must be baked into the strategist, writer, and critic prompts so
-    every generation is written to the Winning Formula — not just the deterministic fallback."""
+def test_prompts_defer_to_the_editable_document_guidance():
+    """The strategist, writer, and critic prompts must reference the DOCUMENT GUIDANCE (injected at
+    call time from the editable store) rather than hard-coding the structure themselves — so a user
+    edit to the guidance takes effect immediately."""
     for prompt in (prompts.WRITE_LETTER_PROMPT, prompts.STRATEGIZE_PROMPT, prompts.CRITIQUE_PROMPT):
-        low = prompt.lower()
-        assert "opening hook" in low
-        assert "value proposition" in low
-        assert "why this company" in low
-        assert "strong close" in low
-        assert "quantify" in low
-    # The composed guidance is the single source of truth, present verbatim in the writer prompt.
-    assert prompts.cover_letter_skill.WINNING_FORMULA in prompts.WRITE_LETTER_PROMPT
+        assert "DOCUMENT GUIDANCE" in prompt
 
 
 # ==================== graph integration ====================
@@ -105,7 +98,6 @@ _INTERESTS = "I am driven by building privacy-preserving ML systems for healthca
 
 
 def _seed():
-    seed_documents_if_empty()
     db_ops.upsert_active_profile({
         "name": "default",
         "resume_text": "Built ML systems in Python.",
@@ -208,26 +200,30 @@ def test_short_letter_triggers_review_on_llm_path(temp_db):
     assert result["needs_review"] is True
 
 
-def test_skill_reaches_writer_on_first_pass_and_refine(temp_db):
-    """The house style must be referenced on the writer's system prompt whether this is a first
-    pass OR an Application-Mode refine (instructions + prior_content set) — the core requirement."""
+_SENTINEL_GUIDANCE = "MY_HOUSE_STYLE_MARKER: always open with a bang."
+
+
+def test_editable_guidance_reaches_writer_on_first_pass_and_refine(temp_db, monkeypatch):
+    """The editable Document Guidance must be injected into the writer whether this is a first pass
+    OR an Application-Mode refine (instructions + prior_content set) — the core requirement. Patched
+    to a sentinel so the test is independent of whatever guidance is stored on disk."""
+    monkeypatch.setattr(context.document_guidance, "get_guidance", lambda: _SENTINEL_GUIDANCE)
     job_id = _seed()
 
     # First pass: no user guidance.
     client = _CapturingClient(styled_words=350)
     state = context.load_context(job_id, "cover_letter", client=client)
     cover_letter.run(state, Orchestrator())
-    assert "OPENING HOOK" in client.system_by_node["writer"]
-    assert "VALUE PROPOSITION" in client.system_by_node["writer"]
+    assert _SENTINEL_GUIDANCE in client.user_by_node["writer"]
+    assert _SENTINEL_GUIDANCE in client.user_by_node["strategist"]
 
-    # Refine: user feedback + a prior draft to build on. Same guaranteed structure.
+    # Refine: user feedback + a prior draft to build on. Guidance still injected.
     client2 = _CapturingClient(styled_words=350)
     refine_state = context.load_context(
         job_id, "cover_letter", client=client2,
         instructions="Make the opening punchier.",
         prior_content="Dear Hiring Manager,\n\nAn earlier draft.\n\nSincerely,\n[Your Name]")
     cover_letter.run(refine_state, Orchestrator())
-    assert "OPENING HOOK" in client2.system_by_node["writer"]
-    assert "STRONG CLOSE" in client2.system_by_node["writer"]
-    # The refine guidance is also present (folded into the user message, not replacing the skill).
+    assert _SENTINEL_GUIDANCE in client2.user_by_node["writer"]
+    # The refine guidance is also present alongside the house style, not replacing it.
     assert "Make the opening punchier." in client2.user_by_node["writer"]
