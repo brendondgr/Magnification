@@ -107,6 +107,15 @@ def test_index_has_documents_sidebar_wiring(client):
     assert "Document Templates" in html
 
 
+def test_index_has_disable_thinking_toggle(client):
+    """The LLM Endpoint options tab wires the 'Disable model thinking' toggle."""
+    html = client.get("/").get_data(as_text=True)
+    for token in ("toggleLlmThinking", "llmThinkingRow", "llmThinkingChk",
+                  "llmDisableThinking", "disable_thinking"):
+        assert token in html, f"missing thinking-toggle token: {token}"
+    assert "Disable model thinking" in html
+
+
 def test_index_has_application_mode(client):
     """The served page wires Application Mode (Apply → intake / workspace / refine)."""
     html = client.get("/").get_data(as_text=True)
