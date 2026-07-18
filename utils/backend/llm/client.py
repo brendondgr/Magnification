@@ -22,12 +22,6 @@ class LLMConfigError(RuntimeError):
     """Raised when the LLM endpoint is unconfigured or disabled."""
 
 
-_UNSET = object()
-
-# Sent to suppress a reasoning model's hidden chain-of-thought (vLLM/Qwen/Gemma convention).
-_NO_THINKING = {"enable_thinking": False}
-
-
 class OpenAIClient:
     """Minimal OpenAI-compatible chat client."""
 
@@ -39,7 +33,7 @@ class OpenAIClient:
         temperature: float = 0.2,
         max_tokens: int = 1024,
         timeout: int = 60,
-        disable_thinking: bool = True,
+        thinking_token_budget: int = 1024,
     ):
         if not base_url:
             raise LLMConfigError("LLM base_url is not configured.")
@@ -49,10 +43,14 @@ class OpenAIClient:
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
-        # When True, ask the endpoint to skip "thinking" so it emits the answer instead of
-        # exhausting max_tokens on reasoning. Flipped off for the rest of this client's life
-        # if the endpoint rejects the parameter (see _request_content).
-        self.disable_thinking = disable_thinking
+        # Bounded reasoning: the model may think up to this many tokens, then must answer. Sent
+        # top-level as ``thinking_token_budget``; the effective ``max_tokens`` is raised by this
+        # amount so the answer still fits after thinking. 0 disables it (no param sent). Latched
+        # off for the rest of this client's life if the endpoint rejects it (see _request_content).
+        try:
+            self.thinking_token_budget = max(0, int(thinking_token_budget or 0))
+        except (TypeError, ValueError):
+            self.thinking_token_budget = 0
         self._thinking_param_ok = True
 
     # ---- construction -------------------------------------------------
@@ -71,7 +69,7 @@ class OpenAIClient:
             temperature=cfg.get("temperature", 0.2),
             max_tokens=cfg.get("max_tokens", 1024),
             timeout=cfg.get("timeout", 60),
-            disable_thinking=cfg.get("disable_thinking", True),
+            thinking_token_budget=cfg.get("thinking_token_budget", 1024),
         )
 
     # ---- low-level ----------------------------------------------------
@@ -86,50 +84,47 @@ class OpenAIClient:
         """
         Send a chat-completion request and return the assistant text content.
 
-        When ``disable_thinking`` is on (and the caller hasn't overridden
-        ``chat_template_kwargs``), the request asks the endpoint to skip reasoning so it
-        emits the answer directly — reasoning models otherwise spend the whole ``max_tokens``
-        budget thinking and return empty/truncated content. An empty response is retried once.
+        Bounded reasoning: when a ``thinking_token_budget`` is set (and the endpoint supports it),
+        the request carries that budget and raises ``max_tokens`` by it — so a reasoning model may
+        think up to the budget and still have its full answer budget left. An empty response
+        (reasoning still exhausted the budget) is retried once.
         """
+        answer_max = overrides.get("max_tokens", self.max_tokens)
+        budget = self.thinking_token_budget if self._thinking_param_ok else 0
         payload = {
             "model": overrides.get("model", self.model),
             "messages": messages,
             "temperature": overrides.get("temperature", self.temperature),
-            "max_tokens": overrides.get("max_tokens", self.max_tokens),
+            "max_tokens": (answer_max + budget) if budget > 0 else answer_max,
             "stream": False,
         }
-        # Thinking suppression: a caller-supplied chat_template_kwargs wins (pass None to opt
-        # out entirely); otherwise inject enable_thinking=False when configured + supported.
-        ctk = overrides.get("chat_template_kwargs", _UNSET)
-        if ctk is not _UNSET:
-            if ctk is not None:
-                payload["chat_template_kwargs"] = ctk
-        elif self.disable_thinking and self._thinking_param_ok:
-            payload["chat_template_kwargs"] = dict(_NO_THINKING)
+        if budget > 0:
+            payload["thinking_token_budget"] = budget
 
         timeout = overrides.get("timeout", self.timeout)
-        content, finish = self._request_content(payload, timeout)
+        content, finish = self._request_content(payload, timeout, answer_max)
         # Reasoning models occasionally still burn the budget (finish_reason == "length")
         # and return nothing; a single retry recovers the common transient case.
         if content is None or not str(content).strip():
-            content, finish = self._request_content(payload, timeout)
+            content, finish = self._request_content(payload, timeout, answer_max)
         return content or ""
 
-    def _request_content(self, payload: Dict[str, Any], timeout: int):
+    def _request_content(self, payload: Dict[str, Any], timeout: int, answer_max: int):
         """
         POST one chat-completion and return ``(content, finish_reason)``.
 
-        If the endpoint rejects the ``chat_template_kwargs`` suppression hint (HTTP 400),
-        drop it, remember not to send it again on this client, and retry once so a strict
-        endpoint (e.g. hosted OpenAI) still works.
+        If the endpoint rejects the ``thinking_token_budget`` parameter (HTTP 400), drop it,
+        restore ``max_tokens`` to the plain answer budget, remember not to send it again on this
+        client, and retry once so a strict endpoint (e.g. hosted OpenAI) still works.
         """
         url = f"{self.base_url}/chat/completions"
         resp = requests.post(url, headers=self._headers(), json=payload, timeout=timeout)
         if (getattr(resp, "status_code", 200) == 400
-                and "chat_template_kwargs" in payload):
-            logger.warning("Endpoint rejected chat_template_kwargs; retrying without thinking suppression.")
+                and "thinking_token_budget" in payload):
+            logger.warning("Endpoint rejected thinking_token_budget; retrying without it.")
             self._thinking_param_ok = False
-            payload = {k: v for k, v in payload.items() if k != "chat_template_kwargs"}
+            payload = {k: v for k, v in payload.items() if k != "thinking_token_budget"}
+            payload["max_tokens"] = answer_max
             resp = requests.post(url, headers=self._headers(), json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
