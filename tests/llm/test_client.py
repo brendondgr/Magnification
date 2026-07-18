@@ -78,61 +78,57 @@ def test_from_config_requires_enabled():
     assert c.base_url == "http://x/v1"
 
 
-def test_disable_thinking_injects_chat_template_kwargs(monkeypatch):
-    """Default client suppresses reasoning via chat_template_kwargs."""
+def test_thinking_budget_sent_and_bumps_max_tokens(monkeypatch):
+    """Default client sends thinking_token_budget and raises max_tokens by it (answer keeps room)."""
     captured = {}
     monkeypatch.setattr(
         llm_client.requests, "post",
         lambda url, headers=None, json=None, timeout=None: captured.update(json=json) or _FakeResp("ok"),
     )
-    c = OpenAIClient(base_url="http://x/v1", model="m")  # disable_thinking defaults True
+    c = OpenAIClient(base_url="http://x/v1", model="m", max_tokens=1024)  # budget defaults 1024
     c.chat([{"role": "user", "content": "hi"}])
-    assert captured["json"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert captured["json"]["thinking_token_budget"] == 1024
+    assert captured["json"]["max_tokens"] == 2048  # 1024 answer + 1024 thinking headroom
+
+    # A per-call max_tokens override is still the answer budget; thinking is added on top.
+    c.chat([{"role": "user", "content": "hi"}], max_tokens=200)
+    assert captured["json"]["max_tokens"] == 1224
 
 
-def test_thinking_off_and_caller_override(monkeypatch):
-    """disable_thinking=False omits the hint; a caller override wins (None opts out)."""
-    seen = []
+def test_thinking_budget_zero_omits_param(monkeypatch):
+    """budget=0 sends no thinking param and does not touch max_tokens."""
+    seen = {}
     monkeypatch.setattr(
         llm_client.requests, "post",
-        lambda url, headers=None, json=None, timeout=None: seen.append(json) or _FakeResp("ok"),
+        lambda url, headers=None, json=None, timeout=None: seen.update(json=json) or _FakeResp("ok"),
     )
-    OpenAIClient(base_url="http://x/v1", model="m", disable_thinking=False).chat(
+    OpenAIClient(base_url="http://x/v1", model="m", max_tokens=512, thinking_token_budget=0).chat(
         [{"role": "user", "content": "hi"}])
-    assert "chat_template_kwargs" not in seen[-1]
-
-    # Caller opt-out even when disable_thinking is on.
-    OpenAIClient(base_url="http://x/v1", model="m").chat(
-        [{"role": "user", "content": "hi"}], chat_template_kwargs=None)
-    assert "chat_template_kwargs" not in seen[-1]
-
-    # Caller-supplied kwargs pass through verbatim.
-    OpenAIClient(base_url="http://x/v1", model="m").chat(
-        [{"role": "user", "content": "hi"}], chat_template_kwargs={"enable_thinking": True})
-    assert seen[-1]["chat_template_kwargs"] == {"enable_thinking": True}
+    assert "thinking_token_budget" not in seen["json"]
+    assert seen["json"]["max_tokens"] == 512
 
 
-def test_400_on_kwargs_drops_and_retries(monkeypatch):
-    """An endpoint that 400s on the suppression hint → drop it, retry, and stop sending it."""
+def test_400_on_budget_drops_and_restores_max_tokens(monkeypatch):
+    """An endpoint that 400s on thinking_token_budget → drop it, restore max_tokens, retry, latch off."""
     calls = []
 
     def fake_post(url, headers=None, json=None, timeout=None):
         calls.append(json)
-        if "chat_template_kwargs" in json:
+        if "thinking_token_budget" in json:
             return _FakeResp("", status_code=400)
         return _FakeResp("recovered")
 
     monkeypatch.setattr(llm_client.requests, "post", fake_post)
-    c = OpenAIClient(base_url="http://x/v1", model="m")
+    c = OpenAIClient(base_url="http://x/v1", model="m", max_tokens=1024)
     assert c.chat([{"role": "user", "content": "hi"}]) == "recovered"
-    # First attempt had the hint (400), retry dropped it (200).
-    assert "chat_template_kwargs" in calls[0]
-    assert "chat_template_kwargs" not in calls[1]
+    # First attempt carried the budget + bumped max_tokens (400); retry dropped it and restored max_tokens.
+    assert calls[0]["thinking_token_budget"] == 1024 and calls[0]["max_tokens"] == 2048
+    assert "thinking_token_budget" not in calls[1] and calls[1]["max_tokens"] == 1024
     assert c._thinking_param_ok is False
-    # A subsequent call no longer sends the hint at all.
+    # A subsequent call no longer sends the budget nor bumps max_tokens.
     calls.clear()
     c.chat([{"role": "user", "content": "again"}])
-    assert "chat_template_kwargs" not in calls[0]
+    assert "thinking_token_budget" not in calls[0] and calls[0]["max_tokens"] == 1024
 
 
 def test_empty_content_retries_once(monkeypatch):

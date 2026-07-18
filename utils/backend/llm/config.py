@@ -27,17 +27,29 @@ DEFAULT_LLM_ENDPOINT: Dict[str, Any] = {
     "temperature": 0.2,
     "max_tokens": 1024,
     "timeout": 60,
-    # Suppress a "thinking"/reasoning model's hidden chain-of-thought for structured calls.
-    # Reasoning models can spend the whole ``max_tokens`` budget on reasoning and never emit
-    # the answer (``finish_reason: "length"``, ``content: null``), which breaks JSON parsing
-    # for verdict/skill/compensation extraction. When True the client sends
-    # ``chat_template_kwargs={"enable_thinking": False}`` (vLLM/Qwen/Gemma convention) and
-    # falls back gracefully on endpoints that reject it. See docs/plans/llm-fit-reasoning-exhaustion.md.
-    "disable_thinking": True,
+    # Bounded "thinking" for reasoning models (vLLM/Qwen/Gemma convention): the model may reason
+    # up to this many tokens, then must emit the answer. Sent top-level on the request as
+    # ``thinking_token_budget``; the client raises the effective ``max_tokens`` by this budget so
+    # the answer still fits after the model finishes thinking (reasoning models otherwise spend the
+    # whole ``max_tokens`` on thinking and return an empty ``content``). Minimum 1024; endpoints
+    # that reject the parameter (e.g. hosted OpenAI) degrade gracefully. See
+    # docs/plans/thinking-token-budget.md (supersedes the earlier disable_thinking mechanism).
+    "thinking_token_budget": 1024,
 }
 
 # Keys the API is allowed to persist (ignore anything else a client posts).
 _ALLOWED_KEYS = tuple(DEFAULT_LLM_ENDPOINT.keys())
+
+# Thinking budget can be tuned up but not below this floor ("at least 1024").
+MIN_THINKING_TOKEN_BUDGET = 1024
+
+
+def _clamp_thinking_budget(value: Any) -> int:
+    """Coerce a persisted thinking budget to an int ≥ MIN_THINKING_TOKEN_BUDGET."""
+    try:
+        return max(MIN_THINKING_TOKEN_BUDGET, int(value))
+    except (TypeError, ValueError):
+        return MIN_THINKING_TOKEN_BUDGET
 
 
 def load_llm_endpoint_config() -> Dict[str, Any]:
@@ -51,6 +63,7 @@ def load_llm_endpoint_config() -> Dict[str, Any]:
                 config.update({k: saved[k] for k in _ALLOWED_KEYS if k in saved})
         except Exception as e:  # pragma: no cover - corrupt file fallback
             logger.error(f"Error loading LLM endpoint config: {e}")
+    config["thinking_token_budget"] = _clamp_thinking_budget(config.get("thinking_token_budget"))
     return config
 
 
@@ -59,6 +72,7 @@ def save_llm_endpoint_config(data: Dict[str, Any]) -> bool:
     try:
         config = load_llm_endpoint_config()
         config.update({k: data[k] for k in _ALLOWED_KEYS if k in data})
+        config["thinking_token_budget"] = _clamp_thinking_budget(config.get("thinking_token_budget"))
         os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
         with open(CONFIG_PATH, "w") as f:
             json.dump(config, f, indent=4)

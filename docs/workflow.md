@@ -41,13 +41,15 @@ LLM-dependent tests run against a mocked endpoint (no network/keys needed).
 
 If the configured endpoint is a **reasoning model**, it can spend its whole `max_tokens`
 budget on hidden chain-of-thought and return `finish_reason: "length"` with empty/truncated
-`content` — which fails JSON parsing for the verdict/skill/compensation extraction calls, so
-"Analyze Matches" appears to fit only a handful of jobs per run. The client suppresses this
-by default: `config/llm_endpoint_config.json` carries `disable_thinking` (default `true`),
-which sends `chat_template_kwargs={"enable_thinking": false}` (vLLM/Qwen/Gemma convention).
-On an endpoint that rejects the parameter (e.g. hosted OpenAI) the client drops it and
-retries automatically, and an empty response is retried once. Toggle it in **Options → LLM
-Endpoint → "Disable model thinking."** See `docs/plans/llm-fit-reasoning-exhaustion.md`.
+`content`. The client bounds this with a **thinking token budget**:
+`config/llm_endpoint_config.json` carries `thinking_token_budget` (default & minimum `1024`),
+sent top-level on the request (vLLM/Qwen/Gemma convention) — the model may reason up to that
+many tokens, then must answer. The client raises the effective `max_tokens` by the budget so
+the answer keeps its full room after thinking. On an endpoint that rejects the parameter (e.g.
+hosted OpenAI) the client drops it, restores `max_tokens`, and retries automatically, and an
+empty response is retried once. Tune it in **Options → LLM Endpoint → "Thinking token
+budget."** See `docs/plans/thinking-token-budget.md` (supersedes the earlier `disable_thinking`
+mechanism in `docs/plans/llm-fit-reasoning-exhaustion.md`).
 
 ## Commands
 

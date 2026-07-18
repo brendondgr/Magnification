@@ -55,6 +55,19 @@ def test_llm_options_roundtrip(client):
     assert loaded["enabled"] is True
     assert loaded["base_url"] == "http://127.0.0.1:9999/v1"
     assert loaded["model"] == "test-model"
+    # Thinking budget defaults to 1024.
+    assert loaded["thinking_token_budget"] == 1024
+
+
+def test_thinking_token_budget_clamped_to_min(client):
+    """The thinking budget can be raised but never persisted below 1024 ('at least 1024')."""
+    client.post("/api/options/llm", json={"thinking_token_budget": 4096})
+    assert client.get("/api/options/llm").get_json()["thinking_token_budget"] == 4096
+    # Below-floor / garbage values clamp back up to 1024.
+    client.post("/api/options/llm", json={"thinking_token_budget": 128})
+    assert client.get("/api/options/llm").get_json()["thinking_token_budget"] == 1024
+    client.post("/api/options/llm", json={"thinking_token_budget": "oops"})
+    assert client.get("/api/options/llm").get_json()["thinking_token_budget"] == 1024
 
 
 def test_llm_options_test_endpoint(client, monkeypatch):

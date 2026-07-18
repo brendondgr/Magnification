@@ -1,5 +1,32 @@
 # Project Checklist — Magnification
 
+## Thinking Token Budget (replace disable_thinking) — Definition of Done
+Plan: `docs/plans/thinking-token-budget.md`. Delivered on branch `thinking-budget`
+(worktree), committed per phase, merged to `main`. Supersedes the `disable_thinking`
+mechanism (`docs/plans/llm-fit-reasoning-exhaustion.md`).
+
+Requirement: the generators (and all LLM calls) should do **bounded** thinking, not none — a
+`thinking_token_budget` sampling parameter (vLLM convention), **default & minimum 1024**, adjustable
+in **Options → LLM Endpoint**. Decision (user-confirmed): applies to **all LLM calls**.
+
+- [x] (1/5) Plan doc + worktree.
+- [x] (2/5) `config.py`: `disable_thinking` → `thinking_token_budget` (default 1024, clamped ≥1024
+  on load/save). `client.py`: send `thinking_token_budget` top-level; raise effective `max_tokens`
+  by the budget so the answer still fits; a 400 drops it, restores `max_tokens`, and latches it off
+  (hosted OpenAI still works); removed the `chat_template_kwargs`/`enable_thinking` suppression.
+  Client tests rewritten + options clamp test.
+- [x] (3/5) Options → LLM Endpoint: "Disable model thinking" toggle replaced with a "Thinking token
+  budget" number input (`min=1024`) + state/getters; wiring test updated. Verified live (input
+  defaults to 1024, min 1024, old toggle gone, no console errors; no live save).
+- [x] (4/5) Docs (`api-contract.md`, `workflow.md`, `documentation.md`, superseded note on the old
+  plan, this checklist) + memory updated + full offline validation.
+- [x] (5/5) Merged to `main`.
+- [x] Offline `tests/llm` + `tests/test_frontend_wiring.py` + `tests/recommend` green; `import app`
+  clean.
+- [ ] **Live thinking on a real endpoint** — the payload shape + max_tokens headroom + 400 fallback
+  are covered by mocked tests; real bounded-reasoning output needs an enabled reasoning endpoint
+  (Options → LLM Endpoint) that honors `thinking_token_budget`.
+
 ## Profile Sidebar Simplify + Editable Document Guidance — Definition of Done
 Plan: `docs/plans/documents-sidebar-simplify.md`. Delivered on branch
 `docs-sidebar-simplify` (worktree), committed per phase, merged to `main`.

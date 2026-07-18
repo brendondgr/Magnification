@@ -1,5 +1,10 @@
 # Analyze Matches — LLM Fit Reasoning-Token Exhaustion
 
+> **Superseded (2026-07):** the binary `disable_thinking` mechanism described here was replaced by
+> a bounded **`thinking_token_budget`** (default & minimum 1024) that lets the model reason a
+> capped amount and still answer, applied to all LLM calls. See
+> `docs/plans/thinking-token-budget.md`. The exhaustion diagnosis below remains accurate.
+
 ## 1. Introduction
 
 "Analyze Matches" was reported to fit **only ~2 jobs per run**, leaving ~165 of 167
