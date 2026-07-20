@@ -149,10 +149,26 @@ def test_index_has_per_page_search_and_saved_sort(client):
     # Both in-page inputs render.
     assert "Search jobs…" in html
     assert "Search saved…" in html
-    # The retired global sidebar search must be gone.
-    assert "onSearch" not in html.replace("onSearchNew", "").replace("onSearchSaved", "")
+    # The retired global sidebar search must be gone (ignore the per-page handlers).
+    assert "onSearch" not in (
+        html.replace("onSearchNew", "").replace("onSearchSaved", "").replace("onSearchTracker", "")
+    )
     assert "Title or company…" not in html
     assert "matchSearch" not in html
+
+
+def test_index_has_tracker_search_and_rejected_column(client):
+    """The Application Tracker owns a keyword search and a distinct Rejected column."""
+    html = client.get("/").get_data(as_text=True)
+    # Tracker search input + binding (reuses the shared keywordMatch matcher).
+    for token in ("searchTracker", "onSearchTracker"):
+        assert token in html, f"missing tracker-search token: {token}"
+    assert "Search tracker…" in html
+    # Rejected is its own kanban column with its own theme token.
+    assert "{key:'rejected',label:'Rejected',c:'--c-reject'}" in html
+    assert "'--c-reject'" in html
+    # Archived stays as a separate column (Rejected was split out, not renamed).
+    assert "{key:'archived',label:'Archived',c:'--c-archive'}" in html
 
 
 def test_index_has_two_column_latex_workspace(client):

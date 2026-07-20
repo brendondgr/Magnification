@@ -35,7 +35,7 @@ Plus a large **categorization palette** (`--color-cat-*`: yellow-orange, yellow,
 > dc-runtime template whose live tokens are defined per-theme in `Component.THEMES`
 > (`--bg`, `--surface`, `--surface2`, `--card`, `--text`, `--muted`, `--border`, `--border2`,
 > `--accent`, `--accent2`, `--accent-ink`, `--accent-text`, `--c-applied`/`--c-interview`/
-> `--c-offer`/`--c-archive`, `--radius`, `--r-sm`, `--font-head`/`--font-body`/`--font-mono`,
+> `--c-offer`/`--c-reject`/`--c-archive`, `--radius`, `--r-sm`, `--font-head`/`--font-body`/`--font-mono`,
 > `--shadow`) — two themes exist (`editorial`, the default, and `neon`). Reconciling this doc
 > with the live tokens end-to-end is a follow-up (`docs/checklist.md`); the Motion notes below
 > reflect the current template.
@@ -79,7 +79,7 @@ FontAwesome + Lucide. Prefer one library per surface for consistency.
 
 ## Domain Vocabulary (UI copy)
 
-Use concrete job-hunt terms: *New Jobs*, *Tracker*, *Applied / Interviewing / Offers / Archived*, *Find Jobs*, *Ignore*, *job detail*, *compensation*, *location*, *source/board*. Avoid generic phrases like "boost productivity" or "all-in-one platform."
+Use concrete job-hunt terms: *New Jobs*, *Tracker*, *Applied / Interviewing / Offers / Rejected / Archived*, *Find Jobs*, *Ignore*, *job detail*, *compensation*, *location*, *source/board*. Avoid generic phrases like "boost productivity" or "all-in-one platform."
 
 ## Required UI States
 
