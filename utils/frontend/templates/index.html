@@ -131,7 +131,13 @@
               <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">Application Tracker</h1>
               <p style="margin:8px 0 0;font:400 14px/1 var(--font-body);color:var(--muted)">Drag a card between columns to update its status.</p>
             </div>
-            <div style="font:500 12px/1 var(--font-mono);color:var(--muted);letter-spacing:.08em">{{ trackedCount }} ACTIVE</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="position:relative;flex:0 0 auto">
+                <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%)" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+                <input value="{{ searchTracker }}" oninput="{{ onSearchTracker }}" placeholder="Search tracker…" style="width:230px;max-width:100%;height:40px;padding:0 12px 0 36px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none;transition:border-color .15s ease,box-shadow .15s ease" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)">
+              </div>
+              <div style="font:500 12px/1 var(--font-mono);color:var(--muted);letter-spacing:.08em">{{ trackedCount }} ACTIVE</div>
+            </div>
           </div>
 
           <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;flex:1">
@@ -1324,7 +1330,7 @@ class Component extends DCLogic {
       '--bg':'#0E0E10','--surface':'#161619','--surface2':'#1E1E24','--text':'#F3F3F1','--muted':'#8E8E99',
       '--border':'#27272F','--border2':'#3A3A45','--bw':'1.5px',
       '--accent':'#C8FF3D','--accent-ink':'#0E0E10','--accent-text':'#C8FF3D','--accent2':'#FF3D8A',
-      '--c-applied':'#7C5CFF','--c-interview':'#FF4D8D','--c-offer':'#00E5B0','--c-offer-text':'#00E5B0','--c-archive':'#6B6B78',
+      '--c-applied':'#7C5CFF','--c-interview':'#FF4D8D','--c-offer':'#00E5B0','--c-offer-text':'#00E5B0','--c-reject':'#FF4D6A','--c-archive':'#6B6B78',
       '--radius':'18px','--r-sm':'11px',
       '--font-head':"'Space Grotesk', sans-serif",'--font-body':"'Archivo', sans-serif",'--font-mono':"'JetBrains Mono', monospace",
       '--shadow':'0 20px 50px -14px rgba(0,0,0,.75)','--card':'#17171B'
@@ -1333,7 +1339,7 @@ class Component extends DCLogic {
       '--bg':'#EFE9DC','--surface':'#F8F3E9','--surface2':'#FFFFFF','--text':'#221C14','--muted':'#6E6456',
       '--border':'#DDD2BF','--border2':'#C6B99F','--bw':'1px',
       '--accent':'#C0522A','--accent-ink':'#FFF8EF','--accent-text':'#A8421F','--accent2':'#2B5F75',
-      '--c-applied':'#2B5F75','--c-interview':'#C0522A','--c-offer':'#4F7D5B','--c-offer-text':'#3F6B4B','--c-archive':'#9A8C73',
+      '--c-applied':'#2B5F75','--c-interview':'#C0522A','--c-offer':'#4F7D5B','--c-offer-text':'#3F6B4B','--c-reject':'#B23B36','--c-archive':'#9A8C73',
       '--radius':'6px','--r-sm':'4px',
       '--font-head':"'Newsreader', serif",'--font-body':"'Archivo', sans-serif",'--font-mono':"'JetBrains Mono', monospace",
       '--shadow':'0 18px 44px -18px rgba(70,52,28,.42)','--card':'#FBF7EF'
@@ -1343,6 +1349,7 @@ class Component extends DCLogic {
     {key:'applied',label:'Applied',c:'--c-applied'},
     {key:'interviewing',label:'Interviewing',c:'--c-interview'},
     {key:'offers',label:'Offers',c:'--c-offer'},
+    {key:'rejected',label:'Rejected',c:'--c-reject'},
     {key:'archived',label:'Archived',c:'--c-archive'}
   ];
   static SITES = ['Indeed','LinkedIn','Glassdoor','ZipRecruiter','Google'];
@@ -1361,7 +1368,7 @@ class Component extends DCLogic {
     super(props);
     const tab = (props && props.startView==='tracker') ? 'tracker' : 'newjobs';
     this.state = {
-      theme:'editorial', tab, sidebarOpen:true, searchNew:'', searchSaved:'', showIgnored:false, page:0,
+      theme:'editorial', tab, sidebarOpen:true, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null, clearMenuOpen:false,
       sortByMatch:false, savedSortByMatch:false, analyzing:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
@@ -1419,7 +1426,8 @@ class Component extends DCLogic {
   statusChecked(job, name){ const st=(job.statuses||[]).find(s=>s.status===name); return !!(st && st.checked); }
   deriveApplied(job){ return this.statusChecked(job,'Applied'); }
   deriveColumn(job){
-    if(this.statusChecked(job,'Rejected')||this.statusChecked(job,'Post-Interview Rejection')||this.statusChecked(job,'Ignored/Ghosted')) return 'archived';
+    if(this.statusChecked(job,'Ignored/Ghosted')) return 'archived';
+    if(this.statusChecked(job,'Rejected')||this.statusChecked(job,'Post-Interview Rejection')) return 'rejected';
     if(this.statusChecked(job,'Offer')||this.statusChecked(job,'Accepted')) return 'offers';
     if(this.statusChecked(job,'Interview 1')||this.statusChecked(job,'Interview 2')||this.statusChecked(job,'Interview 3')) return 'interviewing';
     return 'applied';
@@ -1516,7 +1524,8 @@ class Component extends DCLogic {
     if(col==='applied'){ copy.forEach(s=>{ s.checked=(s.status==='Applied')?1:0; s.date_reached=s.checked?(s.date_reached||today):null; }); }
     else if(col==='interviewing'){ setc('Applied',true); if(!this._anyInterview(copy)) setc('Interview 1',true); ['Offer','Accepted','Rejected','Post-Interview Rejection','Ignored/Ghosted'].forEach(n=>setc(n,false)); }
     else if(col==='offers'){ setc('Applied',true); setc('Offer',true); ['Rejected','Post-Interview Rejection','Ignored/Ghosted'].forEach(n=>setc(n,false)); }
-    else if(col==='archived'){ setc('Applied',true); setc('Rejected',true); ['Offer','Accepted'].forEach(n=>setc(n,false)); }
+    else if(col==='rejected'){ setc('Applied',true); setc('Rejected',true); ['Offer','Accepted','Ignored/Ghosted'].forEach(n=>setc(n,false)); }
+    else if(col==='archived'){ setc('Applied',true); setc('Ignored/Ghosted',true); ['Offer','Accepted','Rejected','Post-Interview Rejection'].forEach(n=>setc(n,false)); }
     return copy;
   }
   _anyInterview(statuses){ return ['Interview 1','Interview 2','Interview 3'].some(n=>{ const s=statuses.find(x=>x.status===n); return s&&s.checked; }); }
@@ -2223,7 +2232,7 @@ class Component extends DCLogic {
 
     // tracker columns
     const columns=Component.COLS.map(c=>{
-      const jobs=s.jobs.filter(j=>j.applied&&j.column===c.key).map(j=>this.decorate(j));
+      const jobs=s.jobs.filter(j=>j.applied&&j.column===c.key&&this.keywordMatch(j,s.searchTracker)).map(j=>this.decorate(j));
       const over=s.dragOverCol===c.key;
       return {key:c.key,label:c.label,count:jobs.length,jobs,empty:jobs.length===0,
         dot:'width:9px;height:9px;border-radius:3px;background:var('+c.c+')',
@@ -2392,6 +2401,7 @@ class Component extends DCLogic {
       sidebarStyle:'flex:0 0 auto;overflow:hidden;background:var(--surface);border-right:var(--bw) solid var(--border);transition:width .28s cubic-bezier(.4,0,.2,1);width:'+(s.sidebarOpen?'258px':'0px'),
       searchNew:s.searchNew, onSearchNew:(e)=>this.setState({searchNew:e.target.value,page:0}),
       searchSaved:s.searchSaved, onSearchSaved:(e)=>this.setState({searchSaved:e.target.value}),
+      searchTracker:s.searchTracker, onSearchTracker:(e)=>this.setState({searchTracker:e.target.value}),
       savedAnyMatches, savedSortByMatch:s.savedSortByMatch,
       toggleSavedSort:()=>this.setState(st=>({savedSortByMatch:!st.savedSortByMatch})),
       savedSortLabel:s.savedSortByMatch?'Sort: Match':'Sort: Newest',

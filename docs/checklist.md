@@ -1,5 +1,28 @@
 # Project Checklist — Magnification
 
+## Application Tracker: Search + Rejected Column — Definition of Done
+Plan: `docs/plans/tracker-search-rejected.md`. Delivered on branch `tracker-search-rejected`
+(worktree), committed per phase, merged to `main`.
+
+Requirement: add **search** to the Application Tracker and a distinct **"Rejected" column**.
+
+- [x] (1/5) Plan doc + worktree.
+- [x] (2/5) `index.html`: new `--c-reject` theme token (both themes: neon `#FF4D6A`, editorial
+  `#B23B36`); `Component.COLS` adds a `rejected` column between Offers and Archived;
+  `deriveColumn` + `statusesForColumn` split **Rejected**/**Post-Interview Rejection** → `rejected`
+  and **Ignored/Ghosted** → `archived` (previously all three folded into Archived);
+  `searchTracker` state + a "Search tracker…" input in the Tracker header + per-column
+  `keywordMatch(j, s.searchTracker)` filter + `onSearchTracker` binding (reuses the shared matcher).
+- [x] (3/5) Wiring test `tests/test_frontend_wiring.py::test_index_has_tracker_search_and_rejected_column`
+  (tracker-search tokens + input, Rejected column + `--c-reject` token, Archived kept distinct);
+  fixed the pre-existing sidebar-search assertion to ignore `onSearchTracker`.
+- [x] (4/5) Docs (`component-map.md`, `design-system.md`, this checklist) + live verification
+  (Tracker renders all five columns in the kanban **and** the sidebar Pipeline; "Search tracker…"
+  filters the columns live — `sikka` narrowed Applied from 6 cards to the one Sikka Software card;
+  no console errors).
+- [x] (5/5) Merged to `main`; worktree removed.
+- [x] Offline `tests/test_frontend_wiring.py` green (12 passed), `import app` clean.
+
 ## Cover-Letter Flow Smoothing (forced-fit fix) — Definition of Done
 Plan: `docs/plans/cover-letter-flow-smoothing.md`. Delivered on branch `letter-flow`
 (worktree), committed per phase, merged to `main`.

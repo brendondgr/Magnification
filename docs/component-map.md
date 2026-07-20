@@ -28,7 +28,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 | Area | State keys | Key methods |
 | --- | --- | --- |
-| Jobs / Tracker / Saved | `jobs, tab, selectedId, searchNew, searchSaved, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `mapDbJob`, `keywordMatch`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
+| Jobs / Tracker / Saved | `jobs, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, useLLM` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
@@ -48,7 +48,18 @@ title, company, location, compensation, site, description, and the analyzed skil
 (case-insensitive substring; empty query = all). New Jobs keeps its Newest/Match toggle
 (`sortByMatch`); Saved adds one (`savedSortByMatch`) defaulting to **Newest** (`createdAt` desc)
 and toggling to **Match** (score desc, no-score last). The former single sidebar search box +
-`matchSearch` were removed; the Tracker is no longer filtered by a global search term.
+`matchSearch` were removed.
+
+The **Application Tracker** owns its own in-page search box (`searchTracker`) using the same
+`keywordMatch` matcher; each kanban column filters its cards by it (the `N ACTIVE` header count
+stays the unfiltered pipeline total).
+
+**Tracker columns** (`Component.COLS`): **Applied · Interviewing · Offers · Rejected · Archived**.
+`deriveColumn` maps a job's checked statuses to a column — **Ignored/Ghosted** → Archived;
+**Rejected** or **Post-Interview Rejection** → Rejected; **Offer**/**Accepted** → Offers;
+any **Interview 1-3** → Interviewing; else Applied. Dragging a card runs `statusesForColumn`,
+which sets the matching status and clears the others for that column (Rejected sets `Rejected`;
+Archived sets `Ignored/Ghosted`). The Rejected column is tinted with the `--c-reject` token.
 
 Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options** (Profile left of Find
 Jobs, Options right). Profile + Options are right-side slide-over panels mirroring the job
