@@ -39,7 +39,14 @@ class Job(Base):
         saved: Flag pinning the job to the Saved lane (0=not saved, 1=saved). Saved jobs
             are hidden from the New Jobs feed and always shown under the Saved tab, even
             after they are marked Applied.
-        created_at: When the job was added to the database
+        date_first_applied / date_first_interview / date_first_offer /
+        date_first_rejected / date_first_ghosted: Durable, write-once pipeline timestamps
+            (YYYY-MM-DD) recording the FIRST time the job reached each stage. Stamped once
+            (when the corresponding application status is first checked) and never cleared
+            or overwritten afterwards, even if the card is dragged backward — so the full
+            application pipeline history survives status changes. "Found" is not a column
+            here; the durable ``created_at`` already records it.
+        created_at: When the job was added to the database (also the durable "found" date)
         updated_at: Last update timestamp
     """
     __tablename__ = 'jobs'
@@ -55,6 +62,13 @@ class Job(Base):
     site = Column(String(50), nullable=True)
     ignore = Column(Integer, default=0)
     saved = Column(Integer, default=0)
+    # Durable, write-once pipeline timestamps (YYYY-MM-DD). Stamped the first time each
+    # stage is reached and never cleared/overwritten afterwards (see class docstring).
+    date_first_applied = Column(String(10), nullable=True)
+    date_first_interview = Column(String(10), nullable=True)
+    date_first_offer = Column(String(10), nullable=True)
+    date_first_rejected = Column(String(10), nullable=True)
+    date_first_ghosted = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

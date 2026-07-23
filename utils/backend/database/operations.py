@@ -290,37 +290,73 @@ def get_jobs_by_ids(job_ids: List[int]) -> List[Dict[str, Any]]:
 
 # ==================== Application Status Operations ====================
 
-def update_application_status(job_id: int, status_name: str, checked: int = 1, 
+# Maps each application status to the durable, write-once pipeline-date column on ``jobs``
+# that records the FIRST time the job reached that pipeline stage. Multiple statuses can feed
+# one pipeline event (e.g. any interview round → the first-interview date). "Found" has no
+# entry here; the durable ``created_at`` already records it. See ``Job`` model docstring.
+PIPELINE_DATE_COLUMN = {
+    "Applied": "date_first_applied",
+    "Interview 1": "date_first_interview",
+    "Interview 2": "date_first_interview",
+    "Interview 3": "date_first_interview",
+    "Offer": "date_first_offer",
+    "Accepted": "date_first_offer",
+    "Rejected": "date_first_rejected",
+    "Post-Interview Rejection": "date_first_rejected",
+    "Ignored/Ghosted": "date_first_ghosted",
+}
+
+
+def _stamp_pipeline_date(job: Optional[Job], status_name: str, date_reached: Optional[str]) -> None:
+    """Write-once: record ``date_reached`` on the job's mapped pipeline-date column the first
+    time a stage is reached. Never overwrites an existing value and never clears one, so the
+    pipeline history survives a card being dragged backward."""
+    if job is None or not date_reached:
+        return
+    column = PIPELINE_DATE_COLUMN.get(status_name)
+    if column and getattr(job, column, None) is None:
+        setattr(job, column, date_reached)
+
+
+def update_application_status(job_id: int, status_name: str, checked: int = 1,
                               date_reached: Optional[str] = None) -> bool:
     """
     Update a specific status record for a job.
-    
+
     Args:
         job_id: ID of the job
         status_name: Name of the status to update
         checked: 1 if milestone reached, 0 if not
         date_reached: Date when milestone was reached (YYYY-MM-DD format)
-    
+
     Returns:
         bool: True if status was updated successfully
+
+    Side effect: when a milestone is checked, its durable write-once pipeline date is stamped
+    on the ``jobs`` row (first occurrence only) so the pipeline history is never lost even if
+    the card is later moved backward.
     """
     validate_status(status_name)
-    
+
     if date_reached is None and checked == 1:
         date_reached = format_date(datetime.utcnow())
-    
+
     with get_db_context() as db:
         status = db.query(ApplicationStatus).filter(
             ApplicationStatus.job_id == job_id,
             ApplicationStatus.status == status_name
         ).first()
-        
+
         if not status:
             return False
-        
+
         status.checked = checked
         status.date_reached = date_reached
-    
+
+        if checked == 1:
+            job = db.query(Job).filter(Job.id == job_id).first()
+            _stamp_pipeline_date(job, status_name, date_reached)
+
     return True
 
 
@@ -646,6 +682,14 @@ def _job_to_dict(job: Job) -> Dict[str, Any]:
         'site': job.site,
         'ignore': job.ignore,
         'saved': job.saved,
+        # Durable, write-once pipeline history (YYYY-MM-DD; None until the stage is reached).
+        # "found" reuses the durable created_at date so the full pipeline is available in one place.
+        'date_found': format_date(job.created_at) if job.created_at else None,
+        'date_first_applied': job.date_first_applied,
+        'date_first_interview': job.date_first_interview,
+        'date_first_offer': job.date_first_offer,
+        'date_first_rejected': job.date_first_rejected,
+        'date_first_ghosted': job.date_first_ghosted,
         'created_at': job.created_at.isoformat() if job.created_at else None,
         'updated_at': job.updated_at.isoformat() if job.updated_at else None,
     }
