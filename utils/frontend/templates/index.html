@@ -125,7 +125,7 @@
 
       <!-- ===== TRACKER ===== -->
       <sc-if value="{{ isTracker }}" hint-placeholder-val="{{ true }}">
-        <section data-screen-label="Tracker" style="flex:1;display:flex;flex-direction:column;padding:24px 24px 96px;animation:jf-fade .3s ease">
+        <section data-screen-label="Tracker" style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:24px 24px 96px;animation:jf-fade .3s ease">
           <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">
             <div>
               <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">Application Tracker</h1>
@@ -140,7 +140,7 @@
             </div>
           </div>
 
-          <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;flex:1">
+          <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;flex:1;min-width:0;min-height:0">
             <sc-for list="{{ columns }}" as="col" hint-placeholder-count="4">
               <div ondragover="{{ col.onDragOver }}" ondrop="{{ col.onDrop }}" style="{{ col.style }}">
                 <div style="display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:var(--bw) solid var(--border)">
