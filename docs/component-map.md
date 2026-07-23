@@ -54,12 +54,21 @@ The **Application Tracker** owns its own in-page search box (`searchTracker`) us
 `keywordMatch` matcher; each kanban column filters its cards by it (the `N ACTIVE` header count
 stays the unfiltered pipeline total).
 
-**Tracker columns** (`Component.COLS`): **Applied · Interviewing · Offers · Rejected · Archived**.
-`deriveColumn` maps a job's checked statuses to a column — **Ignored/Ghosted** → Archived;
+**Tracker columns** (`Component.COLS`): **Applied · Interviewing · Offers · Rejected · Ghosted**
+(the final lane's internal key/token stay `archived`/`--c-archive`; only the label is "Ghosted").
+`deriveColumn` maps a job's checked statuses to a column — **Ignored/Ghosted** → Ghosted;
 **Rejected** or **Post-Interview Rejection** → Rejected; **Offer**/**Accepted** → Offers;
 any **Interview 1-3** → Interviewing; else Applied. Dragging a card runs `statusesForColumn`,
 which sets the matching status and clears the others for that column (Rejected sets `Rejected`;
-Archived sets `Ignored/Ghosted`). The Rejected column is tinted with the `--c-reject` token.
+the Ghosted lane sets `Ignored/Ghosted`). The Rejected column is tinted with the `--c-reject` token.
+
+Tracker **cards are slimmed to title + company only** (no initials avatar, location, or
+compensation chip — those live on the New Jobs / Saved cards). The lane row is capped to the
+viewport with `min-width:0;min-height:0` on the tracker `section` + row so its `overflow-x:auto`
+scrolls the columns instead of overflowing the screen. The **job detail panel** adds a read-only
+**Pipeline History** (`selectedJob.pipeline`) listing Found / Applied / Interviewing / Offer /
+Rejected / Ghosted with their durable, write-once first-dates (from the `date_first_*` / `date_found`
+job fields).
 
 Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options** (Profile left of Find
 Jobs, Options right). Profile + Options are right-side slide-over panels mirroring the job

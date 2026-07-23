@@ -64,11 +64,17 @@ SQLite → database/operations (query) → GET /api/jobs[/<id>]
 
 ```
 Drag/drop or action in handlers.js
-      → PATCH /api/jobs/<id>/status  (tracker status)
+      → PATCH /api/jobs/<id>/status  (tracker status; also stamps a durable write-once pipeline date)
       → PATCH /api/jobs/<id>/ignore  (hide)
       → PATCH /api/jobs/<id>/save    (pin to the Saved lane)
       → database/operations → SQLite
 ```
+
+The per-status `date_reached` written here is **mutable** (cleared when a card is dragged
+backward and a milestone is un-checked). To keep a durable record, `update_application_status`
+also stamps a **write-once** `jobs.date_first_*` column the first time each pipeline stage is
+reached (found = `created_at`, applied, interview, offer, rejected, ghosted); those are never
+cleared or overwritten, and the job detail panel's **Pipeline History** reads them back.
 
 **Saved jobs are never auto-hidden.** A saved job (`saved=1`) is an explicit user keep, so the
 two filters that set `ignore=1` without user action — `job_filter.filter_and_mark_jobs` (Step 6

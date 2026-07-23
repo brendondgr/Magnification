@@ -1,5 +1,40 @@
 # Project Checklist — Magnification
 
+## Tracker Card Slim-Down + Durable Pipeline Dates — Definition of Done
+Plan: `docs/plans/tracker-cards-and-pipeline-dates.md`. Delivered on branch
+`tracker-cards-pipeline-dates` (worktree), committed per phase, merged to `main`.
+
+Requirements (user): (1) slim tracker cards to **title + company** only (drop the initials
+avatar/logo, location, and compensation); (2) rename the **Archived** kanban column to
+**Ghosted**; (3) keep the kanban columns **within the viewport and scrollable** (no overflow past
+the screen edge); (4) store **durable, write-once** pipeline dates for every job (found, applied,
+interviewing, offer, rejected, ghosted) that are recorded and never lost — user-confirmed as
+durable history, not just surfacing the existing mutable per-status dates.
+
+- [x] (1/6) Plan doc + worktree (based off local HEAD, not stale `origin/main`).
+- [x] (2/6) Tracker cards slimmed to title + company (removed `job.avatar`/`location`/`compensation`
+  from the kanban card); `Archived` → `Ghosted` label (internal `key:'archived'`/`--c-archive`
+  kept); wiring test updated.
+- [x] (3/6) Lane row kept in-viewport: `min-width:0;min-height:0` on the tracker `section` + lane
+  row so the existing `overflow-x:auto` scrolls the columns instead of overflowing.
+- [x] (4/6) Backend durable write-once dates: `jobs.date_first_applied/interview/offer/rejected/
+  ghosted` (+ derived `date_found` = `created_at`), stamped in `update_application_status` (first
+  occurrence only, never cleared); idempotent `migrate_job_pipeline_dates` adds the columns +
+  backfills from existing checked status history; `_job_to_dict` exposes them. Isolated in-memory
+  tests (`tests/database/test_pipeline_dates.py`: stamp-once, no-overwrite, no-clear-on-backward,
+  interview-first-wins, dict exposure).
+- [x] (5/6) Detail-panel read-only **Pipeline History** (`selectedJob.pipeline`) surfacing the six
+  durable dates + wiring test.
+- [x] (6/6) Docs (`database.md`, `api-contract.md`, `data-flow.md`, `component-map.md`,
+  `design-system.md`, `structure.md`, this checklist) + validation; merged to `main`, worktree removed.
+- [x] Offline `tests/database` + `tests/test_frontend_wiring.py` green; `import app` clean; migration
+  verified on the real DB (columns added; job #109 backfilled applied `2026-07-20` / rejected
+  `2026-07-22`); served page confirmed live (Tracker renders Applied·Interviewing·Offers·Rejected·
+  **Ghosted**; `/api/jobs` returns the new `date_*` fields). Visual scroll/screenshot proof was not
+  captured — the Browser pane did not composite frames in this environment (0×0 viewport), so #3 was
+  verified via the served CSS + DOM structure and the standard flexbox `min-width:0` fix rather than a
+  rendered screenshot.
+
 ## Application Tracker: Search + Rejected Column — Definition of Done
 Plan: `docs/plans/tracker-search-rejected.md`. Delivered on branch `tracker-search-rejected`
 (worktree), committed per phase, merged to `main`.

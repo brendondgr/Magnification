@@ -23,11 +23,11 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 
 ## Jobs
 
-- `GET /api/jobs` → array of job records; supports query filtering (e.g., new vs. tracked, hidden/non-hidden). Each record includes a `saved` flag (0/1).
+- `GET /api/jobs` → array of job records; supports query filtering (e.g., new vs. tracked, hidden/non-hidden). Each record includes a `saved` flag (0/1) and the durable, write-once pipeline dates `date_found` (= `created_at`), `date_first_applied`, `date_first_interview`, `date_first_offer`, `date_first_rejected`, `date_first_ghosted` (YYYY-MM-DD, or `null` until the stage is reached).
 - `GET /api/jobs/<int:job_id>` → a single job record.
 - `PATCH /api/jobs/<int:job_id>/ignore` → marks the job hidden/ignored.
 - `PATCH /api/jobs/<int:job_id>/save` — body: `{"saved": 0 | 1}` (defaults to `1`) → pins/unpins the job to the **Saved** lane. Saved jobs are removed from the New Jobs feed and always appear under the Saved tab, independent of the ignore flag and application status. Response: `{"success": true}` (or `404` if the job is missing).
-- `PATCH /api/jobs/<int:job_id>/status` — body: new tracker/application status → updates the job's status.
+- `PATCH /api/jobs/<int:job_id>/status` — body: `{"status", "checked"?, "date_reached"?}` → updates the job's per-status milestone. Side effect: when a milestone is checked, its **durable write-once** pipeline date is stamped on the `jobs` row (first occurrence only; never cleared when the card is later moved backward).
 - `POST /api/database/clear` — body: `{"scope": "full" | "jobs"}` (defaults to
   `"full"`). `"full"` drops and recreates every table (jobs + profiles +
   analyses); `"jobs"` deletes jobs, application statuses, and analyses while

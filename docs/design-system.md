@@ -79,7 +79,7 @@ FontAwesome + Lucide. Prefer one library per surface for consistency.
 
 ## Domain Vocabulary (UI copy)
 
-Use concrete job-hunt terms: *New Jobs*, *Tracker*, *Applied / Interviewing / Offers / Rejected / Archived*, *Find Jobs*, *Ignore*, *job detail*, *compensation*, *location*, *source/board*. Avoid generic phrases like "boost productivity" or "all-in-one platform."
+Use concrete job-hunt terms: *New Jobs*, *Tracker*, *Applied / Interviewing / Offers / Rejected / Ghosted*, *Find Jobs*, *Ignore*, *job detail*, *compensation*, *location*, *source/board*. Avoid generic phrases like "boost productivity" or "all-in-one platform."
 
 ## Required UI States
 
