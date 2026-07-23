@@ -167,8 +167,30 @@ def test_index_has_tracker_search_and_rejected_column(client):
     # Rejected is its own kanban column with its own theme token.
     assert "{key:'rejected',label:'Rejected',c:'--c-reject'}" in html
     assert "'--c-reject'" in html
-    # Archived stays as a separate column (Rejected was split out, not renamed).
-    assert "{key:'archived',label:'Archived',c:'--c-archive'}" in html
+    # The final lane keeps its internal 'archived' key/token but is labelled "Ghosted".
+    assert "{key:'archived',label:'Ghosted',c:'--c-archive'}" in html
+
+
+def test_index_has_pipeline_history_and_slim_tracker_cards(client):
+    """Tracker cards are slimmed to title+company and the detail panel shows durable
+    pipeline dates."""
+    html = client.get("/").get_data(as_text=True)
+    # Durable pipeline-history surface + its view-model binding.
+    assert "Pipeline History" in html
+    assert "selectedJob.pipeline" in html
+    # The pipeline view-model reads the durable, write-once date fields from the job.
+    for field in (
+        "date_found",
+        "date_first_applied",
+        "date_first_interview",
+        "date_first_offer",
+        "date_first_rejected",
+        "date_first_ghosted",
+    ):
+        assert field in html, f"missing pipeline field binding: {field}"
+    # The tracker card no longer renders the initials avatar (logo) — that token is gone;
+    # the detail panel keeps its own larger avatar (avatarLg).
+    assert "{{ job.avatar }}" not in html
 
 
 def test_index_has_two_column_latex_workspace(client):

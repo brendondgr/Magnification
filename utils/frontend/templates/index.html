@@ -151,16 +151,9 @@
                 <div style="display:flex;flex-direction:column;gap:11px;padding:14px;overflow-y:auto;flex:1">
                   <sc-for list="{{ col.jobs }}" as="job" hint-placeholder-count="2">
                     <div draggable="true" ondragstart="{{ job.onDragStart }}" ondragend="{{ job.onDragEnd }}" onclick="{{ job.onOpen }}" style="cursor:grab;background:var(--card);border:var(--bw) solid var(--border);border-radius:var(--r-sm);padding:14px;animation:jf-rise .35s ease;transition:transform .15s,box-shadow .15s" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
-                      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
-                        <div style="{{ job.avatar }}">{{ job.initials }}</div>
-                        <div style="min-width:0;flex:1">
-                          <div style="font:600 14px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</div>
-                          <div style="font:400 12px/1.3 var(--font-body);color:var(--muted);margin-top:3px">{{ job.company }}</div>
-                        </div>
-                      </div>
-                      <div style="display:flex;flex-wrap:wrap;gap:6px">
-                        <span style="font:500 11px/1 var(--font-mono);color:var(--muted);padding:5px 8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:6px">{{ job.location }}</span>
-                        <span style="font:600 11px/1 var(--font-mono);color:var(--c-offer-text);padding:5px 8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:6px">{{ job.compensation }}</span>
+                      <div style="min-width:0">
+                        <div style="font:600 14px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</div>
+                        <div style="font:400 12px/1.3 var(--font-body);color:var(--muted);margin-top:4px">{{ job.company }}</div>
                       </div>
                     </div>
                   </sc-for>
@@ -491,6 +484,16 @@
                   <span style="font:500 12px/1 var(--font-mono);color:var(--muted)">{{ st.date }}</span>
                 </sc-if>
               </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:30px 0 14px">Pipeline History</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ selectedJob.pipeline }}" as="ev" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+              <span style="font:600 13px/1 var(--font-body);color:var(--text)">{{ ev.label }}</span>
+              <span style="font:500 12px/1 var(--font-mono);color:var(--muted)">{{ ev.date }}</span>
             </div>
           </sc-for>
         </div>
@@ -1350,7 +1353,7 @@ class Component extends DCLogic {
     {key:'interviewing',label:'Interviewing',c:'--c-interview'},
     {key:'offers',label:'Offers',c:'--c-offer'},
     {key:'rejected',label:'Rejected',c:'--c-reject'},
-    {key:'archived',label:'Archived',c:'--c-archive'}
+    {key:'archived',label:'Ghosted',c:'--c-archive'}
   ];
   static SITES = ['Indeed','LinkedIn','Glassdoor','ZipRecruiter','Google'];
   static COUNTRIES = ['USA','UK','Canada','Australia','India','Germany','France','Netherlands','Ireland','Singapore','Spain','Italy','Sweden','Switzerland','Belgium','Austria','Denmark','Norway','Finland','Poland','Portugal','New Zealand','Japan','Hong Kong','Mexico','Brazil','Argentina','Chile','Colombia','South Africa','Nigeria','UAE','Saudi Arabia','Israel','Turkey','Greece','Czech Republic','Romania','Hungary','Ukraine','Philippines','Indonesia','Malaysia','Thailand','Vietnam','South Korea','China','Pakistan','Bangladesh','Egypt'];
@@ -2308,6 +2311,15 @@ class Component extends DCLogic {
           dot:'position:relative;z-index:1;flex:0 0 auto;width:28px;height:28px;border-radius:99px;display:flex;align-items:center;justify-content:center;border:2px solid '+(checked?col:'var(--border2)')+';background:'+(checked?col:'var(--surface)'),
           label:'font:'+(checked?'600':'400')+' 14px/1 var(--font-body);color:'+(checked?'var(--text)':'var(--muted)')};
       });
+      // Durable, write-once pipeline history (first-occurrence dates that survive card moves).
+      d.pipeline=[
+        {label:'Found', date:sj.date_found},
+        {label:'Applied', date:sj.date_first_applied},
+        {label:'Interviewing', date:sj.date_first_interview},
+        {label:'Offer', date:sj.date_first_offer},
+        {label:'Rejected', date:sj.date_first_rejected},
+        {label:'Ghosted', date:sj.date_first_ghosted},
+      ].filter(e=>e.date);
       d.descNodes=this.fmtNodes(sj.description);
       // recommendation breakdown
       const an=sj.analysis||null;
