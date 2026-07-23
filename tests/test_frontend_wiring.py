@@ -186,6 +186,19 @@ def test_index_has_two_column_latex_workspace(client):
     assert "downloadAppTex" in html
 
 
+def test_index_has_hash_view_routing(client):
+    """The three top-level views are hash-routed (deep-link + Back/Forward)."""
+    html = client.get("/").get_data(as_text=True)
+    # Route table + the tab<->hash sync plumbing.
+    for token in ("static ROUTES", "tabFromHash", "goTab", "hashchange", "_hashHandler"):
+        assert token in html, f"missing routing token: {token}"
+    # Each view maps to a stable hash path.
+    for path in ("/new-jobs", "/saved", "/tracker"):
+        assert path in html, f"missing route path: {path}"
+    # Nav entry points route through goTab, not a bare setState.
+    assert "onClick:()=>this.goTab(k)" in html
+
+
 def test_generation_endpoints_registered(client):
     """The generation blueprint is mounted (status of an unknown task 404s, not 405/500)."""
     assert client.get("/api/documents/status/does_not_exist").status_code == 404

@@ -18,7 +18,7 @@ The structural decisions for Magnification's web layer, per `docs/skills/website
 | UI primitives | Native HTML elements |
 | Icons / fonts | FontAwesome, Lucide, Google Fonts (DM Sans, Space Grotesk, JetBrains Mono) |
 | Data fetching | Direct `fetch` calls to the Flask JSON API |
-| Routing | Backend-owned (Flask); client-side tab switching for views |
+| Routing | Backend-owned (Flask); client-side hash routing for the three top-level views (`#/new-jobs`, `#/saved`, `#/tracker` — see `docs/routes.md`) |
 | Forms / validation | Native HTML + server-side validation |
 | Tables / dense data | Custom card grid + kanban board |
 | Motion | CSS transitions/animations |
@@ -31,7 +31,7 @@ Single-user, local-first. No authentication. One implicit role (the local operat
 
 ## 4. Frontend / Backend Boundary
 
-- **Routing:** Flask owns all HTTP routing. `app.py` serves `/`, `/parts/<file>`, `/primary/<file>`; blueprints own `/api/*`.
+- **Routing:** Flask owns all HTTP routing. `app.py` serves `/`, `/parts/<file>`, `/primary/<file>`; blueprints own `/api/*`. Within the SPA shell, `index.html` uses `location.hash` to route between the three top-level views (deep-linkable, Back/Forward-aware).
 - **Auth/session:** none.
 - **Validation:** server-side, inside route handlers / service layer.
 - **Contracts:** JSON over HTTP; documented in `docs/api-contract.md`.
