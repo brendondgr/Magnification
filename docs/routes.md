@@ -13,6 +13,16 @@ Page routes and JSON API endpoints. Endpoint contracts are in `docs/api-contract
 
 The client loads partials (`header`, `mobile-nav`, `sidebar`, `new-jobs`, `tracker`, `job-detail-panel`) via `loadPartial()` in `index.html`.
 
+### Client-side view routing (hash)
+
+`index.html` deep-links the three top-level views to the URL hash so reloads, bookmarks, and browser Back/Forward work. The active view (`state.tab`) is kept in sync with `location.hash` via a `hashchange` listener; nav clicks route through `goTab()`, which writes the hash. A bare `/` is normalized to the default view's hash (via `history.replaceState`, no extra history entry).
+
+| Hash | View |
+| --- | --- |
+| `#/new-jobs` | New Jobs (default) |
+| `#/saved` | Saved |
+| `#/tracker` | Tracker |
+
 ## Config API (`config_bp`)
 
 | Path | Method | Purpose |

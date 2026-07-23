@@ -472,8 +472,11 @@
             </sc-if>
           </div>
         </sc-if>
+        <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Job Description</div>
+        <div style="margin-bottom:30px">{{ selectedJob.descNodes }}</div>
+
         <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Application Journey</div>
-        <div style="display:flex;flex-direction:column;gap:0;margin-bottom:30px">
+        <div style="display:flex;flex-direction:column;gap:0">
           <sc-for list="{{ selectedJob.timeline }}" as="st" hint-placeholder-count="6">
             <div onclick="{{ st.onToggle }}" style="display:flex;align-items:center;gap:14px;padding:4px 0;border-radius:var(--r-sm);cursor:pointer;position:relative;transition:background-color .15s ease" style-hover="background:var(--bg)">
               <div style="{{ st.line }}"></div>
@@ -491,9 +494,6 @@
             </div>
           </sc-for>
         </div>
-
-        <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Job Description</div>
-        <div>{{ selectedJob.descNodes }}</div>
       </div>
 
       <div style="display:flex;gap:10px;padding:18px 26px;border-top:var(--bw) solid var(--border)">
@@ -1364,9 +1364,19 @@ class Component extends DCLogic {
   static AGES = ['24 hours','3 days','1 week','2 weeks','3 weeks','30 days'];
   static AGE_HOURS = [24,72,168,336,504,720];
 
+  // ---- Client-side routing: tab key <-> URL hash path ----
+  static ROUTES = {newjobs:'/new-jobs', saved:'/saved', tracker:'/tracker'};
+
+  // Resolve the current location.hash to a tab key, or null if it names no view.
+  tabFromHash(){
+    const h=(typeof location!=='undefined'?location.hash:'').replace(/^#/,'');
+    return Object.keys(Component.ROUTES).find(k=>Component.ROUTES[k]===h)||null;
+  }
+
   constructor(props){
     super(props);
-    const tab = (props && props.startView==='tracker') ? 'tracker' : 'newjobs';
+    const routed=this.tabFromHash();
+    const tab = routed || ((props && props.startView==='tracker') ? 'tracker' : 'newjobs');
     this.state = {
       theme:'editorial', tab, sidebarOpen:true, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null, clearMenuOpen:false,
@@ -1405,8 +1415,26 @@ class Component extends DCLogic {
     this.dragId=null;
     this._scrapeJobId=null;
   }
-  componentDidMount(){ this.loadJobs(); }
-  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); this._clearAppPollers(); }
+  componentDidMount(){
+    this.loadJobs();
+    // Routing: keep the active view in sync with the URL hash (deep-link + back/forward).
+    this._hashHandler=()=>{ const k=this.tabFromHash(); if(k && k!==this.state.tab) this.setState({tab:k}); };
+    window.addEventListener('hashchange', this._hashHandler);
+    // Normalize the address bar to the current view without adding a history entry.
+    if(!this.tabFromHash() && Component.ROUTES[this.state.tab]){
+      try{ history.replaceState(null,'','#'+Component.ROUTES[this.state.tab]); }catch(_){ }
+    }
+  }
+  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); this._clearAppPollers(); if(this._hashHandler) window.removeEventListener('hashchange', this._hashHandler); }
+
+  // Navigate to a top-level view: update the URL hash (source of truth) and the active tab.
+  goTab(k){
+    if(Component.ROUTES[k]){
+      const target='#'+Component.ROUTES[k];
+      if(location.hash!==target){ try{ location.hash=target; }catch(_){ } }
+    }
+    if(this.state.tab!==k) this.setState({tab:k});
+  }
 
   // ---------- API: reads ----------
   async loadJobs(){
@@ -1770,7 +1798,7 @@ class Component extends DCLogic {
     },1000);
   }
   closeFind(){ clearInterval(this._scr); clearInterval(this._poll); this.setState({findOpen:false,findView:'config',scrapeDone:false}); }
-  viewNewJobs(){ this.closeFind(); this.setState({tab:'newjobs'}); }
+  viewNewJobs(){ this.closeFind(); this.goTab('newjobs'); }
 
   // ---------- recommendation analysis ----------
   analyzeJobs(){
@@ -2218,10 +2246,10 @@ class Component extends DCLogic {
     const s=this.state; const T=Component.THEMES[s.theme];
     const rootStyle=Object.assign({minHeight:'100vh',background:'var(--bg)',color:'var(--text)',fontFamily:'var(--font-body)',position:'relative',overflowX:'hidden'},T);
 
-    const navTabs=[['newjobs','New Jobs'],['saved','Saved'],['tracker','Tracker']].map(([k,l])=>({key:k,label:l,onClick:()=>this.setState({tab:k}),
+    const navTabs=[['newjobs','New Jobs'],['saved','Saved'],['tracker','Tracker']].map(([k,l])=>({key:k,label:l,onClick:()=>this.goTab(k),
       style:'padding:9px 16px;border:none;border-radius:var(--r-sm);cursor:pointer;font:600 14px/1 var(--font-body);background:'+(s.tab===k?'var(--surface2)':'transparent')+';color:'+(s.tab===k?'var(--text)':'var(--muted)')}));
 
-    const mkMobTab=(k,l,icon)=>({key:k,label:l,onClick:()=>this.setState({tab:k}),icon:React.createElement('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},icon),
+    const mkMobTab=(k,l,icon)=>({key:k,label:l,onClick:()=>this.goTab(k),icon:React.createElement('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},icon),
       iconWrap:'',style:'flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 0 13px;background:none;border:none;cursor:pointer;transition:color .15s ease,transform .15s ease;color:'+(s.tab===k?'var(--accent-text)':'var(--muted)')});
     const mobTabs=[
       mkMobTab('newjobs','New Jobs',React.createElement('g',null,React.createElement('rect',{x:3,y:3,width:7,height:7,rx:1}),React.createElement('rect',{x:14,y:3,width:7,height:7,rx:1}),React.createElement('rect',{x:3,y:14,width:7,height:7,rx:1}),React.createElement('rect',{x:14,y:14,width:7,height:7,rx:1}))),
