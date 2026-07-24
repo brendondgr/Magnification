@@ -90,15 +90,19 @@ def test_pipeline_order_skips_db_duplicates_and_filtered_jobs(temp_db, monkeypat
             j["description"] = f"{j['title']} needs python skills"
         return jobs
 
-    def fake_extract_compensation_llm(jobs, client, max_workers=4, max_chars=6000):
+    def fake_extract_enrichment_llm(jobs, client, comp=True, industry=True,
+                                    max_workers=4, max_chars=6000):
         order.append("compensation")
         compensation_for.extend(sorted(j["title"] for j in jobs))
         updated = 0
+        industry_updated = 0
         for j in jobs:
             if j["title"] == "Data Scientist":
                 j["compensation"] = "$100,000 - $130,000"
                 updated += 1
-        return updated
+            j["industry"] = "Tech"
+            industry_updated += 1
+        return (updated, industry_updated)
 
     def fake_analyze_jobs(job_ids=None, profile=None, runtime=None, progress_callback=None):
         order.append("analysis")
@@ -114,7 +118,7 @@ def test_pipeline_order_skips_db_duplicates_and_filtered_jobs(temp_db, monkeypat
                          lambda: {"id": 1, "blocked_companies": [], "title_blocklist": [], "keyword_groups": []})
     monkeypatch.setattr(llm_config_module, "load_llm_endpoint_config", lambda: {"enabled": True})
     monkeypatch.setattr(llm_client_module.OpenAIClient, "from_config", classmethod(lambda cls, **kw: object()))
-    monkeypatch.setattr(compensation_module, "extract_compensation_llm", fake_extract_compensation_llm)
+    monkeypatch.setattr(compensation_module, "extract_enrichment_llm", fake_extract_enrichment_llm)
     monkeypatch.setattr(recommend_service_module, "analyze_jobs", fake_analyze_jobs)
 
     result = svc.execute_full_scraping_workflow(save_to_database=True)
