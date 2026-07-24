@@ -1,5 +1,49 @@
 # Project Checklist — Magnification
 
+## Job Card Redesign (Industry Detection + Row-Based Layout) — Definition of Done
+Plan: `docs/plans/job-card-redesign.md`. Delivered on branch `job-card-redesign` (worktree),
+committed per phase, merged to `main`.
+
+Requirements (user): (1) detect each job's **industry/genre** and pull it from the description in
+the **same LLM pass** that extracts compensation; (2) restructure the New Jobs (and Saved) cards
+to be **row-based** — source+date, industry pill (unique consistent color per category), title
+(fills width) + fixed-width match% + "?" breakdown, company, location+compensation, 3-line
+description, primary actions (rename **Apply → Generate**), and an SVG **icon action row** (info,
+block company, hide, save, link out).
+
+- [x] (1/7) Plan doc + worktree (based off local HEAD).
+- [x] (2/7) Backend: `Job.industry` + `industry_checked` columns + idempotent `migrate_job_industry`
+  (wired into `_run_migrations`); `_job_to_dict` exposes them; `enable_llm_industry` runtime
+  default (True). `compensation.py` gains the fixed `INDUSTRIES` taxonomy (source of truth for card
+  colors), `normalize_industry` (synonyms → canonical, unknown → Other), `needs_industry`/
+  `needs_industry_recovery`/`needs_enrichment` predicates, and `extract_enrichment_llm` pulling
+  compensation + industry in **one** LLM pass (each field gated independently). `tests/recommend/
+  test_industry.py` (11 cases).
+- [x] (3/7) `recommend/service._recover_compensation` → `_recover_enrichment` (persists industry +
+  industry_checked, each field toggle-gated; `analyze_jobs` reports `industry_extracted`, stage
+  renamed `compensation`→`enrichment`); `scrapers/scraping_service` post-scrape block uses the
+  combined extractor + persists industry. Affected tests updated (tuple return + combined-pass +
+  industry-only-when-comp-off coverage).
+- [x] (4/7) Frontend: `Component.INDUSTRY_COLORS` (matches the taxonomy) + `decorate()`
+  `industryBadge`/`industryDot`/`iconBtn`; `mapDbJob` carries `industry`. New Jobs + Saved
+  `<article>` rebuilt to the 8-row layout; Apply→**Generate**; Details text button → Info icon;
+  icon row (info·block·hide·save·link). Detail panel gains an Industry line; progress stage-label
+  map covers `enrichment`/`extracting_enrichment`.
+- [x] (5/7) Wiring test `tests/test_frontend_wiring.py::test_index_has_industry_and_row_based_job_card`;
+  live verification via the served page (Generate label + industry bindings + icon-button titles
+  present) and `/api/jobs` (`industry` field flows; a real value round-trips through the API — the
+  Browser pane can't composite/load localhost in this env, so verified via served HTML + API as in
+  prior UI work).
+- [x] (6/7) Docs (`database.md`, `api-contract.md`, `data-flow.md`, `component-map.md`,
+  `design-system.md`, `recommendation.md`, `structure.md`, `documentation.md`, this checklist).
+- [x] (7/7) Offline subsets green (`tests/recommend`, `tests/database`, `tests/scrapers`,
+  `tests/test_frontend_wiring.py`); `import app` clean; `migrate_job_industry` verified on the real
+  DB (columns added; a value round-trips through `/api/jobs`); merged to `main`, worktree removed.
+- [ ] **Live industry classification with a real LLM endpoint** — the combined pass, taxonomy
+  normalization, gating, and persistence are covered by mocked-client tests; classifying real jobs
+  needs an enabled endpoint (Options → LLM Endpoint) + `enable_llm_industry` on. Industry stays
+  `null` (no pill) until then.
+
 ## Tracker Card Slim-Down + Durable Pipeline Dates — Definition of Done
 Plan: `docs/plans/tracker-cards-and-pipeline-dates.md`. Delivered on branch
 `tracker-cards-pipeline-dates` (worktree), committed per phase, merged to `main`.

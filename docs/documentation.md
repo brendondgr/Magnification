@@ -81,4 +81,11 @@ These existing references remain canonical for their subsystems:
   parseable JSON; verdict parsing also tolerates nested/string score shapes. This is what
   "Analyze Matches" needs to fit **every** job rather than a couple per
   run. See `docs/plans/llm-fit-reasoning-exhaustion.md`.
+- **Job card redesign complete:** New Jobs + Saved cards are now row-based (source+date,
+  industry tag, title+match%+breakdown, company, location+compensation, 3-line description,
+  Generate/Applied, then an SVG icon-action row: info · block · hide · save · link out). Each job
+  carries a detected **industry** (fixed taxonomy, distinct consistent color per category)
+  extracted from the description in the **same combined LLM pass** as compensation
+  (`recommend.compensation.extract_enrichment_llm`, gated by `enable_llm_industry`); the "Apply"
+  action was renamed **Generate**. See `docs/plans/job-card-redesign.md`.
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.
