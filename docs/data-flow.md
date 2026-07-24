@@ -22,8 +22,9 @@ Find Jobs modal → POST /api/scrape/start
               with a jittered delay, to avoid the guest endpoint's rate-limiting)
       → database/operations.add_job (save new jobs) → SQLite
       → job_filter (apply config; mark ignore=1 for non-matching jobs)
-          → recommend/compensation.extract_compensation_llm (OPTIONAL — when the LLM is enabled
-              and runtime.enable_llm_compensation; recovers pay from descriptions, parallel) +
+          → recommend/compensation.extract_enrichment_llm (OPTIONAL — when the LLM is enabled
+              and runtime.enable_llm_compensation and/or enable_llm_industry; recovers pay +
+              industry from descriptions in one combined pass per job, parallel) +
               recommend/service.analyze_jobs (OPTIONAL — gated by runtime.enable_analysis and an
               active profile), run together on every job that survived filtering
 Client polls GET /api/scrape/status/<job_id> for progress + a live `events[]` activity feed
@@ -119,10 +120,11 @@ remains for programmatic use. Both call the same service:
 Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
    → recommend.service.analyze_jobs(job_ids, llm_only_missing=not reanalyze_all,
                                     progress_callback=…)   [staged progress: embedding→
-                                    compensation→skills→scoring→llm→completed, w/ job counts]
+                                    enrichment→skills→scoring→llm→completed, w/ job counts]
        → embed missing job descriptions (fastembed, parallel)   [embed-on-retrieve]
-       → recover missing compensation from descriptions (LLM; flag compensation_checked so
-         no-pay jobs are queried once, not every run)            [gap-fill, non-ignored jobs]
+       → recover missing compensation + industry from descriptions in one combined LLM pass
+         (_recover_enrichment; flag compensation_checked / industry_checked so jobs are queried
+         once, not every run; each field gated by its toggle)   [gap-fill, non-ignored jobs]
        → extract skills (reuse stored extracted_skills; only extract jobs missing them)
        → ranker.rank_batch (semantic + bm25 + keyword-group + skill → rag_score)
        → LLM fit verdict: coverage = top ceil(llm_fraction × N) of ALL analyzed jobs by

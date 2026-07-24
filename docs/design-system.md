@@ -21,6 +21,14 @@ Warm, tactile, "card-on-cream" job board with a playful but focused feel — a p
 
 Plus a large **categorization palette** (`--color-cat-*`: yellow-orange, yellow, orange, red, blue, purple, teal, green, black, gray, brown, pink, kiwi, rose) — each with `bg` / `border` / `text` triplets used for job tags and status chips.
 
+**Industry palette** (`Component.INDUSTRY_COLORS` in `index.html`): one fixed, distinct color per
+industry label so the job-card industry pill reads consistently everywhere (all "Health" pills
+share one color, etc.) — Tech `#00C2FF`, Health `#00E5A0`, Finance `#FFC53D`, Business `#B57BFF`,
+Industrial `#FF8A3D`, Science `#4DD4FF`, Education `#FF5DA2`, Government `#7C9CFF`, Retail
+`#FF4D6A`, Media `#FF6AD5`, Legal `#C0A16B`, Energy `#7CFC5A`, Other `#9AA0A6` (fallback for
+unknown/unclassified). The pill uses the color as border + text over a 12%-tinted fill (a colored
+variant of the location-chip style); labels must match the backend `INDUSTRIES` taxonomy.
+
 ## Typography
 
 - Headings: **Space Grotesk** (`.font-heading`)

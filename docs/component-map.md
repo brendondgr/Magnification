@@ -37,8 +37,17 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 Main-view tabs: **New Jobs · Saved · Tracker** (desktop nav + mobile bottom nav). The **Saved**
 tab is a grid (mirroring the New Jobs card) of every job with `saved=1`, shown regardless of
-ignore/applied state; saved jobs are excluded from the New Jobs feed. A **Save** button sits to
-the right of the Hide (Ignore) button on each card and in the job detail panel (`toggleSave` →
+ignore/applied state; saved jobs are excluded from the New Jobs feed.
+
+**Job card (New Jobs + Saved), row-based:** the `decorate(job)` view-model drives an 8-row
+`<article>` — (1) source pill + retrieved date, (2) industry tag (`industryBadge`/`industryDot`,
+colored per `Component.INDUSTRY_COLORS`; shown only when `hasIndustry`), (3) title (fills
+remaining width) + fixed-width match % + "?" breakdown, (4) company, (5) location + compensation
+pills, (6) 3-line-clamped description, (7) primary actions **Generate** (`onApply` → Application
+Mode; renamed from "Apply") + **Applied** (`onMarkApplied`), (8) an icon-button row — Info
+(`onOpen`), Block company (`onBlock`), Hide (`onIgnore`), Save (`onSave`), Link out (`onLink`),
+sharing the neutral `iconBtn` style with the stateful `blockBtn`/`ignoreBtn`/`saveBtn`. The job
+detail panel gains an **Industry** line and keeps the same Block/Save controls (`toggleSave` →
 `PATCH /api/jobs/<id>/save`).
 
 **Per-page search + sort:** New Jobs and Saved each own an **independent** in-page search box

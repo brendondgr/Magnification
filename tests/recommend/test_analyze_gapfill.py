@@ -133,7 +133,10 @@ def test_full_coverage_ignores_stale_top_n_cap(monkeypatch):
     assert analyses[1]["llm_score"] == 91.0
 
 
-# ---- compensation recovery ----
+# ---- compensation + industry enrichment recovery ----
+# These runtime dicts leave enable_llm_industry unset (falsy) so the pass behaves like the
+# pre-existing compensation-only recovery; a dedicated test below covers industry + the combined
+# single pass.
 
 def test_recover_compensation_fills_and_persists(monkeypatch):
     _enable_llm(monkeypatch, [{"compensation": "$100,000 a year"}])
@@ -144,8 +147,8 @@ def test_recover_compensation_fills_and_persists(monkeypatch):
         {"id": 1, "description": "We pay well.", "compensation": ""},       # needs recovery
         {"id": 2, "description": "Great team.", "compensation": "$50/hr"},   # already set
     ]
-    n = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
-    assert n == 1
+    n, ind = service._recover_enrichment(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
+    assert (n, ind) == (1, 0)
     assert jobs[0]["compensation"] == "$100,000 a year"
     assert jobs[1]["compensation"] == "$50/hr"          # untouched
     # The recovered job is persisted with pay AND flagged checked so it isn't re-queried.
@@ -159,7 +162,7 @@ def test_recover_compensation_marks_no_pay_jobs_checked(monkeypatch):
     monkeypatch.setattr(service.db_ops, "update_job",
                         lambda jid, updates: calls.append((jid, updates)) or True)
     jobs = [{"id": 7, "description": "No salary listed here.", "compensation": ""}]
-    n = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
+    n, _ = service._recover_enrichment(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
     assert n == 0                                        # nothing recovered
     assert jobs[0]["compensation"] == ""                 # still blank
     assert calls == [(7, {"compensation_checked": 1})]   # but flagged as checked
@@ -167,7 +170,7 @@ def test_recover_compensation_marks_no_pay_jobs_checked(monkeypatch):
     # Second run: the job is now checked, so recovery skips it entirely (no LLM, no update).
     calls.clear()
     jobs[0]["compensation_checked"] = True
-    n2 = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
+    n2, _ = service._recover_enrichment(jobs, {"enable_llm_compensation": True, "llm_workers": 2})
     assert n2 == 0 and calls == []
 
 
@@ -178,29 +181,62 @@ def test_recover_compensation_force_reattempts_checked_job(monkeypatch):
     monkeypatch.setattr(service.db_ops, "update_job",
                         lambda jid, updates: calls.append((jid, updates)) or True)
     jobs = [{"id": 9, "description": "We pay well.", "compensation": "", "compensation_checked": True}]
-    n = service._recover_compensation(jobs, {"enable_llm_compensation": True, "llm_workers": 2}, force=True)
+    n, _ = service._recover_enrichment(jobs, {"enable_llm_compensation": True, "llm_workers": 2}, force=True)
     assert n == 1
     assert calls == [(9, {"compensation_checked": 1, "compensation": "$90k"})]
 
 
-def test_recover_compensation_disabled_toggle_is_noop(monkeypatch):
+def test_recover_enrichment_fills_industry_in_single_pass(monkeypatch):
+    """With both toggles on, one pass fills compensation AND industry and flags both checked."""
+    _enable_llm(monkeypatch, [{"compensation": "$120k a year", "industry": "healthcare"}])
+    calls = []
+    monkeypatch.setattr(service.db_ops, "update_job",
+                        lambda jid, updates: calls.append((jid, updates)) or True)
+    jobs = [{"id": 3, "description": "Hospital software, we pay well.",
+             "compensation": "", "industry": ""}]
+    n, ind = service._recover_enrichment(
+        jobs, {"enable_llm_compensation": True, "enable_llm_industry": True, "llm_workers": 2})
+    assert (n, ind) == (1, 1)
+    assert jobs[0]["compensation"] == "$120k a year"
+    assert jobs[0]["industry"] == "Health"               # synonym normalized
+    assert calls == [(3, {"compensation_checked": 1, "compensation": "$120k a year",
+                          "industry_checked": 1, "industry": "Health"})]
+
+
+def test_recover_enrichment_industry_only_when_comp_disabled(monkeypatch):
+    """Industry still fills (and only industry keys persist) when compensation is off."""
+    _enable_llm(monkeypatch, [{"compensation": "$1", "industry": "finance"}])
+    calls = []
+    monkeypatch.setattr(service.db_ops, "update_job",
+                        lambda jid, updates: calls.append((jid, updates)) or True)
+    jobs = [{"id": 4, "description": "A bank.", "compensation": "$80k", "industry": ""}]
+    n, ind = service._recover_enrichment(
+        jobs, {"enable_llm_compensation": False, "enable_llm_industry": True, "llm_workers": 2})
+    assert (n, ind) == (0, 1)
+    assert jobs[0]["compensation"] == "$80k"             # comp off -> untouched
+    assert jobs[0]["industry"] == "Finance"
+    assert calls == [(4, {"industry_checked": 1, "industry": "Finance"})]
+
+
+def test_recover_enrichment_both_disabled_is_noop(monkeypatch):
     _enable_llm(monkeypatch, [{"compensation": "$1"}])
     calls = []
     monkeypatch.setattr(service.db_ops, "update_job",
                         lambda jid, updates: calls.append((jid, updates)) or True)
-    jobs = [{"id": 1, "description": "We pay well.", "compensation": ""}]
-    n = service._recover_compensation(jobs, {"enable_llm_compensation": False})
-    assert n == 0
-    assert jobs[0]["compensation"] == ""
+    jobs = [{"id": 1, "description": "We pay well.", "compensation": "", "industry": ""}]
+    n, ind = service._recover_enrichment(
+        jobs, {"enable_llm_compensation": False, "enable_llm_industry": False})
+    assert (n, ind) == (0, 0)
     assert calls == []
 
 
-def test_recover_compensation_endpoint_disabled_is_noop(monkeypatch):
+def test_recover_enrichment_endpoint_disabled_is_noop(monkeypatch):
     monkeypatch.setattr(service, "load_llm_endpoint_config", lambda: {"enabled": False})
     calls = []
     monkeypatch.setattr(service.db_ops, "update_job",
                         lambda jid, updates: calls.append((jid, updates)) or True)
-    jobs = [{"id": 1, "description": "We pay well.", "compensation": ""}]
-    n = service._recover_compensation(jobs, {"enable_llm_compensation": True})
-    assert n == 0
+    jobs = [{"id": 1, "description": "We pay well.", "compensation": "", "industry": ""}]
+    n, ind = service._recover_enrichment(
+        jobs, {"enable_llm_compensation": True, "enable_llm_industry": True})
+    assert (n, ind) == (0, 0)
     assert calls == []

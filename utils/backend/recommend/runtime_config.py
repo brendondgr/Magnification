@@ -25,6 +25,7 @@ DEFAULT_RUNTIME_CONFIG: Dict[str, Any] = {
     "enable_llm_rerank": True,      # LLM fit verdict on the top-N (no-ops without an endpoint)
     "enable_llm_skills": False,     # use the LLM (vs gazetteer) for skill extraction
     "enable_llm_compensation": True,  # LLM-extract pay from descriptions when not parsed
+    "enable_llm_industry": True,      # LLM-classify each job's industry from the description
     # parallelism
     "embed_workers": _DEFAULT_WORKERS,
     "embed_batch_size": 32,

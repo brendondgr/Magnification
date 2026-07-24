@@ -193,6 +193,28 @@ def test_index_has_pipeline_history_and_slim_tracker_cards(client):
     assert "{{ job.avatar }}" not in html
 
 
+def test_index_has_industry_and_row_based_job_card(client):
+    """The redesigned job card exposes the industry pill, the renamed Generate action, and the
+    icon action row (info · block · hide · save · link out)."""
+    html = client.get("/").get_data(as_text=True)
+    # Industry taxonomy -> color map (source of truth for the per-industry pill color) + the
+    # view-model bindings the card renders.
+    assert "static INDUSTRY_COLORS" in html
+    for token in ("job.industryBadge", "job.industryLabel", "job.hasIndustry", "job.iconBtn"):
+        assert token in html, f"missing industry/card token: {token}"
+    # The industry field is carried through the job view-model from the API.
+    assert "industry:j.industry" in html
+    # Row 7: the primary action is now "Generate" (was "Apply"); the old text "Details" button
+    # is gone (replaced by the Info icon button).
+    assert "Generate" in html
+    assert ">Details</button>" not in html
+    # Row 8 icon buttons, identified by their titles.
+    for title in ("View job details", "Block this company", "Hide this job", "Open original posting"):
+        assert title in html, f"missing icon-button title: {title}"
+    # The detail panel gains an Industry line.
+    assert "selectedJob.industryBadge" in html
+
+
 def test_index_has_two_column_latex_workspace(client):
     """The workspace wires the two-column (process ‖ PDF) layout + LaTeX/PDF preview plumbing."""
     html = client.get("/").get_data(as_text=True)

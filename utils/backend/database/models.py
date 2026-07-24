@@ -34,6 +34,13 @@ class Job(Base):
             run for this job (0=not yet, 1=checked). Set once the LLM has been asked —
             whether or not it found pay — so no-pay jobs are not re-queried on every
             "Analyze Matches"/scrape run. A forced reanalyze re-attempts regardless.
+        industry: The job's detected industry/genre (one of a fixed taxonomy, e.g. Tech,
+            Health, Finance) extracted from the description by the LLM in the same enrichment
+            pass as compensation. None until classified.
+        industry_checked: Flag recording that LLM industry classification has already run for
+            this job (0=not yet, 1=checked). Set once the LLM has been asked — whether or not it
+            returned a label — so jobs are not re-queried on every run. Mirrors
+            ``compensation_checked``; a forced reanalyze re-attempts regardless.
         site: The job board site where the job was found
         ignore: Flag to exclude from application tracking (0=track, 1=ignore)
         saved: Flag pinning the job to the Saved lane (0=not saved, 1=saved). Saved jobs
@@ -59,6 +66,8 @@ class Job(Base):
     description = Column(Text, nullable=True)
     compensation = Column(String(255), nullable=True)
     compensation_checked = Column(Integer, default=0)
+    industry = Column(String(64), nullable=True)
+    industry_checked = Column(Integer, default=0)
     site = Column(String(50), nullable=True)
     ignore = Column(Integer, default=0)
     saved = Column(Integer, default=0)

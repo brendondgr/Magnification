@@ -402,34 +402,46 @@ def execute_full_scraping_workflow(
             try:
                 from ..recommend.runtime_config import get_runtime_config
                 comp_rc = get_runtime_config()
-                if comp_rc.get('enable_llm_compensation') and kept_jobs:
+                comp_on = bool(comp_rc.get('enable_llm_compensation'))
+                industry_on = bool(comp_rc.get('enable_llm_industry'))
+                if (comp_on or industry_on) and kept_jobs:
                     from ..llm.config import load_llm_endpoint_config
                     if load_llm_endpoint_config().get('enabled'):
-                        from ..recommend.compensation import extract_compensation_llm, needs_compensation_recovery
+                        from ..recommend.compensation import extract_enrichment_llm, needs_enrichment
                         from ..llm.client import OpenAIClient
                         from ..database.operations import update_job
-                        pending = [j for j in kept_jobs if needs_compensation_recovery(j)]
+                        pending = [j for j in kept_jobs
+                                   if needs_enrichment(j, comp_on=comp_on, industry_on=industry_on)]
                         if pending:
-                            update_progress('extracting_compensation', 93, {
-                                'message': f'Extracting compensation from {len(pending)} description(s) via LLM...'
+                            update_progress('extracting_enrichment', 93, {
+                                'message': f'Extracting pay + industry from {len(pending)} description(s) via LLM...'
                             })
                             client = OpenAIClient.from_config()
-                            extracted = extract_compensation_llm(
-                                pending, client, max_workers=comp_rc.get('llm_workers', 4)
+                            extracted, industry_n = extract_enrichment_llm(
+                                pending, client, comp=comp_on, industry=industry_on,
+                                max_workers=comp_rc.get('llm_workers', 4)
                             )
                             for job in pending:
-                                updates = {'compensation_checked': 1}
-                                if job.get('compensation'):
-                                    updates['compensation'] = job['compensation']
+                                updates = {}
+                                if comp_on:
+                                    updates['compensation_checked'] = 1
+                                    if job.get('compensation'):
+                                        updates['compensation'] = job['compensation']
+                                if industry_on:
+                                    updates['industry_checked'] = 1
+                                    if job.get('industry'):
+                                        updates['industry'] = job['industry']
                                 update_job(job['id'], updates)
-                            results['steps']['compensation'] = {'candidates': len(pending), 'extracted': extracted}
-                            update_progress('extracting_compensation', 95, {
-                                'message': f'Recovered compensation for {extracted} job(s)'
+                            results['steps']['enrichment'] = {
+                                'candidates': len(pending), 'compensation': extracted, 'industry': industry_n
+                            }
+                            update_progress('extracting_enrichment', 95, {
+                                'message': f'Recovered pay for {extracted} · industry for {industry_n} job(s)'
                             })
-                            logger.info(f"  LLM compensation: extracted {extracted}/{len(pending)}")
+                            logger.info(f"  LLM enrichment: pay {extracted}, industry {industry_n} / {len(pending)}")
             except Exception as e:
-                logger.error(f"Compensation extraction failed (non-fatal): {e}")
-                results['errors'].append(f"Compensation error: {e}")
+                logger.error(f"Enrichment (pay/industry) extraction failed (non-fatal): {e}")
+                results['errors'].append(f"Enrichment error: {e}")
 
             # Step 7b: Recommendation analysis (RAG) — embed + score against the active
             # profile. Optional and non-fatal (e.g. the embedding model may be unavailable
