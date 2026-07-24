@@ -208,9 +208,12 @@ def test_index_has_industry_and_row_based_job_card(client):
     # is gone (replaced by the Info icon button).
     assert "Generate" in html
     assert ">Details</button>" not in html
-    # Row 8 icon buttons, identified by their titles.
-    for title in ("View job details", "Block this company", "Hide this job", "Open original posting"):
-        assert title in html, f"missing icon-button title: {title}"
+    # Row 8 icon buttons expose a custom hover tool-descriptor via data-tip (+ aria-label for a11y),
+    # backed by a pure-CSS [data-tip] bubble that is pointer-events:none so the button stays clickable.
+    for label in ("View job details", "Block this company", "Hide this job", "Open original posting"):
+        assert f'data-tip="{label}"' in html, f"missing icon-button tooltip: {label}"
+        assert f'aria-label="{label}"' in html, f"missing icon-button aria-label: {label}"
+    assert "[data-tip]::after" in html and "pointer-events:none" in html
     # The detail panel gains an Industry line.
     assert "selectedJob.industryBadge" in html
 

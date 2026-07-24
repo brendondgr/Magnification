@@ -78,6 +78,11 @@ variant of the location-chip style); labels must match the backend `INDUSTRIES` 
     + a soft `box-shadow` ring on focus.
   - **Clickable rows** (job-detail timeline steps): background tint (`var(--bg)`) on hover, no
     movement.
+- **Hover tool-descriptor** (job-card icon action row): a custom tooltip via a pure-CSS
+  `[data-tip]` rule in the `<head>` `<style>` block — `::after` renders `attr(data-tip)` as a
+  small `var(--text)`-on-`var(--card)` bubble above the control on `:hover`/`:focus-visible`, with
+  a matching `::before` caret. Both are `pointer-events:none` so they never intercept the click
+  (the button stays fully selectable); each button also carries an `aria-label` for screen readers.
 - Radius/spacing follow the per-theme `--radius`/`--r-sm` tokens; standardizing further shared
   spacing tokens is a follow-up.
 
