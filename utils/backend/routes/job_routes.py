@@ -5,33 +5,53 @@ from loguru import logger
 
 job_bp = Blueprint('job_bp', __name__)
 
+_TRUTHY = ('1', 'true', 'yes')
+
+
 @job_bp.route('/api/jobs', methods=['GET'])
 def get_jobs():
-    """Get all active jobs with their application statuses.
+    """Get the jobs the feed renders, with their application statuses.
+
+    By default ignored jobs are withheld (unless they are saved or applied to, which
+    the Saved lane and Tracker still need) — on a database with a large blocklist that
+    is nearly the whole table. Pass ?include_ignored=1 to get everything; the front-end
+    does that lazily, the first time "Show Ignored" is switched on.
 
     Pass ?with_analysis=1 to attach each job's recommendation analysis (match scores,
     skill match, keyword hits) under a `analysis` key.
     """
     try:
-        # Get all active jobs (ignore=0)
-        jobs = db_ops.get_all_jobs(include_ignored=True)
+        include_ignored = request.args.get('include_ignored') in _TRUTHY
+        jobs = db_ops.get_feed_jobs(include_ignored=include_ignored)
 
-        with_analysis = request.args.get('with_analysis') in ('1', 'true', 'yes')
-        analyses = (db_ops.get_analysis_for_jobs([j['id'] for j in jobs])
-                    if with_analysis else {})
+        job_ids = [j['id'] for j in jobs]
+        with_analysis = request.args.get('with_analysis') in _TRUTHY
+        analyses = db_ops.get_analysis_for_jobs(job_ids) if with_analysis else {}
+        statuses = db_ops.get_statuses_for_jobs(job_ids)
 
         # Hydrate with statuses (+ analysis when requested)
-        full_jobs = []
         for job in jobs:
-            statuses = db_ops.get_application_status_by_job(job['id'])
-            job['statuses'] = statuses
+            job['statuses'] = statuses.get(job['id'], [])
             if with_analysis:
                 job['analysis'] = analyses.get(job['id'])
-            full_jobs.append(job)
 
-        return jsonify(full_jobs)
+        return jsonify(jobs)
     except Exception as e:
         logger.error(f"Error fetching jobs: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@job_bp.route('/api/jobs/counts', methods=['GET'])
+def get_job_counts():
+    """Row counts for the jobs table: {total, feed, hidden}.
+
+    `hidden` is how many ignored jobs the default /api/jobs payload leaves out — the
+    front-end uses it to label the "Show Ignored" button without loading those rows.
+    """
+    try:
+        return jsonify(db_ops.get_job_counts())
+    except Exception as e:
+        logger.error(f"Error counting jobs: {e}")
         return jsonify({'error': str(e)}), 500
 
 @job_bp.route('/api/jobs/<int:job_id>', methods=['GET'])
