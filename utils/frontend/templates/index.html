@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Job Finder</title>
+<title>Magnification</title>
 <script src="/static/js/dc-runtime.js"></script>
 </head>
 <body>
@@ -77,7 +77,7 @@
     <div style="display:flex;align-items:center;gap:11px">
       <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font:700 18px/1 var(--font-head)">J</div>
       <div style="display:flex;flex-direction:column;line-height:1">
-        <span style="font:700 18px/1 var(--font-head);letter-spacing:-.01em">Job Finder</span>
+        <span style="font:700 18px/1 var(--font-head);letter-spacing:-.01em">Magnification</span>
         <span style="font:500 10px/1.4 var(--font-mono);color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:3px">Track · Apply · Land</span>
       </div>
     </div>
@@ -149,7 +149,7 @@
 
       <!-- ===== TRACKER ===== -->
       <sc-if value="{{ isTracker }}" hint-placeholder-val="{{ true }}">
-        <section data-screen-label="Tracker" style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:24px 24px 96px;animation:jf-fade .3s ease">
+        <section data-screen-label="Tracker" style="flex:1;min-width:0;height:calc(100vh - 66px);max-height:calc(100vh - 66px);overflow:hidden;display:flex;flex-direction:column;padding:24px 24px 96px;animation:jf-fade .3s ease">
           <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">
             <div>
               <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">Application Tracker</h1>
@@ -172,7 +172,7 @@
                   <span style="font:600 14px/1 var(--font-head);color:var(--text)">{{ col.label }}</span>
                   <span style="{{ col.badge }}">{{ col.count }}</span>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:11px;padding:14px;overflow-y:auto;flex:1">
+                <div style="display:flex;flex-direction:column;gap:11px;padding:14px;overflow-y:auto;flex:1;min-height:0">
                   <sc-for list="{{ col.jobs }}" as="job" hint-placeholder-count="2">
                     <div draggable="true" ondragstart="{{ job.onDragStart }}" ondragend="{{ job.onDragEnd }}" onclick="{{ job.onOpen }}" style="cursor:grab;background:var(--card);border:var(--bw) solid var(--border);border-radius:var(--r-sm);padding:14px;animation:jf-rise .35s ease;transition:transform .15s,box-shadow .15s" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
                       <div style="min-width:0">
@@ -2342,7 +2342,7 @@ class Component extends DCLogic {
       return {key:c.key,label:c.label,count:jobs.length,jobs,empty:jobs.length===0,
         dot:'width:9px;height:9px;border-radius:3px;background:var('+c.c+')',
         badge:'margin-left:auto;font:600 12px/1 var(--font-mono);color:var(--muted);background:var(--bg);padding:4px 9px;border-radius:99px;border:var(--bw) solid var(--border)',
-        style:'flex:0 0 300px;display:flex;flex-direction:column;background:var(--surface);border-radius:var(--radius);min-height:380px;max-height:100%;transition:border-color .15s,box-shadow .15s;border:var(--bw) solid '+(over?'var(--accent)':'var(--border)')+';box-shadow:'+(over?'0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)':'none'),
+        style:'flex:0 0 300px;display:flex;flex-direction:column;background:var(--surface);border-radius:var(--radius);min-height:0;height:100%;max-height:100%;overflow:hidden;transition:border-color .15s,box-shadow .15s;border:var(--bw) solid '+(over?'var(--accent)':'var(--border)')+';box-shadow:'+(over?'0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)':'none'),
         onDragOver:(e)=>{ e.preventDefault(); if(e&&e.dataTransfer) e.dataTransfer.dropEffect='move'; if(s.dragOverCol!==c.key) this.setState({dragOverCol:c.key}); },
         onDrop:(e)=>{ e.preventDefault(); this.moveTo(c.key); }
       };
