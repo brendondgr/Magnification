@@ -1477,7 +1477,11 @@ class Component extends DCLogic {
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60,thinking_token_budget:1024},
       runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,llm_fraction:1.0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
-      jobs:[], loading:true
+      jobs:[], loading:true,
+      // Ignored jobs are left on the server until "Show Ignored" is switched on (they
+      // outnumber the visible feed by ~500:1). Once pulled they stay in state.jobs for
+      // the rest of the session — ignoredLoaded keeps every later refetch inclusive.
+      ignoredLoaded:false, ignoredLoading:false, hiddenCount:0
     };
     this.dragId=null;
     this._scrapeJobId=null;
@@ -1504,9 +1508,12 @@ class Component extends DCLogic {
   }
 
   // ---------- API: reads ----------
+  // Load the feed. Ignored jobs are omitted unless they have already been pulled in
+  // this session (state.ignoredLoaded), so a refetch never silently drops them.
   async loadJobs(){
     try{
-      const res = await fetch('/api/jobs?with_analysis=1');
+      const inc = this.state.ignoredLoaded ? 1 : 0;
+      const res = await fetch('/api/jobs?with_analysis=1&include_ignored='+inc);
       if(!res.ok) throw new Error('HTTP '+res.status);
       const data = await res.json();
       this.setState({jobs:Array.isArray(data)?data.map(j=>this.mapDbJob(j)):[], loading:false});
@@ -1514,6 +1521,37 @@ class Component extends DCLogic {
       console.error('Failed to load jobs:', e);
       this.setState({jobs:[], loading:false});
       this.showToast('Could not load jobs');
+    }
+    this.refreshCounts();
+  }
+
+  // How many ignored jobs the feed payload is leaving out — drives the "Show Ignored (n)"
+  // label without paying to download those rows.
+  async refreshCounts(){
+    try{
+      const res = await fetch('/api/jobs/counts');
+      if(!res.ok) return;
+      const d = await res.json();
+      if(d && typeof d.hidden==='number') this.setState({hiddenCount:d.hidden});
+    }catch(e){ /* label falls back to what's already in memory */ }
+  }
+
+  // First "Show Ignored" click: pull the ignored rows once and keep them in memory.
+  async loadIgnoredJobs(){
+    if(this.state.ignoredLoaded || this.state.ignoredLoading) return;
+    this.setState({ignoredLoading:true});
+    try{
+      const res = await fetch('/api/jobs?with_analysis=1&include_ignored=1');
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      this.setState({
+        jobs:Array.isArray(data)?data.map(j=>this.mapDbJob(j)):this.state.jobs,
+        ignoredLoaded:true, ignoredLoading:false
+      });
+    }catch(e){
+      console.error('Failed to load ignored jobs:', e);
+      this.setState({ignoredLoading:false, showIgnored:false});
+      this.showToast('Could not load ignored jobs');
     }
   }
 
@@ -1639,7 +1677,8 @@ class Component extends DCLogic {
     this.patchJob(id, j=>{ j.ignore=next; return j; });
     fetch('/api/jobs/'+id+'/ignore',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ignore:next})})
       .then(r=>{ if(!r.ok) throw new Error('ignore PATCH '+r.status); })
-      .catch(e=>{ console.error(e); this.patchJob(id, j=>{ j.ignore=cur.ignore; return j; }); this.showToast('Could not update job'); });
+      .catch(e=>{ console.error(e); this.patchJob(id, j=>{ j.ignore=cur.ignore; return j; }); this.showToast('Could not update job'); })
+      .then(()=>this.refreshCounts());
   }
   // Save/unsave a job: pins it to the Saved lane (out of New Jobs, always in the Saved tab).
   toggleSave(id){
@@ -1667,7 +1706,7 @@ class Component extends DCLogic {
     this.showToast('Blocked '+name);
     fetch('/api/profile/block-company',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({company:name})})
       .then(r=>{ if(!r.ok) throw new Error('block-company '+r.status); return r.json(); })
-      .then(d=>{ if(d&&Array.isArray(d.blocked_companies)) this.setState(st=>({profile:Object.assign({},st.profile,{blocked_companies:d.blocked_companies})})); })
+      .then(d=>{ if(d&&Array.isArray(d.blocked_companies)) this.setState(st=>({profile:Object.assign({},st.profile,{blocked_companies:d.blocked_companies})})); this.refreshCounts(); })
       .catch(e=>{ console.error(e); this.showToast('Could not block company'); this.loadJobs(); });
   }
   // Add a job's "missing" skill to the profile (optimistic): appends to profile.skills and moves
@@ -1731,7 +1770,7 @@ class Component extends DCLogic {
       ? 'Clear all jobs (and their statuses/analyses) from the database? Your profile is kept. This cannot be undone.'
       : 'Clear the FULL database — all jobs AND your profile? This cannot be undone.';
     if(!window.confirm(msg)) return;
-    this.setState({jobs:[],selectedId:null,clearMenuOpen:false});
+    this.setState({jobs:[],selectedId:null,clearMenuOpen:false,ignoredLoaded:false,showIgnored:false,hiddenCount:0});
     fetch('/api/database/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scope})})
       .then(r=>{ if(!r.ok) throw new Error('clear '+r.status); return r.json(); })
       .then(()=>{ this.showToast(scope==='jobs'?'Jobs database cleared':'Full database cleared'); this.loadJobs(); })
@@ -2359,7 +2398,10 @@ class Component extends DCLogic {
     const anyMatches=all.some(j=>j.match!=null);
     const PAGE=50; const page=s.page; const start=page*PAGE;
     const gridJobs=visible.slice(start,start+PAGE).map(j=>this.decorate(j));
-    const hasIgnored=all.some(j=>j.ignore);
+    // Before the ignored rows are pulled they aren't in state.jobs at all, so the button's
+    // presence and its count come from the server-side tally instead.
+    const ignoredCount=s.ignoredLoaded?all.filter(j=>j.ignore).length:s.hiddenCount;
+    const hasIgnored=ignoredCount>0||s.ignoredLoading;
     const totalPages=Math.max(1,Math.ceil(visible.length/PAGE));
 
     // saved lane: every saved job, always (regardless of applied/ignore status).
@@ -2535,8 +2577,11 @@ class Component extends DCLogic {
 
       gridJobs, gridEmpty:gridJobs.length===0,
       gridCountLabel:visible.length+' job'+(visible.length===1?'':'s')+' · sourced from '+Object.keys(s.sites).filter(k=>s.sites[k]).length+' boards',
-      hasIgnored, showIgnoredLabel:s.showIgnored?'Hide Ignored':'Show Ignored ('+all.filter(j=>j.ignore).length+')',
-      toggleShowIgnored:()=>this.setState(st=>({showIgnored:!st.showIgnored})),
+      hasIgnored, showIgnoredLabel:s.ignoredLoading?'Loading ignored…':(s.showIgnored?'Hide Ignored':'Show Ignored ('+ignoredCount+')'),
+      toggleShowIgnored:()=>{ if(s.ignoredLoading) return;
+        const next=!s.showIgnored;
+        this.setState({showIgnored:next, page:0});
+        if(next) this.loadIgnoredJobs(); },
       showIgnoredStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease;border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.showIgnored?'var(--surface2)':'transparent'),
       analyzeJobs:()=>this.analyzeJobs(),
       analyzeLabel:s.analyzing?'Analyzing…':'Analyze matches',

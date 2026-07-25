@@ -10,6 +10,8 @@ This module provides all database operations for:
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Set, Tuple
 
+from sqlalchemy import func, or_, select
+
 from .init_db import get_db_context
 from .models import (
     Job, ApplicationStatus, Profile, JobAnalysis, JobEvaluation, GeneratedDocument,
@@ -235,11 +237,55 @@ def get_all_jobs(include_ignored: bool = False) -> List[Dict[str, Any]]:
 def get_active_jobs() -> List[Dict[str, Any]]:
     """
     Retrieve only jobs where ignore=0.
-    
+
     Returns:
         List of dictionaries containing active job data
     """
     return get_all_jobs(include_ignored=False)
+
+
+def _feed_filter():
+    """SQLAlchemy predicate for the jobs the UI needs before "Show Ignored" is clicked.
+
+    An ignored job is still required by the UI when it is saved (Saved lane) or has
+    been applied to (Tracker board) — ignoring a company after applying must not make
+    the card vanish. Everything else with ignore=1 is withheld until asked for.
+    """
+    applied = select(ApplicationStatus.job_id).where(ApplicationStatus.checked == 1)
+    return or_(Job.ignore == 0, Job.saved == 1, Job.id.in_(applied))
+
+
+def get_feed_jobs(include_ignored: bool = False) -> List[Dict[str, Any]]:
+    """
+    Retrieve the jobs the front-end feed renders.
+
+    Args:
+        include_ignored: If True, return every job. If False (default), withhold
+            ignored jobs that are neither saved nor applied to — with a large
+            blocklist that is the overwhelming majority of the table.
+
+    Returns:
+        List of dictionaries containing job data
+    """
+    with get_db_context() as db:
+        query = db.query(Job)
+        if not include_ignored:
+            query = query.filter(_feed_filter())
+        return [_job_to_dict(job) for job in query.all()]
+
+
+def get_job_counts() -> Dict[str, int]:
+    """
+    Cheap counts describing the jobs table, without serializing any rows.
+
+    Returns:
+        {'total': all jobs, 'feed': rows get_feed_jobs() returns by default,
+         'hidden': rows withheld until "Show Ignored" is toggled on}
+    """
+    with get_db_context() as db:
+        total = db.query(func.count(Job.id)).scalar() or 0
+        feed = db.query(func.count(Job.id)).filter(_feed_filter()).scalar() or 0
+        return {'total': total, 'feed': feed, 'hidden': total - feed}
 
 
 def set_job_ignore(job_id: int, ignore_value: int = 1) -> bool:
@@ -376,6 +422,27 @@ def get_application_status_by_job(job_id: int) -> List[Dict[str, Any]]:
         ).all()
         
         return [_status_to_dict(s) for s in statuses]
+
+
+def get_statuses_for_jobs(job_ids: List[int]) -> Dict[int, List[Dict[str, Any]]]:
+    """Retrieve application statuses for many jobs at once, keyed by job_id.
+
+    One query instead of one per job; jobs with no status rows are omitted. IDs are
+    chunked to stay under SQLite's bound-parameter ceiling.
+    """
+    if not job_ids:
+        return {}
+    grouped: Dict[int, List[Dict[str, Any]]] = {}
+    CHUNK = 500
+    with get_db_context() as db:
+        for i in range(0, len(job_ids), CHUNK):
+            chunk = job_ids[i:i + CHUNK]
+            rows = db.query(ApplicationStatus).filter(
+                ApplicationStatus.job_id.in_(chunk)
+            ).all()
+            for row in rows:
+                grouped.setdefault(row.job_id, []).append(_status_to_dict(row))
+    return grouped
 
 
 def get_status_by_name(job_id: int, status_name: str) -> Optional[Dict[str, Any]]:
