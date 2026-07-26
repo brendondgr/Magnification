@@ -22,9 +22,10 @@ Find Jobs modal → POST /api/scrape/start
               with a jittered delay, to avoid the guest endpoint's rate-limiting)
       → database/operations.add_job (save new jobs) → SQLite
       → job_filter (apply config; mark ignore=1 for non-matching jobs)
-          → recommend/compensation.extract_enrichment_llm (OPTIONAL — when the LLM is enabled
-              and runtime.enable_llm_compensation and/or enable_llm_industry; recovers pay +
-              industry from descriptions in one combined pass per job, parallel) +
+          → recommend/enrichment.enrich_jobs (OPTIONAL — when the LLM is enabled and
+              runtime.enable_llm_compensation and/or enable_llm_industry; extracts pay +
+              industry from descriptions in one combined pass per job, parallel. This is the
+              SAME function "Analyze Matches" calls — see below) +
               recommend/service.analyze_jobs (OPTIONAL — gated by runtime.enable_analysis and an
               active profile), run together on every job that survived filtering
 Client polls GET /api/scrape/status/<job_id> for progress + a live `events[]` activity feed
@@ -122,9 +123,10 @@ Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
                                     progress_callback=…)   [staged progress: embedding→
                                     enrichment→skills→scoring→llm→completed, w/ job counts]
        → embed missing job descriptions (fastembed, parallel)   [embed-on-retrieve]
-       → recover missing compensation + industry from descriptions in one combined LLM pass
-         (_recover_enrichment; flag compensation_checked / industry_checked so jobs are queried
-         once, not every run; each field gated by its toggle)   [gap-fill, non-ignored jobs]
+       → extract compensation + industry from descriptions in one combined LLM pass
+         (recommend/enrichment.enrich_jobs — the SAME function the scrape workflow calls; the
+         gating, candidate selection, and persistence live there and nowhere else)
+         [non-ignored jobs]
        → extract skills (reuse stored extracted_skills; only extract jobs missing them)
        → ranker.rank_batch (semantic + bm25 + keyword-group + skill → rag_score)
        → LLM fit verdict: coverage = top ceil(llm_fraction × N) of ALL analyzed jobs by
@@ -133,6 +135,28 @@ Scrape completes (or POST /api/recommend/analyze[/start] — "Analyze Matches")
        → save_job_analysis → JobAnalysis table
 Read: GET /api/jobs?with_analysis=1  /  GET /api/recommend/report  → match badges + detail breakdown
 ```
+
+### Description enrichment (compensation + industry) — one shared pass
+
+Both workflows that touch job descriptions — **Find Jobs** (scrape step 7a) and **Analyze
+Matches** — call the same function, `utils/backend/recommend/enrichment.enrich_jobs`. It is the
+only place that gates on the toggles + endpoint, selects candidates, issues the combined
+extraction call, and persists the result; `compensation.py` underneath it holds the pure
+prompt/predicate/parsing layer. The two paths previously re-implemented all four steps around
+the shared extractor and drifted; `tests/recommend/test_enrichment.py` asserts they no longer do.
+
+- **Compensation is always taken from the description**, whatever the board reported. Board
+  salary fields are unreliable — Indeed hands JobSpy `NaN` amounts, which used to reach the
+  card as `"USDnan - USDnan hourly"` — so any job with description text is a candidate. A
+  figure found in the description wins; when the description states no pay, the board's value
+  is left alone and the card shows **"Not Specified"**.
+- **Industry is classified in the same call** (one call fills both fields), into the fixed
+  `INDUSTRIES` taxonomy that keys the card's pill color.
+- `compensation_checked` is stamped on every attempted job — including the ones whose
+  description genuinely states no pay — so each job costs one call, not one per run.
+  `industry_checked` is stamped **only when a label came back**, because the model is asked to
+  always pick one: an empty response means the call failed, so the job retries next run.
+- A forced reanalyze (`reanalyze_all`) re-queries jobs regardless of either flag.
 
 **Cheap rescore (auto-refresh of match %).** When only the score weights or the profile's
 skills/keywords change, a full re-analyze is overkill. `POST /api/recommend/rescore` →

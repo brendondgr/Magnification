@@ -39,16 +39,29 @@ Main-view tabs: **New Jobs · Saved · Tracker** (desktop nav + mobile bottom na
 tab is a grid (mirroring the New Jobs card) of every job with `saved=1`, shown regardless of
 ignore/applied state; saved jobs are excluded from the New Jobs feed.
 
-**Job card (New Jobs + Saved), row-based:** the `decorate(job)` view-model drives an 8-row
-`<article>` — (1) source pill + retrieved date, (2) industry tag (`industryBadge`/`industryDot`,
-colored per `Component.INDUSTRY_COLORS`; shown only when `hasIndustry`), (3) title (fills
-remaining width) + fixed-width match % + "?" breakdown, (4) company, (5) location + compensation
-pills, (6) 3-line-clamped description, (7) primary actions **Generate** (`onApply` → Application
-Mode; renamed from "Apply") + **Applied** (`onMarkApplied`), (8) an icon-button row — Info
-(`onOpen`), Block company (`onBlock`), Hide (`onIgnore`), Save (`onSave`), Link out (`onLink`),
-sharing the neutral `iconBtn` style with the stateful `blockBtn`/`ignoreBtn`/`saveBtn`. The job
-detail panel gains an **Industry** line and keeps the same Block/Save controls (`toggleSave` →
+**Job card (New Jobs + Saved), row-based:** the `decorate(job)` view-model drives a 7-row
+`<article>` — five information rows, then the two action rows:
+
+| Row | Left | Right |
+| --- | --- | --- |
+| 1 | source pill (`siteBadge`) | industry tag (`industryBadge`/`industryDot`, colored per `Component.INDUSTRY_COLORS`, `margin-left:auto`; only when `hasIndustry`) |
+| 2 | title — `-webkit-line-clamp:2`, never more than two lines | — |
+| 3 | company + extraction date in parentheses (`foundOn`, back-to-back) | match % + "?" breakdown (only when `hasMatch`) |
+| 4 | location pill | compensation pill (`compensationColor`: pay-green, or muted for "Not Specified") |
+| 5 | description — `-webkit-line-clamp:4`, never more than four lines | — |
+
+Row 6 is the primary actions — **Generate** (`onApply` → Application Mode; renamed from
+"Apply") + **Applied** (`onMarkApplied`); row 7 is the icon-button row — Info (`onOpen`), Block
+company (`onBlock`), Hide (`onIgnore`), Save (`onSave`), Link out (`onLink`), sharing the
+neutral `iconBtn` style with the stateful `blockBtn`/`ignoreBtn`/`saveBtn`. The job detail panel
+gains an **Industry** line and keeps the same Block/Save controls (`toggleSave` →
 `PATCH /api/jobs/<id>/save`).
+
+**Compensation display:** `payLabel(raw)` is the client-side mirror of the backend's
+`clean_compensation` — a blank, placeholder, `nan`-carrying, or digit-less value renders as
+**"Not Specified"** (`Component.NO_PAY`) in muted text rather than pay-green. It is the last
+line of defense behind the fixed salary formatter and the `migrate_clean_bad_compensation`
+repair, so a malformed board value can never reach the card.
 
 **Per-page search + sort:** New Jobs and Saved each own an **independent** in-page search box
 (`searchNew` / `searchSaved`). `keywordMatch(job, query)` matches across **every** card field —

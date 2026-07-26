@@ -1,5 +1,44 @@
 # Project Checklist — Magnification
 
+## Job Card Rows + Shared Description Enrichment — Definition of Done
+Plan: `docs/plans/job-card-rows-and-shared-enrichment.md`. Delivered on branch
+`job-card-and-enrichment` (Mode B — no worktree), committed per phase, merged to `main`.
+
+Requirements (user): (1) restructure the card into five rows — source ‖ industry, title (≤2
+lines), company + extraction date ‖ match % + "?", location ‖ compensation, description (≤4
+lines); (2) show **"Not Specified"** instead of `USDnan - USDnan hourly` / `nannan - nannan nan`;
+(3) always extract compensation from the **description** during description extraction, and
+extract the industry in the same pass; (4) **both** "Find Jobs" and "Analyze Matches" must use
+the same extraction code, not separate implementations.
+
+- [x] (1/5) Plan doc + branch; root-caused on the real DB (pandas `NaN` is truthy → the salary
+  formatter stringified it; the resulting non-empty string then read as "has pay" and blocked
+  recovery; `industry_checked` was stamped even on failed calls, stranding 10 of 17 visible jobs).
+- [x] (2/5) `jobspy_wrapper.build_compensation_string` is the one salary formatter (drops
+  non-finite amounts + NaN currency/interval), shared with `data_processor.clean_job_data`;
+  `compensation.clean_compensation` is the one normalizer; `needs_compensation_recovery` no
+  longer requires missing pay; idempotent `migrate_clean_bad_compensation` repaired **1,283**
+  stored rows; `extract_compensation_llm` (superseded, test-only) removed. Tests:
+  `tests/scrapers/test_compensation_string.py`, `tests/recommend/test_compensation.py`,
+  `tests/database/test_clean_bad_compensation.py`.
+- [x] (3/5) `utils/backend/recommend/enrichment.py` — `enrich_jobs()` is the single gating +
+  selection + call + persistence path; scrape step 7a and `analyze_jobs` are thin calls into it;
+  `industry_checked` only stamped alongside a real label. `tests/recommend/test_enrichment.py`
+  (14 cases incl. a parity test asserting neither workflow re-implements it).
+- [x] (4/5) Five-row card on New Jobs + Saved (title clamp 2, description clamp 4, industry
+  right-justified, company + `(YYYY-MM-DD)`, right-aligned compensation); `payLabel()` →
+  "Not Specified" (muted) on card + detail panel; Options → Runtime "LLM industry detection"
+  toggle; `migrate_reset_unlabeled_industry` reopened **27** stranded rows. Wiring tests +
+  live verification on the served page (rows in order, clamps 2/4, pill right-aligned in its
+  taxonomy color, "Not Specified" right-aligned, no console errors). No screenshot — the
+  Browser pane does not composite in this environment, as in prior UI work.
+- [x] (5/5) Docs (`data-flow.md`, `database.md`, `recommendation.md`, `api-contract.md`,
+  `component-map.md`, `design-system.md`, `structure.md`, `documentation.md`, this checklist);
+  offline suites green; merged to `main`.
+- [ ] **Live industry/pay extraction on a real endpoint** — the shared pass, gating, retry
+  semantics, and persistence are covered by mocked-client tests; filling real labels needs an
+  enabled endpoint (Options → LLM Endpoint) and a "Find Jobs" or "Analyze Matches" run.
+
 ## Job Card Redesign (Industry Detection + Row-Based Layout) — Definition of Done
 Plan: `docs/plans/job-card-redesign.md`. Delivered on branch `job-card-redesign` (worktree),
 committed per phase, merged to `main`.
