@@ -395,50 +395,20 @@ def execute_full_scraping_workflow(
             from ..database.operations import get_jobs_by_ids
             kept_jobs = [j for j in get_jobs_by_ids(job_ids) if not j.get('ignore')]
 
-            # Step 7a: LLM compensation extraction — recover pay that is only written in
-            # the description prose (common on LinkedIn, which shows "Not specified"
-            # otherwise). Gated by the LLM endpoint being enabled + the runtime toggle;
-            # non-fatal.
+            # Step 7a: description enrichment — pull compensation + industry out of each
+            # description in one LLM pass. This is the SAME code path "Analyze Matches"
+            # runs (utils/backend/recommend/enrichment.py); the gating, candidate
+            # selection, and persistence live there, not here. Non-fatal.
             try:
+                from ..recommend.enrichment import enrich_jobs
                 from ..recommend.runtime_config import get_runtime_config
-                comp_rc = get_runtime_config()
-                comp_on = bool(comp_rc.get('enable_llm_compensation'))
-                industry_on = bool(comp_rc.get('enable_llm_industry'))
-                if (comp_on or industry_on) and kept_jobs:
-                    from ..llm.config import load_llm_endpoint_config
-                    if load_llm_endpoint_config().get('enabled'):
-                        from ..recommend.compensation import extract_enrichment_llm, needs_enrichment
-                        from ..llm.client import OpenAIClient
-                        from ..database.operations import update_job
-                        pending = [j for j in kept_jobs
-                                   if needs_enrichment(j, comp_on=comp_on, industry_on=industry_on)]
-                        if pending:
-                            update_progress('extracting_enrichment', 93, {
-                                'message': f'Extracting pay + industry from {len(pending)} description(s) via LLM...'
-                            })
-                            client = OpenAIClient.from_config()
-                            extracted, industry_n = extract_enrichment_llm(
-                                pending, client, comp=comp_on, industry=industry_on,
-                                max_workers=comp_rc.get('llm_workers', 4)
-                            )
-                            for job in pending:
-                                updates = {}
-                                if comp_on:
-                                    updates['compensation_checked'] = 1
-                                    if job.get('compensation'):
-                                        updates['compensation'] = job['compensation']
-                                if industry_on:
-                                    updates['industry_checked'] = 1
-                                    if job.get('industry'):
-                                        updates['industry'] = job['industry']
-                                update_job(job['id'], updates)
-                            results['steps']['enrichment'] = {
-                                'candidates': len(pending), 'compensation': extracted, 'industry': industry_n
-                            }
-                            update_progress('extracting_enrichment', 95, {
-                                'message': f'Recovered pay for {extracted} · industry for {industry_n} job(s)'
-                            })
-                            logger.info(f"  LLM enrichment: pay {extracted}, industry {industry_n} / {len(pending)}")
+                enriched = enrich_jobs(
+                    kept_jobs, get_runtime_config(),
+                    on_progress=lambda msg: update_progress(
+                        'extracting_enrichment', 93, {'message': msg})
+                )
+                if enriched['candidates']:
+                    results['steps']['enrichment'] = enriched
             except Exception as e:
                 logger.error(f"Enrichment (pay/industry) extraction failed (non-fatal): {e}")
                 results['errors'].append(f"Enrichment error: {e}")

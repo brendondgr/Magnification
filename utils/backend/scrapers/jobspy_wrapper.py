@@ -10,6 +10,7 @@ This module provides the wrapper interface for jobspy library operations:
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Callable
 import logging
+import math
 
 from jobspy import scrape_jobs
 
@@ -224,34 +225,73 @@ def scrape_single_site(
         return []
 
 
+def _finite_amount(value: Any) -> Optional[float]:
+    """Coerce a jobspy salary amount to a usable number, or None.
+
+    jobspy hands back pandas ``NaN`` for boards that report no salary (Indeed does this on
+    most listings). ``float('nan')`` is **truthy** and formats as ``"nan"``, so a plain
+    ``if min_amount:`` check let "USDnan - USDnan hourly" through — this is the guard.
+    """
+    if value is None:
+        return None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(amount) or amount <= 0:
+        return None
+    return amount
+
+
+def _clean_token(value: Any) -> str:
+    """A currency/interval label, or '' when the board gave NaN/None."""
+    if value is None:
+        return ''
+    text = str(value).strip()
+    return '' if text.lower() in ('nan', 'none', 'null') else text
+
+
+def build_compensation_string(min_amount: Any, max_amount: Any,
+                              currency: Any = '', interval: Any = '') -> Optional[str]:
+    """
+    Format jobspy salary fields into a display pay string, or None when there is no real pay.
+
+    The single place salary numbers become text, shared by :func:`normalize_job_data` and
+    ``data_processor.clean_job_data``. Non-finite/absent amounts and NaN currency/interval
+    labels are dropped rather than stringified, so a board that reports nothing yields
+    ``None`` (the UI then shows "Not Specified" and the description extractor supplies the
+    real figure) instead of ``"nannan - nannan nan"``.
+    """
+    lo = _finite_amount(min_amount)
+    hi = _finite_amount(max_amount)
+    if lo is None and hi is None:
+        return None
+
+    cur = _clean_token(currency)
+    if lo is not None and hi is not None:
+        text = f"{cur}{lo:,.0f} - {cur}{hi:,.0f}"
+    else:
+        text = f"{cur}{(lo if lo is not None else hi):,.0f}"
+
+    unit = _clean_token(interval)
+    return f"{text} {unit}" if unit else text
+
+
 def normalize_job_data(raw_job: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalize a raw jobspy result to a standard format.
-    
+
     Args:
         raw_job: Raw job dictionary from jobspy
-    
+
     Returns:
         Normalized job dictionary
     """
-    # Build compensation string from salary data
-    compensation = None
-    min_amount = raw_job.get('min_amount')
-    max_amount = raw_job.get('max_amount')
-    currency = raw_job.get('currency', '')
-    interval = raw_job.get('interval', '')
-    
-    if min_amount or max_amount:
-        if min_amount and max_amount:
-            compensation = f"{currency}{min_amount:,.0f} - {currency}{max_amount:,.0f}"
-        elif min_amount:
-            compensation = f"{currency}{min_amount:,.0f}"
-        else:
-            compensation = f"{currency}{max_amount:,.0f}"
-        
-        if interval:
-            compensation += f" {interval}"
-    
+    compensation = build_compensation_string(
+        raw_job.get('min_amount'), raw_job.get('max_amount'),
+        raw_job.get('currency', ''), raw_job.get('interval', '')
+    )
+
     return {
         'title': raw_job.get('title', ''),
         'company': raw_job.get('company', ''),

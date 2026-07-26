@@ -88,4 +88,14 @@ These existing references remain canonical for their subsystems:
   extracted from the description in the **same combined LLM pass** as compensation
   (`recommend.compensation.extract_enrichment_llm`, gated by `enable_llm_industry`); the "Apply"
   action was renamed **Generate**. See `docs/plans/job-card-redesign.md`.
+- **Job card rows + shared enrichment complete:** the card now reads as five information rows
+  (source ‖ industry · title, 2-line clamp · company + extraction date ‖ match % + "?" ·
+  location ‖ compensation · description, 4-line clamp) before its Generate/Applied and icon
+  action rows. Compensation and industry are extracted from the **description** by one shared
+  pass — `recommend/enrichment.enrich_jobs` — called by **both** "Find Jobs" and "Analyze
+  Matches" rather than two implementations; pay is always re-derived from the description
+  because board salary fields are unreliable. The `USDnan - USDnan hourly` /
+  `nannan - nannan nan` values (pandas `NaN` formatted as text) are fixed at the source, and
+  stored rows were repaired; a job with no usable pay now reads **"Not Specified"**. See
+  `docs/plans/job-card-rows-and-shared-enrichment.md`.
 - **Next:** physical migration to `web/` and a full React frontend rebuild — not started.

@@ -1,73 +1,70 @@
 """
-Tests for LLM compensation extraction (utils/backend/recommend/compensation.py).
+Tests for the pure compensation layer (utils/backend/recommend/compensation.py).
 
-Uses a fake client (no network) whose chat_many returns canned per-job JSON so we can
-assert that pay is filled only for jobs that need it and only when the model reports a value.
+Covers the malformed-value normalizer (the "USDnan - USDnan hourly" family) and the
+"always extract from the description" candidate predicate. The combined compensation +
+industry LLM pass is covered by tests/recommend/test_industry.py, and the shared DB-aware
+orchestration by tests/recommend/test_enrichment.py.
 """
 
 from utils.backend.recommend import compensation as comp
 
 
-class FakeClient:
-    """Returns queued results in order from chat_many (mirrors OpenAIClient.chat_many)."""
-
-    def __init__(self, results):
-        self._results = results
-        self.calls = 0
-
-    def chat_many(self, message_lists, max_workers=4, as_json=False, **kw):
-        self.calls += 1
-        assert len(message_lists) == len(self._results)
-        return list(self._results)
+def test_clean_compensation_keeps_real_pay():
+    assert comp.clean_compensation("  $50/hr ") == "$50/hr"
+    assert comp.clean_compensation("$120,000 - $150,000 a year") == "$120,000 - $150,000 a year"
+    assert comp.clean_compensation("£45/hour") == "£45/hour"
 
 
-def test_needs_compensation():
+def test_clean_compensation_rejects_nan_and_placeholder_values():
+    # The exact malformed strings the boards produced.
+    assert comp.clean_compensation("USDnan - USDnan hourly") is None
+    assert comp.clean_compensation("nannan - nannan nan") is None
+    assert comp.clean_compensation("$nan - $nan yearly") is None
+    # Placeholders and empties.
+    for value in ("", "   ", "null", "None", "Not specified", "n/a", None):
+        assert comp.clean_compensation(value) is None
+    # No digits at all is not pay.
+    assert comp.clean_compensation("competitive salary") is None
+
+
+def test_clean_compensation_truncates():
+    assert len(comp.clean_compensation("$1" + "0" * 400)) == 255
+
+
+def test_has_compensation_uses_the_normalizer():
+    assert comp.has_compensation({"compensation": "$90,000"})
+    assert not comp.has_compensation({"compensation": "USDnan - USDnan hourly"})
+    assert not comp.has_compensation({"compensation": ""})
+
+
+def test_needs_compensation_ignores_malformed_values():
     assert comp.needs_compensation({"description": "pays well", "compensation": ""})
     assert comp.needs_compensation({"description": "x", "compensation": "Not specified"})
+    # A nan string must not count as "has pay" — that is what blocked recovery.
+    assert comp.needs_compensation({"description": "x", "compensation": "nannan - nannan nan"})
     assert not comp.needs_compensation({"description": "x", "compensation": "$100k"})
     assert not comp.needs_compensation({"description": "", "compensation": ""})  # no text
 
 
-def test_needs_compensation_recovery_respects_checked_flag():
-    # Missing pay + not yet checked -> recover.
+def test_recovery_always_runs_on_an_unchecked_description():
+    # Compensation is extracted from the description no matter what the board reported.
     assert comp.needs_compensation_recovery({"description": "pays well", "compensation": ""})
-    # Missing pay but already checked -> skip (don't re-query a known no-pay job).
-    assert not comp.needs_compensation_recovery(
-        {"description": "pays well", "compensation": "", "compensation_checked": True})
-    # force=True re-attempts even a checked job.
-    assert comp.needs_compensation_recovery(
-        {"description": "pays well", "compensation": "", "compensation_checked": True}, force=True)
-    # Already has pay -> never recover, checked or not.
-    assert not comp.needs_compensation_recovery({"description": "x", "compensation": "$100k"})
+    assert comp.needs_compensation_recovery({"description": "x", "compensation": "$100k"})
+    assert comp.needs_compensation_recovery({"description": "x", "compensation": "USDnan hourly"})
+    # No description -> nothing to extract from.
+    assert not comp.needs_compensation_recovery({"description": "", "compensation": ""})
 
 
-def test_extract_fills_only_missing():
-    jobs = [
-        {"title": "A", "description": "We pay $120k-$150k.", "compensation": "Not specified"},
-        {"title": "B", "description": "Great culture, no pay listed.", "compensation": ""},
-        {"title": "C", "description": "irrelevant", "compensation": "$90,000"},  # already has pay -> skipped
-    ]
-    # Only A and B are candidates (order preserved); C is not sent.
-    fake = FakeClient([
-        {"compensation": "$120,000 - $150,000 a year"},  # A
-        {"compensation": None},                            # B -> nothing stated
-    ])
-    updated = comp.extract_compensation_llm(jobs, fake, max_workers=2)
-    assert updated == 1
-    assert jobs[0]["compensation"] == "$120,000 - $150,000 a year"
-    assert jobs[1]["compensation"] == ""          # untouched (model said null)
-    assert jobs[2]["compensation"] == "$90,000"   # untouched (was not a candidate)
-
-
-def test_extract_no_candidates_skips_client():
-    jobs = [{"title": "A", "description": "x", "compensation": "$1/yr"}]
-    fake = FakeClient([])  # would assert-fail if called with mismatched length
-    assert comp.extract_compensation_llm(jobs, fake) == 0
-    assert fake.calls == 0
+def test_recovery_respects_the_checked_flag():
+    checked = {"description": "pays well", "compensation": "", "compensation_checked": True}
+    assert not comp.needs_compensation_recovery(checked)
+    assert comp.needs_compensation_recovery(checked, force=True)
 
 
 def test_parse_comp_rejects_empty_sentinels():
     assert comp._parse_comp({"compensation": "null"}) is None
     assert comp._parse_comp({"compensation": "Not specified"}) is None
+    assert comp._parse_comp({"compensation": "nan"}) is None
     assert comp._parse_comp(None) is None
     assert comp._parse_comp({"compensation": "  $50/hr "}) == "$50/hr"

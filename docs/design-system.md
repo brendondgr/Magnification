@@ -27,7 +27,18 @@ share one color, etc.) — Tech `#00C2FF`, Health `#00E5A0`, Finance `#FFC53D`, 
 Industrial `#FF8A3D`, Science `#4DD4FF`, Education `#FF5DA2`, Government `#7C9CFF`, Retail
 `#FF4D6A`, Media `#FF6AD5`, Legal `#C0A16B`, Energy `#7CFC5A`, Other `#9AA0A6` (fallback for
 unknown/unclassified). The pill uses the color as border + text over a 12%-tinted fill (a colored
-variant of the location-chip style); labels must match the backend `INDUSTRIES` taxonomy.
+variant of the location-chip style); labels must match the backend `INDUSTRIES` taxonomy. The
+pill sits **right-justified in the card's first row**, opposite the source badge.
+
+**Job-card row rhythm.** The card reads as five information rows before its two action rows:
+source ‖ industry · title · company + `(YYYY-MM-DD)` ‖ match % · location ‖ compensation ·
+description. Each paired row is a flex row where the left item takes the remaining width
+(`flex:1;min-width:0`, ellipsized) and the right item is intrinsic (`flex:0 0 auto`), so long
+titles, company names, and locations truncate instead of pushing their counterpart off the
+card. Text is clamped, never allowed to reflow the grid: the title at **2 lines** and the
+description at **4** (`-webkit-line-clamp`). A job with no usable pay shows **"Not Specified"**
+in `--muted` rather than the pay-green `--c-offer-text`, so an absent salary never reads as a
+value.
 
 ## Typography
 

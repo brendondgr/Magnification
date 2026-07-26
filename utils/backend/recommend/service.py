@@ -7,12 +7,13 @@ LLM re-ranking (verdict + rationale on the top-N) is layered on in a later phase
 """
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 from utils.backend.database import operations as db_ops
 from . import embedder, ranker, skills
+from .enrichment import enrich_jobs
 from .runtime_config import get_runtime_config
 from utils.backend.llm.config import load_llm_endpoint_config
 from utils.backend.llm.client import OpenAIClient
@@ -56,16 +57,13 @@ def analyze_jobs(job_ids: Optional[List[int]] = None,
     _report(progress_callback, "embedding", 10, f"Embedding {len(jobs)} jobs…")
     job_vecs = _ensure_embeddings(jobs, runtime)
 
-    from .compensation import needs_enrichment
-    comp_force = not llm_only_missing
-    comp_on = bool(runtime.get("enable_llm_compensation"))
-    industry_on = bool(runtime.get("enable_llm_industry"))
-    n_pending = sum(1 for j in jobs
-                    if needs_enrichment(j, comp_on=comp_on, industry_on=industry_on, force=comp_force))
-    _report(progress_callback, "enrichment", 40,
-            (f"Extracting pay + industry for {n_pending} job(s)…" if n_pending
-             else "Pay + industry already checked — nothing to recover."))
-    comp_recovered, industry_recovered = _recover_enrichment(jobs, runtime, force=comp_force)
+    # Pay + industry come from the description via the shared enrichment pass — the same
+    # code path the scrape workflow runs (utils/backend/recommend/enrichment.py).
+    enriched = enrich_jobs(
+        jobs, runtime, force=not llm_only_missing,
+        on_progress=lambda msg: _report(progress_callback, "enrichment", 40, msg))
+    comp_recovered = enriched["compensation"]
+    industry_recovered = enriched["industry"]
 
     # Reuse each job's stored extracted_skills (skills come from the description alone, so they
     # don't change between runs); only extract for jobs that lack them — or, on a forced
@@ -471,58 +469,6 @@ def _coerce_verdict(verdict: Any):
     if not isinstance(score, (int, float)):
         return None
     return max(0.0, min(100.0, float(score))), obj.get("rationale")
-
-
-def _recover_enrichment(jobs: List[Dict[str, Any]], runtime: Dict[str, Any],
-                        force: bool = False) -> Tuple[int, int]:
-    """
-    Fill in missing compensation **and** industry for the given (non-ignored) jobs from their
-    descriptions via a single LLM pass each, persisting the recovered values. Returns
-    ``(compensation_recovered, industry_recovered)``.
-
-    Compensation is gated by ``enable_llm_compensation`` and industry by ``enable_llm_industry``
-    (each independent), plus the LLM endpoint being enabled; a no-op (returns ``(0, 0)``) when
-    neither field is enabled or the endpoint is off. Mirrors the scraping-pipeline enrichment so
-    "Analyze Matches" also backfills pay + industry the board listing never provided.
-
-    Only jobs that still need an enabled field **and** have not been checked for it are queried
-    (see :func:`needs_enrichment`); every attempted job is flagged ``compensation_checked`` /
-    ``industry_checked`` for whichever fields were requested — whether or not a value was found —
-    so they are not re-queried on later runs. Pass ``force=True`` (a reanalyze) to re-attempt
-    regardless.
-    """
-    comp_on = bool(runtime.get("enable_llm_compensation"))
-    industry_on = bool(runtime.get("enable_llm_industry"))
-    if not (comp_on or industry_on):
-        return (0, 0)
-    cfg = load_llm_endpoint_config()
-    if not cfg.get("enabled"):
-        return (0, 0)
-    from .compensation import extract_enrichment_llm, needs_enrichment
-    pending = [j for j in jobs
-               if needs_enrichment(j, comp_on=comp_on, industry_on=industry_on, force=force)]
-    if not pending:
-        return (0, 0)
-    try:
-        client = OpenAIClient.from_config(cfg)
-        comp_n, industry_n = extract_enrichment_llm(
-            pending, client, comp=comp_on, industry=industry_on,
-            max_workers=int(runtime.get("llm_workers", 4)))
-        for j in pending:
-            updates: Dict[str, Any] = {}
-            if comp_on:
-                updates["compensation_checked"] = 1
-                if j.get("compensation"):
-                    updates["compensation"] = j["compensation"]
-            if industry_on:
-                updates["industry_checked"] = 1
-                if j.get("industry"):
-                    updates["industry"] = j["industry"]
-            db_ops.update_job(j["id"], updates)
-        return (comp_n, industry_n)
-    except Exception as e:
-        logger.warning(f"Enrichment (pay/industry) recovery failed (non-fatal): {e}")
-        return (0, 0)
 
 
 def _report(cb, stage, percent, message):

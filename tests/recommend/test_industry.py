@@ -48,17 +48,23 @@ def test_needs_industry_and_recovery_flag():
 
 
 def test_needs_enrichment_composes_both_fields():
-    # Needs industry only (has pay).
+    # An unchecked description is a candidate for either field: compensation is always
+    # re-derived from the description text, and the industry is still missing.
     j = {"description": "x", "compensation": "$100k", "industry": ""}
     assert comp.needs_enrichment(j)
-    assert not comp.needs_enrichment(j, industry_on=False)   # industry disabled, pay present
-    # Needs compensation only (has industry).
-    j2 = {"description": "x", "compensation": "", "industry": "Tech"}
-    assert comp.needs_enrichment(j2)
-    assert not comp.needs_enrichment(j2, comp_on=False)      # comp disabled, industry present
-    # Needs neither.
-    j3 = {"description": "x", "compensation": "$1", "industry": "Tech"}
-    assert not comp.needs_enrichment(j3)
+    assert comp.needs_enrichment(j, industry_on=False)       # comp alone still qualifies it
+    assert comp.needs_enrichment(j, comp_on=False)           # industry alone still qualifies it
+    # Both fields already settled -> no call.
+    done = {"description": "x", "compensation": "$1", "industry": "Tech",
+            "compensation_checked": 1, "industry_checked": 1}
+    assert not comp.needs_enrichment(done)
+    # Only the disabled field is outstanding -> no call.
+    comp_only = {"description": "x", "compensation": "$1", "industry": "Tech",
+                 "compensation_checked": 0, "industry_checked": 1}
+    assert not comp.needs_enrichment(comp_only, comp_on=False)
+    assert comp.needs_enrichment(comp_only, industry_on=False)
+    # No description text -> nothing to extract from, whatever is enabled.
+    assert not comp.needs_enrichment({"description": "", "compensation": "", "industry": ""})
 
 
 def test_extract_enrichment_fills_both_in_one_pass():

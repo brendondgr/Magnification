@@ -30,7 +30,8 @@ cheap `rescore` (see Flow) so the displayed match percentages update immediately
 | `embedder.py` | fastembed bge-small singleton; batch/parallel embed; float32 byte (de)serialization; cosine. |
 | `bm25.py` | rank_bm25 index + tokenizer; raw + normalized scores. |
 | `skills.py` | gazetteer skill extractor (+ optional LLM); `match_profile_skills`. |
-| `compensation.py` | LLM **enrichment** extraction — recovers **compensation + industry** from the description prose in one combined `chat_many` pass per job (`extract_enrichment_llm`; a job needing both fields costs one call). Compensation returns None when no pay is stated (never fabricates); industry is classified into the fixed `INDUSTRIES` taxonomy (`normalize_industry` maps synonyms → canonical, unknown → "Other") that is the source of truth for the card's per-industry color. Each field is gated independently (`enable_llm_compensation` / `enable_llm_industry`) + an enabled endpoint; runs in the scrape pipeline before storage **and** during `analyze_jobs` (so "Analyze Matches" backfills pay + industry for existing jobs). The legacy `extract_compensation_llm`/`needs_compensation*` helpers are retained. |
+| `compensation.py` | The **pure** enrichment layer: the combined prompt, the candidate predicates, `clean_compensation` (the single pay-string normalizer — rejects `nan`-poisoned and digit-less values), and the fixed `INDUSTRIES` taxonomy + `normalize_industry` (synonyms → canonical, unknown → "Other") that is the source of truth for the card's per-industry color. `extract_enrichment_llm` pulls **compensation + industry** from the description in one `chat_many` pass per job. Compensation returns None when no pay is stated (never fabricates). |
+| `enrichment.py` | The **shared orchestration** around it — `enrich_jobs(jobs, runtime, force, on_progress)` is the one place that gates on `enable_llm_compensation` / `enable_llm_industry` + an enabled endpoint, selects candidates, calls the extractor, and persists. Called by **both** the scrape pipeline (before analysis) and `analyze_jobs`, so "Find Jobs" and "Analyze Matches" run identical extraction rather than two implementations. |
 | `ranker.py` | pure hybrid scoring (no I/O) — unit-tested with fake vectors. |
 | `service.py` | orchestration: embed-on-retrieve (reuse stored vectors), skill extraction, scoring, persist `JobAnalysis`; builds the ranked report. |
 | `runtime_config.py` | parallelism + toggles + weights (`config/runtime_config.json`). |
@@ -45,10 +46,12 @@ Scrape completes → scraping_service (if runtime.enable_analysis and an active 
           [jobs_config Title/Description keywords + profile block rules: blocked companies,
            title blocklist, scoped keyword groups — see docs/profile.md]
         → embed missing job descriptions (parallel, fastembed)         [embed-on-retrieve]
-        → recover missing compensation + industry from descriptions in one combined LLM pass
-          (when enable_llm_compensation / enable_llm_industry + endpoint enabled); flag each
-          attempted job compensation_checked / industry_checked so a no-pay/no-industry job
-          is queried once, not every run, and persist any recovered value   [gap-fill, once]
+        → enrichment.enrich_jobs — extract compensation + industry from the description in one
+          combined LLM pass (when enable_llm_compensation / enable_llm_industry + endpoint
+          enabled). Pay is ALWAYS re-derived from the description, whatever the board reported;
+          compensation_checked is flagged on every attempt so each job costs one call, not one
+          per run, while industry_checked is flagged only when a label came back (an empty
+          response = failed call → retry). Same function the scrape pipeline calls.   [once]
         → extract skills — reuse each job's stored extracted_skills; only (re)extract
           jobs that lack them (gazetteer, or LLM batch if enabled)   [reuse, like embeddings]
         → ranker.rank_batch → semantic/bm25/keyword/skill scores
