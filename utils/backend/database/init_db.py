@@ -42,12 +42,15 @@ def _run_migrations():
     from .migrate_job_compensation_checked import migrate as migrate_job_compensation_checked
     from .migrate_job_industry import migrate as migrate_job_industry
     from .migrate_job_pipeline_dates import migrate as migrate_job_pipeline_dates
+    from .migrate_clean_bad_compensation import migrate as migrate_clean_bad_compensation
     migrate_profile_blocklists()
     migrate_profile_llm_instructions()
     migrate_job_saved()
     migrate_job_compensation_checked()
     migrate_job_industry()
     migrate_job_pipeline_dates()
+    # Data repair (must run after the columns above exist).
+    migrate_clean_bad_compensation()
 
 
 def get_db_session() -> Session:

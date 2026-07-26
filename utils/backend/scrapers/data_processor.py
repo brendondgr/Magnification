@@ -10,7 +10,8 @@ This module processes, cleans, and deduplicates scraped job data:
 from typing import List, Dict, Any, Set, Tuple
 import logging
 
-from .jobspy_wrapper import normalize_job_data
+from .jobspy_wrapper import build_compensation_string, normalize_job_data
+from ..recommend.compensation import clean_compensation
 
 logger = logging.getLogger(__name__)
 
@@ -76,27 +77,18 @@ def clean_job_data(job: Dict[str, Any]) -> Dict[str, Any]:
     if not cleaned.get('link') and job.get('job_url'):
         cleaned['link'] = str(job.get('job_url')).strip()
     
+    # Board-supplied compensation is only kept when it is a real pay string; a NaN-poisoned
+    # value from the board (see build_compensation_string) is dropped so the description
+    # extractor can supply the real figure instead.
+    cleaned['compensation'] = clean_compensation(cleaned.get('compensation')) or ''
+
     # Build compensation string if not already present
-    if not cleaned.get('compensation'):
-        min_amount = job.get('min_amount')
-        max_amount = job.get('max_amount')
-        currency = job.get('currency', '$')
-        interval = job.get('interval', '')
-        
-        if min_amount or max_amount:
-            try:
-                if min_amount and max_amount:
-                    cleaned['compensation'] = f"{currency}{float(min_amount):,.0f} - {currency}{float(max_amount):,.0f}"
-                elif min_amount:
-                    cleaned['compensation'] = f"{currency}{float(min_amount):,.0f}"
-                else:
-                    cleaned['compensation'] = f"{currency}{float(max_amount):,.0f}"
-                
-                if interval:
-                    cleaned['compensation'] += f" {interval}"
-            except (ValueError, TypeError):
-                pass
-    
+    if not cleaned['compensation']:
+        cleaned['compensation'] = build_compensation_string(
+            job.get('min_amount'), job.get('max_amount'),
+            job.get('currency', '$'), job.get('interval', '')
+        ) or ''
+
     return cleaned
 
 

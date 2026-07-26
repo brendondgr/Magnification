@@ -1,17 +1,30 @@
 """
-LLM compensation extraction for jobs whose board listing has no parsed salary.
+Description-derived job enrichment: compensation + industry, pulled by one LLM pass.
 
-Many LinkedIn postings (and some on other boards) bury pay inside the description prose,
-so JobSpy returns no structured salary and the UI shows "Not specified". When the LLM
-endpoint is enabled, this module asks the model to pull a concise compensation string out
-of each such description, in parallel via ``chat_many``. It returns ``None`` for jobs that
-state no pay so we never fabricate numbers.
+The board listing is not a reliable source of pay — LinkedIn buries it in the description
+prose, and Indeed hands JobSpy NaN amounts that used to format as ``"USDnan - USDnan
+hourly"`` — so the **description is the authority**: every job with description text is asked
+once (see :func:`needs_compensation_recovery`), in parallel via ``chat_many``. The model
+returns ``null`` for postings that state no pay, so we never fabricate numbers, and one
+:data:`INDUSTRIES` label per job so the card can color it deterministically.
+
+This module holds the pure extraction layer (predicates, prompt, parsing). The DB-aware
+orchestration that both the scrape workflow and "Analyze Matches" share lives in
+``utils/backend/recommend/enrichment.py``.
 """
 
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 # Values that mean "no real compensation" and should be treated as missing.
-_EMPTY = {"", "null", "none", "n/a", "na", "not specified", "unspecified"}
+_EMPTY = {"", "null", "none", "n/a", "na", "not specified", "unspecified", "nan"}
+
+# A pay string is only real if it contains a digit. Boards (Indeed especially) hand jobspy
+# pandas ``NaN`` amounts, and ``float('nan')`` is truthy — so the salary formatter used to
+# happily emit "USDnan - USDnan hourly" or "nannan - nannan nan". Anything carrying a bare
+# ``nan`` token, or no digits at all, is garbage rather than compensation.
+_NAN_TOKEN = re.compile(r"(?<![a-z0-9])nan(?![a-z0-9])", re.IGNORECASE)
+_DIGIT = re.compile(r"\d")
 
 # ---------------------------------------------------------------------------
 # Industry taxonomy
@@ -45,34 +58,49 @@ _INDUSTRY_LOOKUP.update({
     "renewable": "Energy", "renewables": "Energy",
 })
 
-_COMP_PROMPT = (
-    "You extract compensation/salary information from a job description. Respond with ONLY "
-    "a JSON object (no prose, no code fences): "
-    '{"compensation": "<short pay string, e.g. \'$120,000 - $150,000 a year\' or '
-    "'£45/hour'>\"} if the description explicitly states pay, otherwise "
-    '{"compensation": null}. Do NOT guess, infer, or estimate — only report figures that '
-    "are explicitly written in the text."
-)
+def clean_compensation(value: Any) -> Optional[str]:
+    """
+    The single normalizer for a pay string: return a usable value, or ``None``.
+
+    Rejects the placeholder words in :data:`_EMPTY`, any string carrying a bare ``nan`` token,
+    and any string with no digit in it (which is what a NaN-poisoned salary formats to —
+    ``"USDnan - USDnan hourly"``, ``"nannan - nannan nan"``). Every producer and consumer of a
+    compensation string routes through here so a malformed value can neither be stored nor be
+    mistaken for real pay.
+    """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s or s.lower() in _EMPTY:
+        return None
+    if _NAN_TOKEN.search(s) or not _DIGIT.search(s):
+        return None
+    return s[:255]
+
+
+def has_compensation(job: Dict[str, Any]) -> bool:
+    """True when the job carries a usable pay string."""
+    return clean_compensation(job.get("compensation")) is not None
 
 
 def needs_compensation(job: Dict[str, Any]) -> bool:
     """True when a job has a description but no usable compensation string."""
-    comp = (str(job.get("compensation") or "")).strip().lower()
     desc = (str(job.get("description") or "")).strip()
-    return bool(desc) and comp in _EMPTY
+    return bool(desc) and not has_compensation(job)
 
 
 def needs_compensation_recovery(job: Dict[str, Any], force: bool = False) -> bool:
     """
-    True when LLM compensation recovery should run for a job.
+    True when LLM compensation extraction should run for a job.
 
-    A job qualifies when it still lacks a usable pay string (:func:`needs_compensation`) **and**
-    the LLM has not already been asked for it (``compensation_checked`` is falsy). This stops
-    jobs whose descriptions genuinely state no pay — which stay blank forever — from being
-    re-queried on every "Analyze Matches"/scrape run. Pass ``force=True`` (a reanalyze) to
-    re-attempt regardless of the checked flag.
+    Compensation is **always** extracted from the description itself, whatever the board
+    reported: any job with a description qualifies, as long as the LLM has not already been
+    asked (``compensation_checked`` is falsy). Board-supplied salaries are unreliable — Indeed
+    in particular hands over NaN amounts — so the description is the authority, and the
+    ``compensation_checked`` flag is what keeps this to one call per job rather than one per
+    run. Pass ``force=True`` (a reanalyze) to re-attempt regardless of the flag.
     """
-    if not needs_compensation(job):
+    if not (str(job.get("description") or "")).strip():
         return False
     return force or not job.get("compensation_checked")
 
@@ -81,45 +109,7 @@ def _parse_comp(raw: Any) -> Optional[str]:
     """Coerce arbitrary LLM output into a clean compensation string, or None."""
     if isinstance(raw, dict):
         raw = raw.get("compensation")
-    if raw is None:
-        return None
-    s = str(raw).strip()
-    if not s or s.lower() in _EMPTY:
-        return None
-    return s[:255]
-
-
-def extract_compensation_llm(jobs: List[Dict[str, Any]], client,
-                             max_workers: int = 4, max_chars: int = 6000) -> int:
-    """
-    Fill in ``compensation`` for jobs that lack it, using the LLM on the description.
-
-    Mutates the provided job dicts in place (only when a value is found) and returns the
-    number of jobs updated. ``client`` is any object with ``chat_many``. Only jobs that
-    pass :func:`needs_compensation` are sent to the model.
-    """
-    targets = [j for j in (jobs or []) if needs_compensation(j)]
-    if not targets:
-        return 0
-
-    message_lists = [
-        [
-            {"role": "system", "content": _COMP_PROMPT},
-            {"role": "user", "content": (j.get("description") or "")[:max_chars]},
-        ]
-        for j in targets
-    ]
-    results = client.chat_many(message_lists, max_workers=max_workers, as_json=True)
-
-    updated = 0
-    for job, raw in zip(targets, results):
-        if raw is None:
-            continue
-        comp = _parse_comp(raw)
-        if comp:
-            job["compensation"] = comp
-            updated += 1
-    return updated
+    return clean_compensation(raw)
 
 
 # ---------------------------------------------------------------------------
