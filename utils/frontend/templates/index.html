@@ -220,22 +220,23 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px">
             <sc-for list="{{ gridJobs }}" as="job" hint-placeholder-count="6">
               <article style="{{ job.cardStyle }}" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
-                <!-- Row 1 — source pill + retrieved date -->
+                <!-- Row 1 — source (left) · industry (right) -->
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="{{ job.siteBadge }}">{{ job.site }}</span>
-                  <span style="margin-left:auto;font:400 11px/1 var(--font-mono);color:var(--muted)">{{ job.dateStr }}</span>
+                  <sc-if value="{{ job.hasIndustry }}" hint-placeholder-val="">
+                    <span style="{{ job.industryBadge }};margin-left:auto"><span style="{{ job.industryDot }}"></span>{{ job.industryLabel }}</span>
+                  </sc-if>
                 </div>
 
-                <!-- Row 2 — industry tag -->
-                <sc-if value="{{ job.hasIndustry }}" hint-placeholder-val="">
-                  <div style="display:flex;margin-top:11px">
-                    <span style="{{ job.industryBadge }}"><span style="{{ job.industryDot }}"></span>{{ job.industryLabel }}</span>
-                  </div>
-                </sc-if>
+                <!-- Row 2 — title (never more than two lines) -->
+                <h3 style="margin:11px 0 0;font:600 16px/1.25 var(--font-body);color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ job.title }}</h3>
 
-                <!-- Row 3 — title (fills width) + match % + breakdown -->
-                <div style="display:flex;align-items:flex-start;gap:10px;margin-top:11px">
-                  <h3 style="flex:1;min-width:0;margin:0;font:600 16px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</h3>
+                <!-- Row 3 — company + extraction date (left) · match % + breakdown (right) -->
+                <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
+                  <div style="flex:1;min-width:0;display:flex;align-items:baseline;gap:5px;font:400 13px/1.3 var(--font-body);color:var(--muted)">
+                    <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ job.company }}</span>
+                    <span style="flex:0 0 auto;font:400 11px/1.3 var(--font-mono)">{{ job.foundOn }}</span>
+                  </div>
                   <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
                     <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto">
                       <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
@@ -244,22 +245,19 @@
                   </sc-if>
                 </div>
 
-                <!-- Row 4 — company -->
-                <div style="margin-top:4px;font:400 13px/1.3 var(--font-body);color:var(--muted)">{{ job.company }}</div>
-
-                <!-- Row 5 — location + compensation -->
-                <div style="display:flex;flex-wrap:wrap;gap:7px;margin:13px 0">
-                  <span style="display:flex;align-items:center;gap:5px;font:500 12px/1 var(--font-mono);color:var(--muted);padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                    {{ job.location }}
+                <!-- Row 4 — location (left) · compensation (right) -->
+                <div style="display:flex;align-items:center;gap:8px;margin:13px 0">
+                  <span style="flex:1;min-width:0;display:flex;align-items:center;gap:5px;font:500 12px/1 var(--font-mono);color:var(--muted);padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ job.location }}</span>
                   </span>
-                  <span style="font:600 12px/1 var(--font-mono);color:var(--c-offer-text);padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px">{{ job.compensation }}</span>
+                  <span style="flex:0 0 auto;font:600 12px/1 var(--font-mono);color:{{ job.compensationColor }};padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px;white-space:nowrap">{{ job.compensation }}</span>
                 </div>
 
-                <!-- Row 6 — description (max 3 lines) -->
-                <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
+                <!-- Row 5 — description (never more than four lines) -->
+                <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
 
-                <!-- Row 7 — primary actions -->
+                <!-- Row 6 — primary actions -->
                 <div style="display:flex;gap:8px;margin-top:auto">
                   <button onclick="{{ job.onApply }}" style="flex:1;min-width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -271,7 +269,7 @@
                   </button>
                 </div>
 
-                <!-- Row 8 — icon actions: info · block · hide · save · link out (spread evenly to fill the width) -->
+                <!-- Row 7 — icon actions: info · block · hide · save · link out (spread evenly to fill the width) -->
                 <div style="display:flex;gap:6px;margin-top:10px">
                   <button onclick="{{ job.onOpen }}" data-tip="View job details" aria-label="View job details" style="{{ job.iconBtn }};flex:1;min-width:0;width:auto" style-hover="background:var(--surface2);border-color:var(--accent);color:var(--accent-text)" style-active="transform:scale(.9)">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -333,22 +331,23 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px">
             <sc-for list="{{ savedJobs }}" as="job" hint-placeholder-count="6">
               <article style="{{ job.cardStyle }}" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
-                <!-- Row 1 — source pill + retrieved date -->
+                <!-- Row 1 — source (left) · industry (right) -->
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="{{ job.siteBadge }}">{{ job.site }}</span>
-                  <span style="margin-left:auto;font:400 11px/1 var(--font-mono);color:var(--muted)">{{ job.dateStr }}</span>
+                  <sc-if value="{{ job.hasIndustry }}" hint-placeholder-val="">
+                    <span style="{{ job.industryBadge }};margin-left:auto"><span style="{{ job.industryDot }}"></span>{{ job.industryLabel }}</span>
+                  </sc-if>
                 </div>
 
-                <!-- Row 2 — industry tag -->
-                <sc-if value="{{ job.hasIndustry }}" hint-placeholder-val="">
-                  <div style="display:flex;margin-top:11px">
-                    <span style="{{ job.industryBadge }}"><span style="{{ job.industryDot }}"></span>{{ job.industryLabel }}</span>
-                  </div>
-                </sc-if>
+                <!-- Row 2 — title (never more than two lines) -->
+                <h3 style="margin:11px 0 0;font:600 16px/1.25 var(--font-body);color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ job.title }}</h3>
 
-                <!-- Row 3 — title (fills width) + match % + breakdown -->
-                <div style="display:flex;align-items:flex-start;gap:10px;margin-top:11px">
-                  <h3 style="flex:1;min-width:0;margin:0;font:600 16px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</h3>
+                <!-- Row 3 — company + extraction date (left) · match % + breakdown (right) -->
+                <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
+                  <div style="flex:1;min-width:0;display:flex;align-items:baseline;gap:5px;font:400 13px/1.3 var(--font-body);color:var(--muted)">
+                    <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ job.company }}</span>
+                    <span style="flex:0 0 auto;font:400 11px/1.3 var(--font-mono)">{{ job.foundOn }}</span>
+                  </div>
                   <sc-if value="{{ job.hasMatch }}" hint-placeholder-val="">
                     <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto">
                       <span style="{{ job.matchBadge }}">{{ job.matchLabel }}</span>
@@ -357,22 +356,19 @@
                   </sc-if>
                 </div>
 
-                <!-- Row 4 — company -->
-                <div style="margin-top:4px;font:400 13px/1.3 var(--font-body);color:var(--muted)">{{ job.company }}</div>
-
-                <!-- Row 5 — location + compensation -->
-                <div style="display:flex;flex-wrap:wrap;gap:7px;margin:13px 0">
-                  <span style="display:flex;align-items:center;gap:5px;font:500 12px/1 var(--font-mono);color:var(--muted);padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                    {{ job.location }}
+                <!-- Row 4 — location (left) · compensation (right) -->
+                <div style="display:flex;align-items:center;gap:8px;margin:13px 0">
+                  <span style="flex:1;min-width:0;display:flex;align-items:center;gap:5px;font:500 12px/1 var(--font-mono);color:var(--muted);padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:0 0 auto"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ job.location }}</span>
                   </span>
-                  <span style="font:600 12px/1 var(--font-mono);color:var(--c-offer-text);padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px">{{ job.compensation }}</span>
+                  <span style="flex:0 0 auto;font:600 12px/1 var(--font-mono);color:{{ job.compensationColor }};padding:6px 9px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:7px;white-space:nowrap">{{ job.compensation }}</span>
                 </div>
 
-                <!-- Row 6 — description (max 3 lines) -->
-                <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
+                <!-- Row 5 — description (never more than four lines) -->
+                <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
 
-                <!-- Row 7 — primary actions -->
+                <!-- Row 6 — primary actions -->
                 <div style="display:flex;gap:8px;margin-top:auto">
                   <button onclick="{{ job.onApply }}" style="flex:1;min-width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -384,7 +380,7 @@
                   </button>
                 </div>
 
-                <!-- Row 8 — icon actions: info · block · hide · save · link out (spread evenly to fill the width) -->
+                <!-- Row 7 — icon actions: info · block · hide · save · link out (spread evenly to fill the width) -->
                 <div style="display:flex;gap:6px;margin-top:10px">
                   <button onclick="{{ job.onOpen }}" data-tip="View job details" aria-label="View job details" style="{{ job.iconBtn }};flex:1;min-width:0;width:auto" style-hover="background:var(--surface2);border-color:var(--accent);color:var(--accent-text)" style-active="transform:scale(.9)">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -457,7 +453,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px">
           <div style="padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
             <div style="font:600 10px/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Compensation</div>
-            <div style="margin-top:7px;font:600 15px/1 var(--font-body);color:var(--c-offer-text)">{{ selectedJob.compensation }}</div>
+            <div style="margin-top:7px;font:600 15px/1 var(--font-body);color:{{ selectedJob.compensationColor }}">{{ selectedJob.compensation }}</div>
           </div>
           <div style="padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
             <div style="font:600 10px/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Location</div>
@@ -828,7 +824,11 @@
           </button>
           <button onclick="{{ toggleRtLlmComp }}" style="{{ rtLlmCompRow }}" style-hover="border-color:var(--accent)">
             <span style="{{ rtLlmCompChk }}"><sc-if value="{{ rtEnableLlmComp }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
-            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM compensation extraction</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Pull pay from the job description when the board lists none (e.g. LinkedIn)</div></div>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM compensation extraction</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Always pull pay from the job description — the board's own salary field is unreliable</div></div>
+          </button>
+          <button onclick="{{ toggleRtLlmIndustry }}" style="{{ rtLlmIndustryRow }}" style-hover="border-color:var(--accent)">
+            <span style="{{ rtLlmIndustryChk }}"><sc-if value="{{ rtEnableLlmIndustry }}" hint-placeholder-val=""><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.2"><polyline points="20 6 9 17 4 12"></polyline></svg></sc-if></span>
+            <div><div style="font:600 13px/1 var(--font-body);color:var(--text)">LLM industry detection</div><div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Tag each job with its industry — extracted from the description in the same pass as pay</div></div>
           </button>
 
           <div style="font:600 11px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px">Parallelism</div>
@@ -1422,6 +1422,9 @@ class Component extends DCLogic {
   // Fixed, distinct color per industry so every "Health" pill (etc.) looks identical across
   // cards. Labels must match the backend INDUSTRIES taxonomy (utils/backend/recommend/
   // compensation.py); anything unmapped falls back to the muted "Other" style.
+  // Shown wherever a job has no usable pay string (see payLabel).
+  static NO_PAY = 'Not Specified';
+  static NO_PAY_WORDS = ['null','none','n/a','na','nan','not specified','unspecified'];
   static INDUSTRY_COLORS = {Tech:'#00C2FF',Health:'#00E5A0',Finance:'#FFC53D',Business:'#B57BFF',Industrial:'#FF8A3D',Science:'#4DD4FF',Education:'#FF5DA2',Government:'#7C9CFF',Retail:'#FF4D6A',Media:'#FF6AD5',Legal:'#C0A16B',Energy:'#7CFC5A',Other:'#9AA0A6'};
   // Map config-site keys (and DB site strings) <-> display labels used in the UI.
   static SITE_KEY_TO_LABEL = {indeed:'Indeed',linkedin:'LinkedIn',glassdoor:'Glassdoor',zip_recruiter:'ZipRecruiter',google:'Google'};
@@ -1476,7 +1479,7 @@ class Component extends DCLogic {
       // ---- Options panel ----
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60,thinking_token_budget:1024},
-      runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,llm_fraction:1.0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
+      runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,enable_llm_industry:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,llm_fraction:1.0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
       jobs:[], loading:true,
       // Ignored jobs are left on the server until "Show Ignored" is switched on (they
       // outnumber the visible feed by ~500:1). Once pulled they stay in state.jobs for
@@ -1571,6 +1574,18 @@ class Component extends DCLogic {
     if(isNaN(t)) return 0;
     return Math.max(0, Math.floor((Date.now()-t)/86400000));
   }
+  // A pay string is only shown when it is real. Boards (Indeed especially) reported NaN
+  // salary amounts, which used to reach the card as "USDnan - USDnan hourly" /
+  // "nannan - nannan nan"; those are repaired server-side, and this is the last line of
+  // defense so a malformed value can never render. Mirrors
+  // utils/backend/recommend/compensation.clean_compensation.
+  payLabel(raw){
+    const s=String(raw==null?'':raw).trim();
+    if(!s) return Component.NO_PAY;
+    if(Component.NO_PAY_WORDS.indexOf(s.toLowerCase())>=0) return Component.NO_PAY;
+    if(/(^|[^a-z0-9])nan([^a-z0-9]|$)/i.test(s) || !/\d/.test(s)) return Component.NO_PAY;
+    return s;
+  }
   siteLabel(raw){
     if(!raw) return '';
     const k=String(raw).toLowerCase();
@@ -1583,7 +1598,7 @@ class Component extends DCLogic {
     const match=(analysis && typeof analysis.rag_score==='number')?Math.round(analysis.rag_score*100):null;
     return {
       id:j.id, title:j.title||'', company:j.company||'', location:j.location||'',
-      compensation:j.compensation||'Not specified', industry:j.industry||'', site:this.siteLabel(j.site),
+      compensation:this.payLabel(j.compensation), industry:j.industry||'', site:this.siteLabel(j.site),
       link:j.link||'', description:j.description||'', ignore:j.ignore?1:0, saved:j.saved?1:0,
       daysAgo:this.daysAgoFrom(j.created_at), createdAt:j.created_at||null,
       analysis, match,
@@ -2336,6 +2351,10 @@ class Component extends DCLogic {
       onMatchInfo:(e)=>{ stop(e); this.setState({matchInfoId:j.id}); },
       initials:(j.company||'?').slice(0,2).toUpperCase(),
       ago:this.ago(j.daysAgo), dateStr:this.fmtDate(j.createdAt),
+      // Extraction date, shown in parentheses immediately after the company name.
+      foundOn:(this.fmtDate(j.createdAt)?'('+this.fmtDate(j.createdAt)+')':''),
+      // Real pay reads as a positive signal; "Not Specified" stays neutral.
+      compensationColor:(j.compensation===Component.NO_PAY?'var(--muted)':'var(--c-offer-text)'),
       shortDesc:this.plain(j.description),
       avatar:Object.entries(av(40)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       avatarLg:Object.entries(av(52)).map(([k,v])=>this.css(k)+':'+v).join(';'),
@@ -2708,6 +2727,7 @@ class Component extends DCLogic {
       rtEnableRerank:rt.enable_llm_rerank, toggleRtRerank:()=>this.rtSet({enable_llm_rerank:!rt.enable_llm_rerank}), rtRerankRow:toggleRow(rt.enable_llm_rerank), rtRerankChk:toggleChk(rt.enable_llm_rerank),
       rtEnableLlmSkills:rt.enable_llm_skills, toggleRtLlmSkills:()=>this.rtSet({enable_llm_skills:!rt.enable_llm_skills}), rtLlmSkillsRow:toggleRow(rt.enable_llm_skills), rtLlmSkillsChk:toggleChk(rt.enable_llm_skills),
       rtEnableLlmComp:rt.enable_llm_compensation, toggleRtLlmComp:()=>this.rtSet({enable_llm_compensation:!rt.enable_llm_compensation}), rtLlmCompRow:toggleRow(rt.enable_llm_compensation), rtLlmCompChk:toggleChk(rt.enable_llm_compensation),
+      rtEnableLlmIndustry:rt.enable_llm_industry, toggleRtLlmIndustry:()=>this.rtSet({enable_llm_industry:!rt.enable_llm_industry}), rtLlmIndustryRow:toggleRow(rt.enable_llm_industry), rtLlmIndustryChk:toggleChk(rt.enable_llm_industry),
       rtEmbedWorkers:rt.embed_workers, onRtEmbedWorkers:(e)=>this.rtSet({embed_workers:+e.target.value}),
       rtLinkedinWorkers:rt.linkedin_workers, onRtLinkedinWorkers:(e)=>this.rtSet({linkedin_workers:+e.target.value}),
       rtLlmWorkers:rt.llm_workers, onRtLlmWorkers:(e)=>this.rtSet({llm_workers:+e.target.value}),

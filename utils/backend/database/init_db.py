@@ -43,6 +43,7 @@ def _run_migrations():
     from .migrate_job_industry import migrate as migrate_job_industry
     from .migrate_job_pipeline_dates import migrate as migrate_job_pipeline_dates
     from .migrate_clean_bad_compensation import migrate as migrate_clean_bad_compensation
+    from .migrate_reset_unlabeled_industry import migrate as migrate_reset_unlabeled_industry
     migrate_profile_blocklists()
     migrate_profile_llm_instructions()
     migrate_job_saved()
@@ -51,6 +52,7 @@ def _run_migrations():
     migrate_job_pipeline_dates()
     # Data repair (must run after the columns above exist).
     migrate_clean_bad_compensation()
+    migrate_reset_unlabeled_industry()
 
 
 def get_db_session() -> Session:

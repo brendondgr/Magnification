@@ -218,6 +218,56 @@ def test_index_has_industry_and_row_based_job_card(client):
     assert "selectedJob.industryBadge" in html
 
 
+def test_index_job_card_row_layout_and_clamps(client):
+    """The card renders the five information rows in order, with the required line clamps.
+
+    Row 1 source | industry · Row 2 title (2 lines) · Row 3 company + found-date | match% + ?
+    · Row 4 location | compensation · Row 5 description (4 lines).
+    """
+    html = client.get("/").get_data(as_text=True)
+
+    for marker in ("Row 1 — source (left) · industry (right)",
+                   "Row 2 — title (never more than two lines)",
+                   "Row 3 — company + extraction date (left) · match % + breakdown (right)",
+                   "Row 4 — location (left) · compensation (right)",
+                   "Row 5 — description (never more than four lines)"):
+        # Both the New Jobs grid and the Saved grid render the same card.
+        assert html.count(marker) == 2, f"row marker not on both cards: {marker}"
+
+    # Rows appear in the documented order on each card.
+    order = [html.index(f"Row {n} —") for n in range(1, 6)]
+    assert order == sorted(order)
+
+    # Title clamps to 2 lines, description to 4.
+    assert html.count("-webkit-line-clamp:2") >= 2
+    assert html.count("-webkit-line-clamp:4") >= 2
+    assert "-webkit-line-clamp:3" not in html
+
+    # The industry pill is right-justified in row 1; the extraction date follows the company.
+    assert "{{ job.industryBadge }};margin-left:auto" in html
+    assert "job.foundOn" in html
+    assert "foundOn:(this.fmtDate(j.createdAt)" in html
+
+
+def test_index_shows_not_specified_for_missing_pay(client):
+    """Malformed/absent pay renders as "Not Specified", never as a nan string."""
+    html = client.get("/").get_data(as_text=True)
+    assert "static NO_PAY = 'Not Specified'" in html
+    assert "payLabel(raw)" in html
+    assert "compensation:this.payLabel(j.compensation)" in html
+    # Both the card and the detail panel neutralize the color when there is no pay.
+    assert "job.compensationColor" in html and "selectedJob.compensationColor" in html
+
+
+def test_index_has_llm_industry_toggle(client):
+    """Options -> Runtime exposes the industry-detection toggle alongside compensation."""
+    html = client.get("/").get_data(as_text=True)
+    assert "LLM industry detection" in html
+    for token in ("toggleRtLlmIndustry", "rtEnableLlmIndustry", "rtLlmIndustryRow",
+                  "rtLlmIndustryChk", "enable_llm_industry:true"):
+        assert token in html, f"missing industry-toggle token: {token}"
+
+
 def test_index_has_two_column_latex_workspace(client):
     """The workspace wires the two-column (process ‖ PDF) layout + LaTeX/PDF preview plumbing."""
     html = client.get("/").get_data(as_text=True)
