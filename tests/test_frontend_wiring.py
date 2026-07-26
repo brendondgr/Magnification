@@ -48,6 +48,21 @@ def test_dc_runtime_asset_served(client):
     assert b"dc-runtime" in resp.get_data()
 
 
+def test_brand_mark_wired_as_favicon_and_header_logo(client):
+    """The penguin logo is the favicon and the header lockup — no `J` placeholder."""
+    html = client.get("/").get_data(as_text=True)
+    assert '<link rel="icon" type="image/svg+xml" href="/static/img/magnify.svg">' in html
+    assert '/static/img/favicon-32.png' in html
+    assert '/static/img/apple-touch-icon.png' in html
+    assert '<img src="/static/img/magnify.svg"' in html
+    assert 'var(--font-head)">J</div>' not in html
+
+    for asset in ("magnify.svg", "favicon-32.png", "apple-touch-icon.png"):
+        resp = client.get(f"/static/img/{asset}")
+        assert resp.status_code == 200, asset
+    assert b"<svg" in client.get("/static/img/magnify.svg").get_data()
+
+
 def test_jobs_api_shape_and_status_roundtrip(client):
     """`/api/jobs` returns hydrated jobs; ignore + status PATCH persist."""
     resp = client.get("/api/jobs")

@@ -1,4 +1,10 @@
-# Magnification
+<p align="center">
+  <img src="images/magnify.svg" alt="Magnification logo — a penguin inspecting the world through a magnifying glass" width="132">
+</p>
+
+<h1 align="center">Magnification</h1>
+
+<p align="center"><em>Track · Apply · Land</em></p>
 
 A local-first job-search platform: it scrapes job boards on a schedule, ranks every listing against your résumé with a hybrid RAG + LLM recommender, and gives you a Flask/React-runtime UI to review, save, and track applications through a kanban board.
 

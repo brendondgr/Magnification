@@ -6,6 +6,27 @@ Captured from `utils/frontend/static/css/variables.css` and the inline Tailwind 
 
 Warm, tactile, "card-on-cream" job board with a playful but focused feel — a personal cockpit for hunting and tracking jobs, not a generic SaaS dashboard. Soft cream surfaces, an electric-coral accent, glassmorphism on the header, and a spring-like hover lift on interactive cards. Avoid generic AI-site patterns (vague productivity copy, glowing gradients, abstract orbs, fake metrics, repeated identical feature-card grids).
 
+## Brand Mark
+
+The logo is a penguin peering through a magnifying glass — the app's "look closer at every
+listing" idea, drawn playfully rather than as a generic search glyph. Source of truth:
+`images/magnify.svg` (with a raster twin, `images/magnify.png`). The browser-served copy is
+`utils/frontend/static/img/magnify.svg`.
+
+Where it appears:
+
+- **Favicon** — `<link rel="icon" type="image/svg+xml">` on the SVG, with `favicon-32.png` and
+  `apple-touch-icon.png` (both generated from `images/magnify.png`) as fallbacks.
+- **Header lockup** — replaces the former `J` chip to the left of the "Magnification /
+  Track · Apply · Land" wordmark. The mark keeps its own **36px, 9px-radius, `#F7F6F5`** chip
+  rather than sitting on `var(--surface)`: the penguin's body is near-black navy, which would
+  lose its outline on the dark `neon` theme. The fixed near-white chip (the logo's own white)
+  plus a `var(--border)` hairline keeps contrast identical in both themes.
+- **README** — centered above the title.
+
+The mark's artboard is 1081 × 1170 (taller than wide), so scale it by **height** with
+`width:auto`; never set both dimensions to the same value.
+
 ## Color Tokens
 
 | Token | Value | Use |

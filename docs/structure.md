@@ -58,7 +58,7 @@ Magnification/
 │   │   └── scheduler/          # LLM-gated daily job-search runner + CLI (systemd-driven: llm_health, daily_runner, __main__)
 │   ├── frontend/
 │   │   ├── templates/          # index.html — single dc-runtime design export (no Jinja partials)
-│   │   └── static/             # js/dc-runtime.js (vendored React runtime)
+│   │   └── static/             # js/dc-runtime.js (vendored React runtime), img/ (brand mark + favicons)
 │   └── LocalLLM/               # Local LLM management library (cli, core, server, utils)
 │
 ├── tests/                      # Lightweight tests grouped by area
@@ -70,6 +70,8 @@ Magnification/
 │   ├── database/               # Profile + JobAnalysis CRUD round-trip, incl. test_agentic_documents.py for the new documents-foundation tables
 │   ├── scheduler/              # LLM-health probe + once-per-day runner (offline, mocked)
 │   └── docs/                   # Doc/skill-pointer verification tests
+│
+├── images/                     # Brand source assets (magnify.svg / magnify.png — the logo)
 │
 ├── deploy/                     # Deployment assets (not app code)
 │   ├── bin/                    # jobsctl — `jobs start|stop|restart|status|logs|search` app-control wrapper
@@ -90,7 +92,8 @@ Magnification/
 | `utils/backend/agents/` | In-house, plain-Python agents (no LangGraph): the cover-letter and résumé generation graphs (orchestrator, context loader, résumé match-lift scoring, shared/letter/résumé node modules, generation task-store service). Both are steered by the single editable **Document Guidance** (`document_guidance.py`) injected into every generation and refine, and end with a deterministic render step (`latex.py`) that wraps their prose into a compilable LaTeX document; `utils/backend/pdf_compile.py` compiles that source to a cached PDF for preview/download. (The former ingestion agent + Behavioral/Writing/Template subsystems were retired — see `docs/plans/documents-sidebar-simplify.md`.) |
 | `utils/backend/scheduler/` | LLM-gated, once-per-day job-search runner + CLI invoked by the systemd units. |
 | `deploy/systemd/` | Systemd **user** units + installer for the web app on boot and the automated daily search (see `deploy/systemd/README.md`). |
-| `utils/frontend/` | Jinja templates and static CSS/JS assets. |
+| `utils/frontend/` | Jinja templates and static CSS/JS/image assets. |
+| `images/` | Source brand assets. `images/magnify.svg` is the canonical logo; the copy served to the browser lives at `utils/frontend/static/img/magnify.svg`. |
 | `utils/LocalLLM/` | Self-contained local-LLM management library. |
 | `tests/` | Lightweight, area-grouped tests. |
 | `data/` | Local SQLite DB and runtime data (gitignored). |
