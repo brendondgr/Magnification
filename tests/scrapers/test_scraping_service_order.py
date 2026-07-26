@@ -20,9 +20,8 @@ from utils.backend.database import operations as db_ops
 from utils.backend.database.models import Base
 from utils.backend.scrapers import scraping_service as svc
 from utils.backend.scrapers import job_filter
-from utils.backend.llm import config as llm_config_module
 from utils.backend.llm import client as llm_client_module
-from utils.backend.recommend import compensation as compensation_module
+from utils.backend.recommend import enrichment as enrichment_module
 from utils.backend.recommend import service as recommend_service_module
 
 
@@ -116,9 +115,12 @@ def test_pipeline_order_skips_db_duplicates_and_filtered_jobs(temp_db, monkeypat
     monkeypatch.setattr(svc, "fetch_descriptions_for_jobs", fake_fetch_descriptions_for_jobs)
     monkeypatch.setattr(db_ops, "get_active_profile",
                          lambda: {"id": 1, "blocked_companies": [], "title_blocklist": [], "keyword_groups": []})
-    monkeypatch.setattr(llm_config_module, "load_llm_endpoint_config", lambda: {"enabled": True})
-    monkeypatch.setattr(llm_client_module.OpenAIClient, "from_config", classmethod(lambda cls, **kw: object()))
-    monkeypatch.setattr(compensation_module, "extract_enrichment_llm", fake_extract_enrichment_llm)
+    # The shared enrichment module is the one place the endpoint/client/extractor are used,
+    # by BOTH this workflow and analyze_jobs — so that is what gets stubbed.
+    monkeypatch.setattr(enrichment_module, "load_llm_endpoint_config", lambda: {"enabled": True})
+    monkeypatch.setattr(llm_client_module.OpenAIClient, "from_config",
+                        classmethod(lambda cls, *a, **kw: object()))
+    monkeypatch.setattr(enrichment_module, "extract_enrichment_llm", fake_extract_enrichment_llm)
     monkeypatch.setattr(recommend_service_module, "analyze_jobs", fake_analyze_jobs)
 
     result = svc.execute_full_scraping_workflow(save_to_database=True)
