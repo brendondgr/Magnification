@@ -311,6 +311,33 @@ def test_index_has_hash_view_routing(client):
     assert "onClick:()=>this.goTab(k)" in html
 
 
+def test_index_scrape_stats_are_cumulative(client):
+    """Find Jobs' "Jobs Found"/"Jobs Saved" counters accumulate across search iterations.
+
+    The poller must consume the backend's cumulative `jobs_saved` (not just `jobs_found`) and
+    clamp every counter monotonically, so a multi-iteration run never shows a stat tick down at
+    an iteration boundary or at completion.
+    """
+    html = client.get("/").get_data(as_text=True)
+    # The three stat tiles still exist and read from the scrape state.
+    for token in ("'Jobs Found',value:s.found", "'Jobs Saved',value:s.saved",
+                  "'Not Hidden',value:s.notHidden"):
+        assert token in html, f"missing scrape stat tile: {token}"
+    # Monotonic clamp helper + a pre-patch state snapshot to clamp against.
+    assert "const rise=(cur,next)=>Math.max(Number(cur)||0, Number(next)||0);" in html
+    assert "const s0=this.state;" in html
+    # jobs_saved is polled live (it used to be assigned only once, at completion).
+    assert "details.jobs_saved!==undefined) patch.saved=rise(s0.saved,details.jobs_saved)" in html
+    assert "details.jobs_found!==undefined) patch.found=rise(s0.found,details.jobs_found)" in html
+    assert "details.jobs_kept!==undefined) patch.notHidden=rise(s0.notHidden,details.jobs_kept)" in html
+    # Completion reads the run totals off the results payload, clamped upward.
+    for token in ("r.jobs_found", "r.jobs_saved", "r.jobs_unique"):
+        assert token in html, f"completion ignores run total: {token}"
+    # The old last-pass-only completion sources are gone.
+    assert "const saved=(steps.storage&&steps.storage.stored_count)||0;" not in html
+    assert "const found=(steps.processing&&steps.processing.processed_count)||patch.found||0;" not in html
+
+
 def test_generation_endpoints_registered(client):
     """The generation blueprint is mounted (status of an unknown task 404s, not 405/500)."""
     assert client.get("/api/documents/status/does_not_exist").status_code == 404

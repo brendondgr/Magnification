@@ -1915,19 +1915,28 @@ class Component extends DCLogic {
       try{
         const res=await fetch('/api/scrape/status/'+jobId);
         const data=await res.json();
+        const s0=this.state;
         const prog=data.progress||{}; const details=prog.details||{};
         const patch={percent:Math.round(prog.percent||0), stage:this.formatStage(prog.stage), statusMsg:details.message||''};
-        if(details.jobs_found!==undefined) patch.found=details.jobs_found;
-        if(details.jobs_kept!==undefined) patch.notHidden=details.jobs_kept;
+        // The backend reports run-cumulative totals across every search iteration. Clamp them
+        // monotonically anyway so an out-of-order/stale poll can't make a counter tick down.
+        const rise=(cur,next)=>Math.max(Number(cur)||0, Number(next)||0);
+        if(details.jobs_found!==undefined) patch.found=rise(s0.found,details.jobs_found);
+        if(details.jobs_saved!==undefined) patch.saved=rise(s0.saved,details.jobs_saved);
+        if(details.jobs_kept!==undefined) patch.notHidden=rise(s0.notHidden,details.jobs_kept);
         if(Array.isArray(data.events)) patch.scrapeEvents=data.events;
         this.setState(patch);
         if(data.status==='completed'){
           clearInterval(this._poll);
           const steps=(data.results&&data.results.steps)||{};
-          const found=(steps.processing&&steps.processing.processed_count)||patch.found||0;
-          const saved=(steps.storage&&steps.storage.stored_count)||0;
+          const r=data.results||{};
+          // Cumulative raw listings across all iterations — the same figure the live counter
+          // climbed to, so it never drops at the end of the run.
+          const found=rise(patch.found!==undefined?patch.found:s0.found, r.jobs_found!==undefined?r.jobs_found:((steps.scraping&&steps.scraping.raw_jobs_count)||0));
+          const saved=rise(patch.saved!==undefined?patch.saved:s0.saved, r.jobs_saved!==undefined?r.jobs_saved:((steps.storage&&steps.storage.stored_count)||0));
           const kept=(steps.filtering&&steps.filtering.kept)!==undefined?steps.filtering.kept:(patch.notHidden||0);
-          this.setState({percent:100,stage:'Complete',statusMsg:'Found '+found+' jobs · '+kept+' kept · '+saved+' new saved.',found,saved,notHidden:kept,scrapeDone:true});
+          const unique=r.jobs_unique!==undefined?r.jobs_unique:((steps.processing&&steps.processing.processed_count)||0);
+          this.setState({percent:100,stage:'Complete',statusMsg:'Found '+found+' jobs'+(unique&&unique!==found?' · '+unique+' unique':'')+' · '+saved+' new saved · '+kept+' kept.',found,saved,notHidden:kept,scrapeDone:true});
           this.loadJobs();
         } else if(data.status==='failed'){
           clearInterval(this._poll);
