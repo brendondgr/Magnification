@@ -4,7 +4,7 @@ Captured from `utils/frontend/static/css/variables.css` and the inline Tailwind 
 
 ## Visual Motif
 
-Warm, tactile, "card-on-cream" job board with a playful but focused feel — a personal cockpit for hunting and tracking jobs, not a generic SaaS dashboard. Soft cream surfaces, an electric-coral accent, glassmorphism on the header, and a spring-like hover lift on interactive cards. Avoid generic AI-site patterns (vague productivity copy, glowing gradients, abstract orbs, fake metrics, repeated identical feature-card grids).
+A job board that wears the brand mascot's colors — a personal cockpit for hunting and tracking jobs, not a generic SaaS dashboard. Both themes derive from the penguin logo's four color families (deep navy, beak orange, handle gray, belly off-white), so the UI and the mark read as one brand. Playful but focused; spring-like hover lift on interactive cards. Avoid generic AI-site patterns (vague productivity copy, glowing gradients, abstract orbs, fake metrics, repeated identical feature-card grids).
 
 ## Brand Mark
 
@@ -20,8 +20,9 @@ Where it appears:
 - **Header lockup** — replaces the former `J` chip to the left of the "Magnification /
   Track · Apply · Land" wordmark. The mark keeps its own **36px, 9px-radius, `#F7F6F5`** chip
   rather than sitting on `var(--surface)`: the penguin's body is near-black navy, which would
-  lose its outline on the dark `neon` theme. The fixed near-white chip (the logo's own white)
-  plus a `var(--border)` hairline keeps contrast identical in both themes.
+  lose its outline on the dark `midnight` theme. The fixed near-white chip (the logo's own
+  white, which is also `arctic`'s surface color) plus a `var(--border)` hairline keeps contrast
+  identical in both themes.
 - **README** — centered above the title.
 
 The mark's artboard is 1081 × 1170 (taller than wide), so scale it by **height** with
@@ -49,7 +50,10 @@ Industrial `#FF8A3D`, Science `#4DD4FF`, Education `#FF5DA2`, Government `#7C9CF
 `#FF4D6A`, Media `#FF6AD5`, Legal `#C0A16B`, Energy `#7CFC5A`, Other `#9AA0A6` (fallback for
 unknown/unclassified). The pill uses the color as border + text over a 12%-tinted fill (a colored
 variant of the location-chip style); labels must match the backend `INDUSTRIES` taxonomy. The
-pill sits **right-justified in the card's first row**, opposite the source badge.
+pill sits **right-justified in the card's first row**, opposite the source badge. These vivid
+values are tuned for dark surfaces; on the light `arctic` theme, `decorate()` mixes each with
+navy (`color-mix(… 58%, #132433)`) for pill text/border so contrast holds, while the small
+color dot keeps the vivid original on both themes.
 
 **Job-card row rhythm.** The card reads as five information rows before its two action rows:
 source ‖ industry · title · company + `(YYYY-MM-DD)` ‖ match % · location ‖ compensation ·
@@ -74,11 +78,44 @@ value.
 > FontAwesome/Lucide) describe an earlier design export. The shipped `index.html` is a
 > dc-runtime template whose live tokens are defined per-theme in `Component.THEMES`
 > (`--bg`, `--surface`, `--surface2`, `--card`, `--text`, `--muted`, `--border`, `--border2`,
-> `--accent`, `--accent2`, `--accent-ink`, `--accent-text`, `--c-applied`/`--c-interview`/
+> `--accent`, `--accent2`, `--accent-ink`, `--accent-text`, `--danger`, `--c-applied`/`--c-interview`/
 > `--c-offer`/`--c-reject`/`--c-archive`, `--radius`, `--r-sm`, `--font-head`/`--font-body`/`--font-mono`,
-> `--shadow`) — two themes exist (`editorial`, the default, and `neon`). Reconciling this doc
+> `--shadow`) — see **Live Themes** below. Reconciling the legacy `--color-*` export above
 > with the live tokens end-to-end is a follow-up (`docs/checklist.md`); the Motion notes below
 > reflect the current template.
+
+### Live Themes (logo-derived)
+
+Two themes, both built from the logo's palette, replace the former `editorial`/`neon` pair.
+`tests/frontend/test_theme_tokens.py` pins this contract.
+
+| Token | `arctic` (light, default) | `midnight` (dark) |
+| --- | --- | --- |
+| `--bg` | `#E9EDF1` | `#0C1826` |
+| `--surface` / `--surface2` | `#F7F6F5` / `#FFFFFF` | `#132433` / `#1B3145` |
+| `--card` | `#FCFBFA` | `#172B3C` |
+| `--text` / `--muted` | `#132433` / `#5B6B7A` | `#F7F6F5` / `#8CA0B3` |
+| `--border` / `--border2` | `#D7DEE5` / `#B7C3CE` | `#24394E` / `#35506A` |
+| `--accent` (beak orange) | `#F4A226` | `#F4A226` |
+| `--accent-ink` | `#132433` | `#132433` |
+| `--accent-text` | `#985C07` (darkened for contrast on light) | `#F4A226` |
+| `--danger` | `#B23B36` | `#F26D6D` |
+
+Rules encoded in the tokens:
+
+- **Orange is the shared accent.** `--accent` is the logo's beak orange in both themes; text on
+  an accent fill is always navy (`--accent-ink`), never white — white-on-orange fails contrast.
+  Orange used *as text* on the light theme goes through the darkened `--accent-text`.
+- **Midnight lives inside the logo.** Its surfaces are the penguin's own navy (`#132433`), its
+  text the belly off-white.
+- **Destructive red is a token.** All destructive/error styling (Clear/Block buttons, ignored
+  cards, failure chips, low-match text) uses `var(--danger)` (hover tints via
+  `color-mix(… 12%, transparent)`); the old hardcoded `#E5484D` is retired. Solid `--danger`
+  chips pair with `color:var(--surface)` so the text works in both themes.
+- **Theme toggle.** A `role="switch"` pill (sun/moon knob) sits right of the **Options** button
+  in the header (desktop-only, `data-desk`, 62×38px). It flips `arctic`⇄`midnight` and persists
+  to `localStorage['magnify.theme']`; the Component constructor restores the saved value
+  (unknown/legacy names fall back to `arctic`).
 
 - **Entrance keyframes** (defined once in `index.html`'s `<style>`): `jf-fade` (opacity),
   `jf-slide` (slide-in from the right, used by slide-over panels), `jf-pop` (scale+rise, used by
@@ -138,8 +175,9 @@ Every view must design: **loading, empty, partial-data, error, success,** and **
 
 ## Recommendation Match Surfaces
 
-- **Match badge** (New Jobs cards): `NN% match`, color-graded — vivid teal/offer (≥66%),
-  coral accent (≥40%), muted gray (<40%). Shown only when a job has been analyzed.
+- **Match badge** (New Jobs cards): `NN% match`, color-graded — offer green (≥66%),
+  accent orange (≥40%), danger red (<40%), all via theme tokens. Shown only when a job has
+  been analyzed.
 - **Profile Match panel** (job detail): the score, per-signal bars (semantic/keyword/BM25/skill),
   matched skills (offer-tinted chips) vs missing skills (muted chips), matched keyword groups,
   and the LLM rationale when present.

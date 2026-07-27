@@ -92,9 +92,11 @@ scrolls the columns instead of overflowing the screen. The **job detail panel** 
 Rejected / Ghosted with their durable, write-once first-dates (from the `date_first_*` / `date_found`
 job fields).
 
-Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options** (Profile left of Find
-Jobs, Options right). Profile + Options are right-side slide-over panels mirroring the job
-detail panel; Find Jobs is a centered modal.
+Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options · theme toggle**
+(Profile left of Find Jobs, Options right, and a `role="switch"` sun/moon pill right of
+Options that flips the `arctic`/`midnight` themes — `toggleTheme()`, persisted to
+`localStorage['magnify.theme']`, desktop-only via `data-desk`). Profile + Options are
+right-side slide-over panels mirroring the job detail panel; Find Jobs is a centered modal.
 
 ### Application Mode
 
