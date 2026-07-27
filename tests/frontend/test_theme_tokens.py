@@ -70,6 +70,13 @@ def test_brand_colors_present(html):
     assert BRAND_WHITE in midnight, "midnight text must be the belly off-white"
 
 
+def test_header_always_midnight(html):
+    """The sticky header re-scopes the theme vars to the logo navy in both themes."""
+    header = re.search(r"<header\b[^>]*>", html).group(0)
+    for override in ("--surface:#132433", "--text:#F7F6F5", "--border:#24394E"):
+        assert override in header, f"header must pin {override}"
+
+
 def test_theme_toggle_wired(html):
     assert 'aria-label="Toggle theme"' in html
     assert 'role="switch"' in html
