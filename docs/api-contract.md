@@ -20,6 +20,20 @@ JSON-over-HTTP contracts for the Flask blueprints. All endpoints return JSON unl
 
 - `POST /api/scrape/start` — body: scrape parameters derived from config → returns a `job_id` for the async run.
 - `GET /api/scrape/status/<job_id>` → run status/progress for polling: `{status, progress:{stage,percent,details}, events:[{t,stage,percent,message},...], results, ...}`. `events` is an append-only, timestamped, de-duplicated log of every pipeline step, surfaced as the UI's live activity feed.
+  - `progress.details` carries the counters behind the Find Jobs stat tiles, all **cumulative
+    across every search iteration** and non-decreasing for the life of a run: `jobs_found` (raw
+    listings the boards returned), `jobs_saved` (rows inserted — updated as each iteration's
+    storage step completes, not only at the end), `jobs_kept` (survived filtering), and, on the
+    terminal event, `jobs_unique` (after in-batch dedup). A fresh scraper is constructed per
+    iteration, so these are accumulated by `execute_full_scraping_workflow`, never read off a
+    single pass.
+  - `results` mirrors the same run totals at top level — `jobs_found`, `jobs_unique`,
+    `jobs_saved`, `jobs_kept`, `jobs_added` — alongside `steps`. Inside `steps`,
+    `scraping.raw_jobs_count`, `processing.processed_count`, `db_dedup.removed`, and
+    `storage.stored_count`/`job_ids` are run totals; each keeps the pass-local figure as
+    `last_pass_count` (`db_dedup.last_pass_removed`). Multi-iteration runs also get
+    `steps.iterations = {count, total_raw, total_unique, total_new_stored, passes:[{iteration,
+    offset, raw, stored}]}`.
 
 ## Jobs
 
