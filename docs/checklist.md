@@ -977,6 +977,18 @@ missing-verdict gap, not the full analyzed set.
   mocked-client tests; issuing real verdicts for the covered jobs needs an enabled endpoint
   (Options → LLM Endpoint) + "LLM re-rank" on.
 
+## Logo-Derived Themes + Theme Toggle (2026-07-27)
+
+- [x] Replace `editorial`/`neon` with logo-derived `arctic` (light) / `midnight` (dark) themes
+  (`docs/plans/logo-color-themes-and-toggle.md`).
+- [x] Retire hardcoded `#E5484D` red behind a per-theme `--danger` token; darken industry pill
+  colors on the light theme via `color-mix`.
+- [x] Header theme toggle (`role="switch"`, right of Options, persisted to
+  `localStorage['magnify.theme']`).
+- [x] Token-contract tests in `tests/frontend/test_theme_tokens.py`.
+- [ ] **Mobile theme toggle placement** — the switch is `data-desk` (hidden <880px); decide a
+  mobile home (e.g. Options panel) if phone users need the dark theme.
+
 ## Deferred / Follow-up Work
 
 - [ ] **Migrate web code to `web/`** per `docs/skills/repository-structure/structures/web-interfaces.md` (Mode F). Deferred because the app is working and a frontend rebuild is planned.
