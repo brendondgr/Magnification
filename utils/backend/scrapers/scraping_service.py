@@ -65,7 +65,12 @@ def execute_full_scraping_workflow(
         progress_callback: Optional function(status_dict) to report progress
     
     Returns:
-        Dict containing workflow statistics and results
+        Dict containing workflow statistics and results. Alongside `steps`, the payload carries
+        run-level totals accumulated across **every** iteration: `jobs_found` (raw listings
+        returned by the boards), `jobs_unique` (after in-batch dedup), `jobs_saved`/`jobs_added`
+        (rows inserted), and `jobs_kept` (survived filtering). The same totals are pushed through
+        `progress_callback` as `details.jobs_found` / `details.jobs_saved` / `details.jobs_kept`
+        so a client polling mid-run sees cumulative, monotonic counters rather than per-pass ones.
     """
     logger.info("=" * 60)
     logger.info("Starting Full Scraping Workflow")
@@ -153,14 +158,28 @@ def execute_full_scraping_workflow(
         if not save_to_database:
             max_iterations = 1
 
+        # Run-level cumulative counters. Every iteration builds a *fresh* JobSpyScraper (whose
+        # own tally restarts at zero) and overwrites its slice of `results['steps']`, so the
+        # numbers the UI shows — "Jobs Found" / "Jobs Saved" — must be accumulated here instead
+        # of read off a single pass. `cum_raw` is every raw listing the boards returned,
+        # `cum_processed` the in-batch-unique remainder, `cum_stored` the rows actually inserted.
+        totals = {'raw': 0, 'processed': 0, 'db_dedup_removed': 0, 'stored': 0}
+        iteration_passes = []
+        all_job_ids = []
+
         def _scrape_process_store(iteration, offset):
             """One scrape → process → db-dedup → LinkedIn → save pass at the given page offset.
 
             Returns (job_ids, raw_count, processed_jobs). Passes that find nothing return
             ([], raw_count, []) so the outer loop can try the next page rather than ending the
             whole workflow.
+
+            Updates `totals` in place as each stage completes, and reports the *cumulative*
+            `jobs_found` / `jobs_saved` through the progress callback so the client never sees a
+            counter walk backwards at an iteration boundary.
             """
             iter_tag = f'[iter {iteration}/{max_iterations}] ' if max_iterations > 1 else ''
+            raw_before = totals['raw']
 
             # Step 2: Execute concurrent scraping
             _countries_txt = ', '.join(countries) if countries else DEFAULT_COUNTRY
@@ -182,11 +201,15 @@ def execute_full_scraping_workflow(
                     return
                 last_logged_bucket[0] = bucket
 
+                # `jobs_count` is this pass' own tally (a fresh scraper per iteration), so add
+                # the earlier passes' raw total to keep the reported figure run-cumulative.
+                running_found = raw_before + jobs_count
                 # Map 0-100% scraper progress to 10-80% workflow progress
                 workflow_percent = 10 + (scraper_percent * 0.7)
                 update_progress('scraping', workflow_percent, {
-                    'message': f'{iter_tag}Scraping... ({int(scraper_percent)}% done) - Found {jobs_count} jobs',
-                    'jobs_found': jobs_count
+                    'message': f'{iter_tag}Scraping... ({int(scraper_percent)}% done) - Found {running_found} jobs',
+                    'jobs_found': running_found,
+                    'jobs_saved': totals['stored'],
                 })
 
             # Note: JobSpyScraper takes 'job_titles' argument but we pass search_terms
@@ -205,13 +228,17 @@ def execute_full_scraping_workflow(
 
             scraper.run()
             raw_jobs = scraper.all_jobs
+            totals['raw'] += len(raw_jobs)
 
+            # `raw_jobs_count` is the run total across every iteration; `last_pass_count` and
+            # `summary` describe the pass that just finished.
             results['steps']['scraping'] = {
-                'raw_jobs_count': len(raw_jobs),
+                'raw_jobs_count': totals['raw'],
+                'last_pass_count': len(raw_jobs),
                 'summary': scraper.get_summary()
             }
 
-            logger.info(f"  Scraped {len(raw_jobs)} raw jobs")
+            logger.info(f"  Scraped {len(raw_jobs)} raw jobs (run total {totals['raw']})")
 
             if not raw_jobs:
                 logger.warning(f"{iter_tag}No jobs scraped this pass.")
@@ -222,10 +249,16 @@ def execute_full_scraping_workflow(
             update_progress('processing', 80, {'message': f'{iter_tag}Processing {len(raw_jobs)} raw jobs...'})
             logger.info("Step 3: Processing and deduplicating data...")
             processed_jobs = process_scraped_jobs(raw_jobs)
-            update_progress('processing', 82, {'message': f'{iter_tag}Deduplicated {len(raw_jobs)} → {len(processed_jobs)} unique jobs'})
+            totals['processed'] += len(processed_jobs)
+            update_progress('processing', 82, {
+                'message': f'{iter_tag}Deduplicated {len(raw_jobs)} → {len(processed_jobs)} unique jobs',
+                'jobs_found': totals['raw'],
+                'jobs_saved': totals['stored'],
+            })
 
             results['steps']['processing'] = {
-                'processed_count': len(processed_jobs),
+                'processed_count': totals['processed'],
+                'last_pass_count': len(processed_jobs),
                 'statistics': get_job_statistics(processed_jobs)
             }
 
@@ -244,9 +277,16 @@ def execute_full_scraping_workflow(
                 not in existing_keys
             ]
             removed_existing = before_db_dedup - len(processed_jobs)
-            results['steps']['db_dedup'] = {'removed': removed_existing, 'remaining': len(processed_jobs)}
+            totals['db_dedup_removed'] += removed_existing
+            results['steps']['db_dedup'] = {
+                'removed': totals['db_dedup_removed'],
+                'last_pass_removed': removed_existing,
+                'remaining': len(processed_jobs),
+            }
             update_progress('processing', 83, {
-                'message': f'{iter_tag}Removed {removed_existing} job(s) already in database · {len(processed_jobs)} remaining'
+                'message': f'{iter_tag}Removed {removed_existing} job(s) already in database · {len(processed_jobs)} remaining',
+                'jobs_found': totals['raw'],
+                'jobs_saved': totals['stored'],
             })
             logger.info(f"  Removed {removed_existing} already-tracked jobs, {len(processed_jobs)} remaining")
 
@@ -313,7 +353,11 @@ def execute_full_scraping_workflow(
             # duplicate lookup is needed before inserting.
             iter_job_ids = []
             if save_to_database:
-                update_progress('saving', 88, {'message': f'{iter_tag}Saving to database...'})
+                update_progress('saving', 88, {
+                    'message': f'{iter_tag}Saving to database...',
+                    'jobs_found': totals['raw'],
+                    'jobs_saved': totals['stored'],
+                })
                 logger.info("Step 5: Storing jobs in database...")
                 from ..database.operations import add_job
 
@@ -328,13 +372,25 @@ def execute_full_scraping_workflow(
                         logger.error(f"Error storing job: {e}")
                         results['errors'].append(f"Store error: {e}")
 
+                # Roll the newly-inserted rows into the run total the moment they land, so
+                # "Jobs Saved" ticks up per iteration rather than only at completion.
+                totals['stored'] += stored_count
+                all_job_ids.extend(iter_job_ids)
                 results['steps']['storage'] = {
-                    'stored_count': stored_count,
-                    'job_ids': iter_job_ids
+                    'stored_count': totals['stored'],
+                    'last_pass_count': stored_count,
+                    'job_ids': list(all_job_ids)
                 }
 
-                update_progress('saving', 90, {'message': f'{iter_tag}Stored {stored_count} new job(s)'})
-                logger.info(f"  Stored {stored_count} jobs")
+                update_progress('saving', 90, {
+                    'message': (
+                        f'{iter_tag}Stored {stored_count} new job(s)'
+                        + (f" · {totals['stored']} saved so far" if max_iterations > 1 else '')
+                    ),
+                    'jobs_found': totals['raw'],
+                    'jobs_saved': totals['stored'],
+                })
+                logger.info(f"  Stored {stored_count} jobs (run total {totals['stored']})")
             else:
                 logger.info("Step 5: Skipping database storage (disabled)")
                 results['steps']['storage'] = {'skipped': True}
@@ -344,28 +400,55 @@ def execute_full_scraping_workflow(
         # Run the scrape/store block once per iteration, paging deeper each pass and
         # accumulating the newly-saved job ids. Steps 6–7 run ONCE over the accumulation.
         job_ids = []
-        total_raw = 0
         processed_jobs = []
         for _i in range(max_iterations):
             _ids, _raw, _proc = _scrape_process_store(_i + 1, _i * results_wanted)
             job_ids.extend(_ids)
-            total_raw += _raw
             processed_jobs = _proc  # last pass' processed jobs (used by the non-DB filter path)
+            iteration_passes.append({
+                'iteration': _i + 1,
+                'offset': _i * results_wanted,
+                'raw': _raw,
+                'stored': len(_ids),
+            })
             if max_iterations > 1:
-                update_progress('saving', 90, {'message': (
-                    f'Iteration {_i + 1}/{max_iterations} done · +{len(_ids)} new job(s) '
-                    f'(total {len(job_ids)})'
-                )})
+                update_progress('saving', 90, {
+                    'message': (
+                        f'Iteration {_i + 1}/{max_iterations} done · +{len(_ids)} new job(s) '
+                        f'(total {len(job_ids)})'
+                    ),
+                    'jobs_found': totals['raw'],
+                    'jobs_saved': totals['stored'],
+                })
+        total_raw = totals['raw']
         if max_iterations > 1:
             results['steps']['iterations'] = {
-                'count': max_iterations, 'total_raw': total_raw, 'total_new_stored': len(job_ids)
+                'count': max_iterations,
+                'total_raw': total_raw,
+                'total_unique': totals['processed'],
+                'total_new_stored': len(job_ids),
+                'passes': iteration_passes,
             }
 
         # No new jobs across all passes (DB mode): nothing to filter/analyze — complete here.
+        # Report the *real* cumulative raw total; zeroing `jobs_found` here would wipe a
+        # legitimately non-zero counter just because everything deduped away.
         if save_to_database and not job_ids:
             logger.info("No new jobs found across all iterations. Workflow complete.")
             results['success'] = True
-            update_progress('completed', 100, {'message': 'No new jobs found', 'jobs_found': 0})
+            results['jobs_found'] = total_raw
+            results['jobs_unique'] = totals['processed']
+            results['jobs_saved'] = 0
+            results['jobs_kept'] = 0
+            results['jobs_added'] = 0
+            update_progress('completed', 100, {
+                'message': f'No new jobs found ({total_raw} listing(s) checked)',
+                'jobs_found': total_raw,
+                'jobs_unique': totals['processed'],
+                'jobs_saved': 0,
+                'jobs_kept': 0,
+                'jobs_added': 0,
+            })
             return results
 
         # Step 6: Apply title/description keyword filters, marking non-matching jobs ignored
@@ -434,12 +517,24 @@ def execute_full_scraping_workflow(
                 results['errors'].append(f"Analysis error: {e}")
 
         results['success'] = True
+        _kept = (filter_results.get('kept', 0) if isinstance(filter_results.get('kept'), int)
+                 else len(filter_results.get('kept', [])))
+        # Run totals on the returned payload too — `scheduler/daily_runner` logs
+        # result['jobs_found'/'jobs_kept'/'jobs_added'], which previously had no such keys.
+        results['jobs_found'] = total_raw
+        results['jobs_unique'] = totals['processed'] if save_to_database else len(processed_jobs)
+        results['jobs_saved'] = len(job_ids) if save_to_database else 0
+        results['jobs_kept'] = _kept
+        results['jobs_added'] = len(job_ids) if save_to_database else 0
         update_progress('completed', 100, {
             'message': 'Completed',
-            # New unique jobs saved across all iterations (DB mode); the last pass' processed
-            # count in the non-DB path where nothing is stored.
-            'jobs_found': len(job_ids) if save_to_database else len(processed_jobs),
-            'jobs_kept': filter_results.get('kept', 0) if isinstance(filter_results, dict) else len(filter_results.get('kept', [])),
+            # Every raw listing the boards returned across all iterations — the same figure the
+            # live counter climbs to, so it never drops at the end of the run.
+            'jobs_found': total_raw,
+            # The in-batch-unique remainder, and the rows actually inserted (DB mode).
+            'jobs_unique': totals['processed'] if save_to_database else len(processed_jobs),
+            'jobs_saved': len(job_ids) if save_to_database else 0,
+            'jobs_kept': _kept,
             'jobs_added': len(job_ids) if save_to_database else 0
         })
         

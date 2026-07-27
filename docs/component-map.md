@@ -30,7 +30,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 | --- | --- | --- |
 | Jobs / Tracker / Saved | `jobs, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
-| Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, useLLM` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
+| Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, maxIterations, useLLM, percent, stage, statusMsg, found, saved, notHidden, scrapeEvents, scrapeDone` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
 | **Profile & Documents** | `profileOpen, docsTab('candidate'\|'guidance'), profile{llm_instructions,interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy, pfSkillsExpanded, guidanceText, guidanceBusy, guidanceStatus, guidanceIsDefault` | `openProfile` (now also calls `loadDocuments`), `loadProfile`, `saveProfile`, `blockCompany`, `addSkillToProfile`, `onResumeFile`, `rebuildProfile` (unions `skills` + `blocked_companies`), `pfSet`; guidance: `loadDocuments` (loads the guidance), `saveGuidance`, `resetGuidance` |
 | **Options** | `optionsOpen, optionsTab, llm{...}, runtime{...}, llmTest` | `openOptions`, `loadOptions`, `saveLlmOptions`, `testLlmOptions`, `saveRuntimeOptions`, `llmSet`/`rtSet`/`rtWeightSet` |
@@ -97,6 +97,21 @@ Header nav order: **New Jobs · Tracker · Profile · Find Jobs · Options · th
 Options that flips the `arctic`/`midnight` themes — `toggleTheme()`, persisted to
 `localStorage['magnify.theme']`, desktop-only via `data-desk`). Profile + Options are
 right-side slide-over panels mirroring the job detail panel; Find Jobs is a centered modal.
+
+### Find Jobs progress view
+
+`startScrape` resets `found`/`saved`/`notHidden` to 0 and `pollScrape` polls
+`/api/scrape/status/<id>` once a second, feeding three stat tiles (`scrapeStats`):
+**Jobs Found** (`s.found`) · **Jobs Saved** (`s.saved`) · **Not Hidden** (`s.notHidden`), plus the
+percent ring and the live activity feed built from `s.scrapeEvents`.
+
+All three read the **run-cumulative** counters the backend reports in `progress.details`
+(`jobs_found`, `jobs_saved`, `jobs_kept`) — a multi-iteration search accumulates across passes
+instead of restarting per pass, and `jobs_saved` updates as each iteration's rows land rather than
+only at completion. The poller additionally clamps each tile with `rise(cur,next)` (a `Math.max`
+against the pre-patch state) so an out-of-order poll cannot walk a counter backwards, and reads
+the final values off `results.jobs_found`/`jobs_saved`/`jobs_unique` rather than a last-pass
+`steps` slice. See `docs/data-flow.md` and `docs/api-contract.md`.
 
 ### Application Mode
 

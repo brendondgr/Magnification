@@ -41,6 +41,22 @@ page `offset` by `results_wanted` to surface additional unique jobs; the databas
 anything an earlier pass saved. The filter + analysis steps run once over the accumulated new
 jobs.
 
+Because every iteration builds a **fresh** `JobSpyScraper` (whose own tally restarts at zero)
+and rewrites its slice of `results['steps']`, the run counters are accumulated by
+`execute_full_scraping_workflow` itself and pushed through the progress callback as
+`details.jobs_found` / `jobs_saved` / `jobs_kept`. They are **cumulative across all iterations
+and never decrease mid-run**, which is what the Find Jobs progress view's three stat tiles show:
+
+| Tile | Meaning |
+| --- | --- |
+| **Jobs Found** | every raw listing the boards returned, summed over all iterations |
+| **Jobs Saved** | rows actually inserted — bumped as each iteration's storage step completes |
+| **Not Hidden** | of those, the ones that survived the keyword filter (filtering runs once) |
+
+The in-batch-unique count sits alongside them as `jobs_unique` (terminal event + `results`) and
+is surfaced in the completion summary line when it differs from `Jobs Found`. The client also
+clamps each tile monotonically, so an out-of-order poll cannot walk a counter backwards.
+
 The dedup/database-check/filter steps run *before* the LinkedIn fetch and LLM compensation
 steps specifically so those expensive calls only ever touch jobs that are both new and pass
 the keyword filter — not the full scraped batch. LinkedIn descriptions are fetched

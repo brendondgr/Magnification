@@ -1,5 +1,46 @@
 # Project Checklist — Magnification
 
+## Cumulative "Jobs Found" / "Jobs Saved" — Definition of Done
+Plan: `docs/plans/cumulative-scrape-counts.md`. Delivered on branch `cumulative-scrape-counts`
+(Mode A — worktree), committed per phase, merged to `main`.
+
+Requirement (user): with multiple search iterations, **"Jobs Found" must be accurate and
+cumulative**, and **"Jobs Saved" must be cumulative and update after every iteration when the
+items are saved**.
+
+- [x] (1/5) Plan doc + worktree; root-caused — each iteration builds a **fresh** `JobSpyScraper`
+  (its tally restarts at 0) and overwrites its slice of `results['steps']`, so the live counter
+  sawtoothed and the final numbers described only the last pass; nothing ever emitted a saved
+  count mid-run; the "no new jobs" early return zeroed `jobs_found`.
+- [x] (2/5) Run-level `totals` (raw/processed/db_dedup_removed/stored) + `all_job_ids` hoisted out
+  of the per-pass closure; scraper progress adds earlier passes' raw total before reporting
+  `jobs_found`; `jobs_saved` rides every progress emit and is rolled up the moment each
+  iteration's rows land; `steps.scraping/processing/db_dedup/storage` hold run totals with the
+  pass-local figure kept as `last_pass_count`; `steps.iterations` gains `total_unique` + a
+  per-pass breakdown; early return reports the real raw total. Also fixed in passing:
+  `results` now carries top-level `jobs_found`/`jobs_unique`/`jobs_saved`/`jobs_kept`/`jobs_added`
+  — keys `scheduler/daily_runner` already logged but the workflow never returned (its daily log
+  line printed `found=None kept=None added=None`).
+- [x] (3/5) `tests/scrapers/test_cumulative_counts.py` — 7 offline cases (run totals vs last pass,
+  monotonic cumulative `jobs_found`, `jobs_saved` observed at 3/6/9 mid-run, fully-deduped run
+  reporting the real raw total, payload totals, unchanged single-pass behavior, overlapping pages).
+  All 7 fail against the pre-fix service and pass after.
+- [x] (4/5) `pollScrape` consumes `details.jobs_saved`, clamps `found`/`saved`/`notHidden`
+  monotonically (`rise()` vs the pre-patch state), and reads completion values off the results
+  payload; summary line surfaces `jobs_unique` when it differs from found.
+- [x] (5/5) Wiring test `test_index_scrape_stats_are_cumulative` + docs (`api-contract.md`,
+  `data-flow.md`, `find_jobs.md`, `component-map.md`, this checklist); merged to `main`, worktree
+  removed.
+- [x] Verified by replaying a **real captured `/api/scrape/status` stream** (3 iterations through
+  the actual blueprint + workflow; boards and DB writes faked, no network) through the poller body
+  lifted verbatim from the served page: **before** Found 1,2,3,4 → 1,2,3,4 → 1,2,3,4 ending at 4
+  with Saved 0 all run then 3; **after** Found 1…12 monotonic ending at 12, Saved 0 → 4 → 7 → 10.
+  Two monotonicity violations before, zero after. Full inline script parses clean (`node --check`).
+- [x] Offline `tests/scrapers` (37) + `tests/test_frontend_wiring.py` (20) green; `import app` clean.
+- [ ] **Live multi-iteration scrape against real job boards** — the accumulation, progress stream,
+  and poller math are proven end-to-end against the real routes with faked boards; watching the
+  tiles climb on a real 3-iteration search needs an actual Find Jobs run (network).
+
 ## Job Card Rows + Shared Description Enrichment — Definition of Done
 Plan: `docs/plans/job-card-rows-and-shared-enrichment.md`. Delivered on branch
 `job-card-and-enrichment` (Mode B — no worktree), committed per phase, merged to `main`.

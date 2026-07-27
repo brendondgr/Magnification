@@ -138,7 +138,22 @@ To include new fields:
   a jobspy page `offset` by `results_wanted` each pass so later iterations surface *new* jobs.
   Cross-iteration uniqueness comes from the existing in-batch + database dedup; the keyword filter
   and LLM analysis still run once over the accumulated new jobs. Non-DB scrapes ignore it (single
-  pass, since there is no store to dedup against).
+  pass, since there is no store to dedup against). The progress view's counters are **cumulative
+  across iterations** — see "Progress counters" below.
+
+**Progress counters (as shipped).** The progress view shows three stat tiles, all cumulative over
+the whole run and non-decreasing:
+
+| Tile | `progress.details` key | Meaning |
+| --- | --- | --- |
+| **Jobs Found** | `jobs_found` | every raw listing the boards returned, summed over all iterations |
+| **Jobs Saved** | `jobs_saved` | rows inserted; bumped as each iteration's storage step finishes |
+| **Not Hidden** | `jobs_kept` | of those, the ones that survived the keyword filter |
+
+Each iteration constructs a fresh scraper whose own tally restarts at zero, so
+`execute_full_scraping_workflow` accumulates these at the run level rather than reporting a
+single pass. The completion summary also surfaces `jobs_unique` (the in-batch-deduped count) when
+it differs from `Jobs Found`. Full field list: `docs/api-contract.md`.
 
 ### 2.2 Configuration Saving (Front-End)
 Create a new API endpoint that accepts POST requests with the modal form data.
