@@ -78,6 +78,9 @@ def test_header_and_sidebar_always_midnight(html):
         for override in ("--surface:#132433", "--text:#F7F6F5", "--border:#24394E"):
             assert override in chrome, f"{name} must pin {override}"
         assert "color:var(--text)" in chrome, f"{name} must re-resolve inherited text color"
+    # --font-head is per-theme (serif on arctic); the always-dark header must pin it so the
+    # wordmark doesn't change typeface when the page theme flips.
+    assert "--font-head:'Space Grotesk'" in header, "header must pin its heading font"
 
 
 def test_theme_toggle_wired(html):

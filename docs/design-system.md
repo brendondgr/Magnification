@@ -118,7 +118,9 @@ Rules encoded in the tokens:
   dark banner and rail frame the light content; on `midnight` they match the page. Because the
   override re-scopes the `var()` lookups (and re-resolves inherited text color) for the whole
   subtree, the nav tabs, header buttons, theme switch, pipeline counts, and Clear Database
-  button restyle automatically; the accent stays the shared beak orange. `color:var(--text)`
+  button restyle automatically; the accent stays the shared beak orange. The header also pins
+  `--font-head` to Space Grotesk so the wordmark keeps one typeface across themes (`--font-head`
+  is otherwise per-theme: Newsreader serif on `arctic`). `color:var(--text)`
   on the scoping element is load-bearing: text without an explicit color otherwise inherits
   the page theme's computed color from the root, not the scoped navy palette.
 - **Theme toggle.** A `role="switch"` pill (sun/moon knob) sits right of the **Options** button
