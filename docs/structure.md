@@ -71,7 +71,7 @@ Magnification/
 │   ├── scheduler/              # LLM-health probe + once-per-day runner (offline, mocked)
 │   └── docs/                   # Doc/skill-pointer verification tests
 │
-├── images/                     # Brand source assets (magnify.svg / magnify.png — the logo)
+├── images/                     # Brand source assets (magnify.svg / magnify.png) + README screenshots/demo
 │
 ├── deploy/                     # Deployment assets (not app code)
 │   ├── bin/                    # jobsctl — `jobs start|stop|restart|status|logs|search` app-control wrapper
@@ -93,7 +93,7 @@ Magnification/
 | `utils/backend/scheduler/` | LLM-gated, once-per-day job-search runner + CLI invoked by the systemd units. |
 | `deploy/systemd/` | Systemd **user** units + installer for the web app on boot and the automated daily search (see `deploy/systemd/README.md`). |
 | `utils/frontend/` | Jinja templates and static CSS/JS/image assets. |
-| `images/` | Source brand assets. `images/magnify.svg` is the canonical logo; the copy served to the browser lives at `utils/frontend/static/img/magnify.svg`. |
+| `images/` | Source brand assets plus README media. `images/magnify.svg` is the canonical logo; the copy served to the browser lives at `utils/frontend/static/img/magnify.svg`. `FullBodyScreenshot.png` / `InProgressJobSearch.png` are the README screenshots, and `FullAppOverview-web.webm` / `.mp4` are the compressed walkthrough (1280×660, 24 fps — re-encode any new capture the same way; the full-size master stays out of git via `.gitignore`). |
 | `utils/LocalLLM/` | Self-contained local-LLM management library. |
 | `tests/` | Lightweight, area-grouped tests. |
 | `data/` | Local SQLite DB and runtime data (gitignored). |

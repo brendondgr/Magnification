@@ -133,3 +133,6 @@ Thumbs.db
 
 # Local Claude Code preview config
 .claude/
+
+# Full-size screen-recording masters (commit only the compressed *-web.webm/.mp4)
+images/FullAppOverview.webm

@@ -8,7 +8,14 @@
 
 A local-first job-search platform: it scrapes job boards on a schedule, ranks every listing against your résumé with a hybrid RAG + LLM recommender, and gives you a Flask/React-runtime UI to review, save, and track applications through a kanban board.
 
-No live demo — it's a single-user, local-first app by design (see [Setup](#setup) to run it).
+No hosted demo — it's a single-user, local-first app by design (see [Setup](#setup) to run it), so here's what it looks like instead.
+
+<p align="center">
+  <img src="images/FullBodyScreenshot.png" alt="The New Jobs queue: a grid of scraped listings, each showing its source board, category, match percentage, location, salary, and description preview, with Generate/Applied actions and a pipeline sidebar" width="900">
+</p>
+
+<p align="center"><sub><strong>The New Jobs queue</strong> — every scraped listing scored against your résumé and sorted by match.<br>
+▶ <a href="images/FullAppOverview-web.webm">Watch the 37-second walkthrough</a> (WebM, 1 MB · <a href="images/FullAppOverview-web.mp4">MP4</a>)</sub></p>
 
 ## Overview
 
@@ -33,6 +40,12 @@ Job searching means checking a dozen boards a day and re-reading listings you've
 - **Review workflow** — New Jobs → Save or Hide → an application-status kanban tracker, with per-company/title blocklists that retroactively hide matches
 - **LLM-gated daily automation** — a systemd timer scrapes on boot and daily, checking LLM availability first (retries every 10 min for up to an hour, otherwise skips)
 - **Live scraping activity feed** — step-by-step progress surfaced to the UI while a scrape runs, not just a spinner
+
+<p align="center">
+  <img src="images/InProgressJobSearch.png" alt="The Find Jobs panel mid-scrape: a 38 percent progress ring, counters for jobs found, jobs saved, and not hidden, and a timestamped live activity log" width="480">
+</p>
+
+<p align="center"><sub>A scrape in progress — per-iteration progress and a timestamped activity log, with cumulative counters across all five iterations.</sub></p>
 
 ## Setup
 
