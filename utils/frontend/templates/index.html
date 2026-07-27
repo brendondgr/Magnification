@@ -1394,23 +1394,23 @@
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;newjobs&quot;,&quot;tracker&quot;],&quot;default&quot;:&quot;newjobs&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Look&quot;}}">
 class Component extends DCLogic {
   static THEMES = {
-    neon: {
-      '--bg':'#0E0E10','--surface':'#161619','--surface2':'#1E1E24','--text':'#F3F3F1','--muted':'#8E8E99',
-      '--border':'#27272F','--border2':'#3A3A45','--bw':'1.5px',
-      '--accent':'#C8FF3D','--accent-ink':'#0E0E10','--accent-text':'#C8FF3D','--accent2':'#FF3D8A',
-      '--c-applied':'#7C5CFF','--c-interview':'#FF4D8D','--c-offer':'#00E5B0','--c-offer-text':'#00E5B0','--c-reject':'#FF4D6A','--c-archive':'#6B6B78',
+    midnight: {
+      '--bg':'#0C1826','--surface':'#132433','--surface2':'#1B3145','--text':'#F7F6F5','--muted':'#8CA0B3',
+      '--border':'#24394E','--border2':'#35506A','--bw':'1.5px',
+      '--accent':'#F4A226','--accent-ink':'#132433','--accent-text':'#F4A226','--accent2':'#8CA0B3',
+      '--c-applied':'#5FA8E0','--c-interview':'#F4A226','--c-offer':'#3FCF8E','--c-offer-text':'#3FCF8E','--c-reject':'#F26D6D','--c-archive':'#66798C',
       '--radius':'18px','--r-sm':'11px',
       '--font-head':"'Space Grotesk', sans-serif",'--font-body':"'Archivo', sans-serif",'--font-mono':"'JetBrains Mono', monospace",
-      '--shadow':'0 20px 50px -14px rgba(0,0,0,.75)','--card':'#17171B'
+      '--shadow':'0 20px 50px -14px rgba(4,10,17,.75)','--card':'#172B3C'
     },
-    editorial: {
-      '--bg':'#EFE9DC','--surface':'#F8F3E9','--surface2':'#FFFFFF','--text':'#221C14','--muted':'#6E6456',
-      '--border':'#DDD2BF','--border2':'#C6B99F','--bw':'1px',
-      '--accent':'#C0522A','--accent-ink':'#FFF8EF','--accent-text':'#A8421F','--accent2':'#2B5F75',
-      '--c-applied':'#2B5F75','--c-interview':'#C0522A','--c-offer':'#4F7D5B','--c-offer-text':'#3F6B4B','--c-reject':'#B23B36','--c-archive':'#9A8C73',
+    arctic: {
+      '--bg':'#E9EDF1','--surface':'#F7F6F5','--surface2':'#FFFFFF','--text':'#132433','--muted':'#5B6B7A',
+      '--border':'#D7DEE5','--border2':'#B7C3CE','--bw':'1px',
+      '--accent':'#F4A226','--accent-ink':'#132433','--accent-text':'#B26E0E','--accent2':'#223140',
+      '--c-applied':'#2E6E9E','--c-interview':'#C77E0F','--c-offer':'#3E7D5C','--c-offer-text':'#356B4E','--c-reject':'#B23B36','--c-archive':'#7C8894',
       '--radius':'6px','--r-sm':'4px',
       '--font-head':"'Newsreader', serif",'--font-body':"'Archivo', sans-serif",'--font-mono':"'JetBrains Mono', monospace",
-      '--shadow':'0 18px 44px -18px rgba(70,52,28,.42)','--card':'#FBF7EF'
+      '--shadow':'0 18px 44px -18px rgba(19,36,51,.35)','--card':'#FCFBFA'
     }
   };
   static COLS = [
@@ -1453,7 +1453,7 @@ class Component extends DCLogic {
     const routed=this.tabFromHash();
     const tab = routed || ((props && props.startView==='tracker') ? 'tracker' : 'newjobs');
     this.state = {
-      theme:'editorial', tab, sidebarOpen:true, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
+      theme:'arctic', tab, sidebarOpen:true, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null, clearMenuOpen:false,
       sortByMatch:false, savedSortByMatch:false, analyzing:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
