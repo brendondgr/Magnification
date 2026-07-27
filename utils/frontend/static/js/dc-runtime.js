@@ -327,7 +327,27 @@
     onfocus: "onFocus",
     onblur: "onBlur",
     ondoubleclick: "onDoubleClick",
-    oncontextmenu: "onContextMenu"
+    oncontextmenu: "onContextMenu",
+    // Multi-word events the generic `on` + capitalize-first fallback below
+    // cannot recover (it would emit `onDragstart`, which React ignores).
+    ondrag: "onDrag",
+    ondragstart: "onDragStart",
+    ondragend: "onDragEnd",
+    ondragenter: "onDragEnter",
+    ondragleave: "onDragLeave",
+    ondragover: "onDragOver",
+    ondrop: "onDrop",
+    onmousemove: "onMouseMove",
+    onmouseover: "onMouseOver",
+    onmouseout: "onMouseOut",
+    onpointerdown: "onPointerDown",
+    onpointerup: "onPointerUp",
+    onpointermove: "onPointerMove",
+    ontouchstart: "onTouchStart",
+    ontouchmove: "onTouchMove",
+    ontouchend: "onTouchEnd",
+    onanimationend: "onAnimationEnd",
+    ontransitionend: "onTransitionEnd"
   };
   var ATTRS = `(?:[^>"']|"[^"]*"|'[^']*')*`;
   var IMPORT_SELF_CLOSE_RE = new RegExp(

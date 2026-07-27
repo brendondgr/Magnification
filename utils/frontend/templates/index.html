@@ -180,7 +180,7 @@
 
           <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;flex:1;min-width:0;min-height:0">
             <sc-for list="{{ columns }}" as="col" hint-placeholder-count="4">
-              <div ondragover="{{ col.onDragOver }}" ondrop="{{ col.onDrop }}" style="{{ col.style }}">
+              <div ondragover="{{ col.onDragOver }}" ondragleave="{{ col.onDragLeave }}" ondrop="{{ col.onDrop }}" style="{{ col.style }}">
                 <div style="display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:var(--bw) solid var(--border)">
                   <span style="{{ col.dot }}"></span>
                   <span style="font:600 14px/1 var(--font-head);color:var(--text)">{{ col.label }}</span>
@@ -2428,6 +2428,7 @@ class Component extends DCLogic {
         badge:'margin-left:auto;font:600 12px/1 var(--font-mono);color:var(--muted);background:var(--bg);padding:4px 9px;border-radius:99px;border:var(--bw) solid var(--border)',
         style:'flex:0 0 300px;display:flex;flex-direction:column;background:var(--surface);border-radius:var(--radius);min-height:0;height:100%;max-height:100%;overflow:hidden;transition:border-color .15s,box-shadow .15s;border:var(--bw) solid '+(over?'var(--accent)':'var(--border)')+';box-shadow:'+(over?'0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)':'none'),
         onDragOver:(e)=>{ e.preventDefault(); if(e&&e.dataTransfer) e.dataTransfer.dropEffect='move'; if(s.dragOverCol!==c.key) this.setState({dragOverCol:c.key}); },
+        onDragLeave:(e)=>{ if(e&&e.currentTarget&&e.relatedTarget&&e.currentTarget.contains(e.relatedTarget)) return; if(this.state.dragOverCol===c.key) this.setState({dragOverCol:null}); },
         onDrop:(e)=>{ e.preventDefault(); this.moveTo(c.key); }
       };
     });
