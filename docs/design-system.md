@@ -112,12 +112,15 @@ Rules encoded in the tokens:
   cards, failure chips, low-match text) uses `var(--danger)` (hover tints via
   `color-mix(… 12%, transparent)`); the old hardcoded `#E5484D` is retired. Solid `--danger`
   chips pair with `color:var(--surface)` so the text works in both themes.
-- **The header is always midnight.** The sticky header re-declares the theme custom
-  properties inline (`--surface:#132433`, `--text:#F7F6F5`, …) so it wears the logo's navy in
-  both themes — on `arctic` the dark banner anchors the light page; on `midnight` it matches
-  the page. Because the override re-scopes the `var()` lookups for the whole header subtree,
-  the nav tabs, header buttons, and theme switch restyle automatically; the accent stays the
-  shared beak orange.
+- **The header and sidebar are always midnight.** The sticky header and the desktop sidebar
+  re-declare the theme custom properties inline (`--surface:#132433`, `--text:#F7F6F5`, …) plus
+  `color:var(--text)` so the app chrome wears the logo's navy in both themes — on `arctic` the
+  dark banner and rail frame the light content; on `midnight` they match the page. Because the
+  override re-scopes the `var()` lookups (and re-resolves inherited text color) for the whole
+  subtree, the nav tabs, header buttons, theme switch, pipeline counts, and Clear Database
+  button restyle automatically; the accent stays the shared beak orange. `color:var(--text)`
+  on the scoping element is load-bearing: text without an explicit color otherwise inherits
+  the page theme's computed color from the root, not the scoped navy palette.
 - **Theme toggle.** A `role="switch"` pill (sun/moon knob) sits right of the **Options** button
   in the header (desktop-only, `data-desk`, 62×38px). It flips `arctic`⇄`midnight` and persists
   to `localStorage['magnify.theme']`; the Component constructor restores the saved value

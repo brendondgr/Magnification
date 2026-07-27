@@ -70,11 +70,14 @@ def test_brand_colors_present(html):
     assert BRAND_WHITE in midnight, "midnight text must be the belly off-white"
 
 
-def test_header_always_midnight(html):
-    """The sticky header re-scopes the theme vars to the logo navy in both themes."""
+def test_header_and_sidebar_always_midnight(html):
+    """Header and sidebar re-scope the theme vars to the logo navy in both themes."""
     header = re.search(r"<header\b[^>]*>", html).group(0)
-    for override in ("--surface:#132433", "--text:#F7F6F5", "--border:#24394E"):
-        assert override in header, f"header must pin {override}"
+    sidebar = re.search(r"sidebarStyle:'[^']*'", html).group(0)
+    for chrome, name in ((header, "header"), (sidebar, "sidebar")):
+        for override in ("--surface:#132433", "--text:#F7F6F5", "--border:#24394E"):
+            assert override in chrome, f"{name} must pin {override}"
+        assert "color:var(--text)" in chrome, f"{name} must re-resolve inherited text color"
 
 
 def test_theme_toggle_wired(html):
