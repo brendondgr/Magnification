@@ -83,6 +83,13 @@ def test_header_and_sidebar_always_midnight(html):
     assert "--font-head:'Space Grotesk'" in header, "header must pin its heading font"
 
 
+def test_shape_tokens_identical_across_themes(html):
+    """Only colors may differ between themes: shapes must not morph on toggle."""
+    for token in ("--radius", "--r-sm", "--bw"):
+        values = set(re.findall(f"'{token}':'([^']+)'", html))
+        assert len(values) == 1, f"{token} differs across themes: {values}"
+
+
 def test_theme_toggle_wired(html):
     assert 'aria-label="Toggle theme"' in html
     assert 'role="switch"' in html

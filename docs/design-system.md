@@ -123,6 +123,12 @@ Rules encoded in the tokens:
   is otherwise per-theme: Newsreader serif on `arctic`). `color:var(--text)`
   on the scoping element is load-bearing: text without an explicit color otherwise inherits
   the page theme's computed color from the root, not the scoped navy palette.
+- **Only colors differ between themes.** The shape tokens are identical in both themes —
+  `--radius:12px`, `--r-sm:8px`, `--bw:1px` — and the header pins its heading font, so toggling
+  never morphs corners, border weights, or chrome typography, it only recolors. (Content
+  headings still switch `--font-head` — Newsreader on `arctic`, Space Grotesk on `midnight` —
+  the one deliberate non-color difference.) Pinned by
+  `test_shape_tokens_identical_across_themes`.
 - **Theme toggle.** A `role="switch"` pill (sun/moon knob) sits right of the **Options** button
   in the header (desktop-only, `data-desk`, 62×38px). It flips `arctic`⇄`midnight` and persists
   to `localStorage['magnify.theme']`; the Component constructor restores the saved value
@@ -163,8 +169,8 @@ Rules encoded in the tokens:
   small `var(--text)`-on-`var(--card)` bubble above the control on `:hover`/`:focus-visible`, with
   a matching `::before` caret. Both are `pointer-events:none` so they never intercept the click
   (the button stays fully selectable); each button also carries an `aria-label` for screen readers.
-- Radius/spacing follow the per-theme `--radius`/`--r-sm` tokens; standardizing further shared
-  spacing tokens is a follow-up.
+- Radius follows the `--radius`/`--r-sm` tokens (now identical across themes); standardizing
+  further shared spacing tokens is a follow-up.
 
 ## Iconography
 
