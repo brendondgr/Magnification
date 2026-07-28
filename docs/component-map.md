@@ -28,7 +28,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 | Area | State keys | Key methods |
 | --- | --- | --- |
-| Jobs / Tracker / Saved | `jobs, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
+| Jobs / Tracker / Saved | `jobs, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `unsave`, `copyJobMarkdown`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, maxIterations, useLLM, percent, stage, statusMsg, found, saved, notHidden, scrapeEvents, scrapeDone` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
@@ -37,7 +37,9 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 Main-view tabs: **New Jobs · Saved · Tracker** (desktop nav + mobile bottom nav). The **Saved**
 tab is a grid (mirroring the New Jobs card) of every job with `saved=1`, shown regardless of
-ignore/applied state; saved jobs are excluded from the New Jobs feed.
+ignore/applied state; saved jobs are excluded from the New Jobs feed. Applying retires a job from
+Saved: `markApplied` calls `unsave(id)` when the job was saved, so a job lives in Saved *or* the
+Tracker, not both.
 
 **Job card (New Jobs + Saved), row-based:** the `decorate(job)` view-model drives a 7-row
 `<article>` — five information rows, then the two action rows:
@@ -55,7 +57,9 @@ Row 6 is the primary actions — **Generate** (`onApply` → Application Mode; r
 company (`onBlock`), Hide (`onIgnore`), Save (`onSave`), Link out (`onLink`), sharing the
 neutral `iconBtn` style with the stateful `blockBtn`/`ignoreBtn`/`saveBtn`. The job detail panel
 gains an **Industry** line and keeps the same Block/Save controls (`toggleSave` →
-`PATCH /api/jobs/<id>/save`).
+`PATCH /api/jobs/<id>/save`), plus a **Copy** button to the right of Save (`onCopy` →
+`copyJobMarkdown`) that puts a Markdown document — `# title`, `**Company:**`, `## Job Description`
+— on the clipboard via `navigator.clipboard` with a `execCommand('copy')` textarea fallback.
 
 **Compensation display:** `payLabel(raw)` is the client-side mirror of the backend's
 `clean_compensation` — a blank, placeholder, `nan`-carrying, or digit-less value renders as
