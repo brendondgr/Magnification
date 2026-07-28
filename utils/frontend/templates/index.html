@@ -1469,7 +1469,7 @@ class Component extends DCLogic {
     try{ savedTheme=localStorage.getItem('magnify.theme'); }catch(e){}
     if(!Component.THEMES[savedTheme]) savedTheme=null;
     this.state = {
-      theme:savedTheme||'arctic', tab, sidebarOpen:true, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
+      theme:savedTheme||'arctic', tab, sidebarOpen:false, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null, clearMenuOpen:false,
       sortByMatch:false, savedSortByMatch:false, analyzing:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
