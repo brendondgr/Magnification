@@ -8,7 +8,7 @@ Canonical repository tree and the reason each top-level path exists. Keep this f
 
 ```text
 Magnification/
-├── app.py                      # Flask entry point: registers blueprints, serves index + partials
+├── app.py                      # Flask entry point: registers blueprints, runs migrations, serves the page
 ├── main.py                     # Stub entry (uv default); app is launched via app.py
 ├── pyproject.toml              # Project metadata + dependencies (uv)
 ├── uv.lock                     # Locked dependency versions
