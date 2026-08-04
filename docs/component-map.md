@@ -14,7 +14,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 | `templates/index.html` | The whole app: an `<x-dc>` template (header, sidebar, New Jobs grid, Tracker kanban, job detail panel, Profile panel, Options panel, Find Jobs modal) + a `<script type="text/x-dc">` block holding `class Component extends DCLogic` (all state, methods, and `renderVals()`). |
 | `static/js/dc-runtime.js` | Vendored runtime: parses `<x-dc>` + the component script, loads React/ReactDOM/Babel from unpkg, and renders. Reads the component from the inline script's `textContent` (no external-src support). |
 
-> **File-size exception:** `index.html` exceeds the repo's 800-line guideline (~1240 lines).
+> **File-size exception:** `index.html` far exceeds the repo's 800-line guideline (~2,800 lines).
 > It is a generated single-file design export and the runtime requires the component class
 > inline, so it cannot be split without modifying the vendored runtime. Accepted and tracked.
 

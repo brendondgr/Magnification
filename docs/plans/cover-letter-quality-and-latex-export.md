@@ -1,5 +1,9 @@
 # Plan — Cover-Letter Quality + LaTeX Export
 
+> **Superseded (2026-08).** Both halves shipped elsewhere: the quality work under
+> `cover-letter-skill-structure.md` and `cover-letter-flow-smoothing.md`, and the LaTeX/PDF export
+> under `agentic-documents-application-mode.md`. Kept as a record of the original analysis.
+
 ## 1. Introduction
 
 The cover-letter generator produces letters that are too short (roughly half the

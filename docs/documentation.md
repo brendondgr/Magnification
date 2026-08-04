@@ -2,100 +2,82 @@
 
 ## Purpose
 
-Magnification ("Job Finder") is a personal job-search application. It scrapes job listings from multiple boards, stores them in a local database, and presents them through a web UI where the user can review new jobs, track applications on a kanban board, and get **recommendations**: a RAG + LLM system builds a profile from the user's résumé and scores each scraped job against it (semantic + BM25 + keyword-group + skill signals, with an optional LLM verdict). See `docs/recommendation.md` and `docs/profile.md`.
+Magnification ("Job Finder") is a personal, local-first job-search application. It scrapes job
+listings from multiple boards, stores them in a local SQLite database, ranks each one against a
+profile built from the user's résumé, drafts tailored application documents, and presents all of it
+through a single-page web UI with a review queue and an application tracker.
 
-Primary users: the developer (single-user, local-first). It is not a multi-tenant or publicly deployed app at this stage.
+Primary user: the developer. It is not multi-tenant and is not publicly deployed.
 
 ## Tech Stack
 
 | Layer | Choice |
 | --- | --- |
 | Language / runtime | Python ≥ 3.12, managed with `uv` |
-| Web framework | Flask (server-rendered Jinja, blueprint-based API) |
-| Frontend | Single `index.html` design export driven by a vendored `dc-runtime.js` (React runtime); no build step |
-| Database | SQLite via SQLAlchemy ORM (`Job`, `ApplicationStatus`, `Profile`, `JobAnalysis`) |
-| Scraping | `python-jobspy` + a custom concurrent scraper and a parallel LinkedIn description scraper |
-| Recommendation | `fastembed` (bge-small-en-v1.5, CPU) + `rank-bm25`; `pypdf` for résumé parsing; `utils/backend/recommend` |
-| LLM | OpenAI-compatible client (`utils/backend/llm`, configurable endpoint) for all AI features; `utils/LocalLLM` still manages an optional bundled llama-server |
-| Logging | `loguru` (wrapped by `LoggerWrapper`) |
+| Web framework | Flask — ten JSON API blueprints plus one page route |
+| Frontend | One `index.html` design export hydrated by a vendored runtime (`static/js/dc-runtime.js`); no build step |
+| Database | SQLite via SQLAlchemy (`Job`, `ApplicationStatus`, `Profile`, `JobAnalysis`, plus per-job `job_evaluations` / `generated_documents`) |
+| Scraping | `python-jobspy` + a custom concurrent scraper and a serial LinkedIn description fetch |
+| Recommendation | `fastembed` (bge-small-en-v1.5, CPU) + `rank-bm25` + keyword/skill signals; `pypdf` for résumé parsing |
+| Document generation | In-house agent graphs in `utils/backend/agents/` (no LangGraph) → LaTeX → PDF via `pdflatex` |
+| LLM | Any OpenAI-compatible endpoint (`utils/backend/llm`); `utils/LocalLLM` separately manages an optional bundled llama-server |
+| Logging | `loguru`, wrapped by `LoggerWrapper` |
 
-## Architecture (current)
+## Architecture
 
-Magnification is a **Flask/Jinja monolith** (Mode F in `docs/skills/repository-structure/structures/web-interfaces.md`):
+A Flask monolith (Mode F in `docs/skills/repository-structure/structures/web-interfaces.md`):
 
-- `app.py` boots Flask, registers the blueprints (config, scrape, job, llm, options, profile, recommend), initializes the SQLite database and logger, and serves the dc-runtime `index.html`. It listens on port **13374** by default (`PORT` overrides; `FLASK_DEBUG=0` disables the reloader) and can run on boot via `deploy/systemd/magnification-web.service`.
-- `utils/backend/` holds the API blueprints, scraping pipeline, and database layer.
-- `utils/frontend/` holds Jinja templates (`templates/`) and static assets (`static/css`, `static/js`).
-- `utils/LocalLLM/` is a self-contained local-LLM management library exposed through the `llm` blueprint.
+- `app.py` registers the ten blueprints, runs `init_database()` (table creation + idempotent
+  migrations), initializes the logger, and serves `index.html` on `/`. It listens on port **13374**
+  by default (`PORT` overrides, `FLASK_DEBUG=0` disables the reloader) and can run on boot via
+  `deploy/systemd/magnification-web.service`.
+- `utils/backend/` holds the blueprints, scraping pipeline, recommender, agent graphs, database
+  layer, and the scheduled daily-search runner.
+- `utils/frontend/` holds the single page and its static assets.
+- `utils/LocalLLM/` is a self-contained local-LLM management library exposed through the `llm`
+  blueprint. The recommendation and generation features do **not** use it — they talk to the
+  configurable OpenAI-compatible endpoint instead.
 
-See `docs/architecture.md` for the full web-architecture breakdown, `docs/routes.md` for the route map, `docs/api-contract.md` for endpoint contracts, and `docs/data-flow.md` for how data moves.
+Long-running work (scrape, analyze, generate) follows one pattern: `POST .../start` spawns a daemon
+thread and returns a task id; the client polls `.../status/<id>` for progress, events, and results.
+Task stores are in-memory and do not survive a restart.
 
-## Domain Deep-Dives
+See `docs/architecture.md` (web layer), `docs/routes.md` (route map), `docs/api-contract.md`
+(endpoint contracts), and `docs/data-flow.md` (how data moves).
 
-These existing references remain canonical for their subsystems:
+## Subsystem References
 
-- `docs/database.md` — database schema and models
+- `docs/database.md` — schema, migrations, and the operations layer
 - `docs/job_scraping.md` — the scraping pipeline
-- `docs/find_jobs.md` — the "Find Jobs" configuration/flow
-- `docs/recommendation.md` — the RAG + LLM recommendation system
+- `docs/find_jobs.md` — the Find Jobs configuration and run flow
+- `docs/recommendation.md` — the hybrid RAG + LLM recommender
 - `docs/profile.md` — the résumé → profile builder
-- `docs/ui.md` — UI notes
-- `docs/plans/agentic-documents-system.md` — design for the agentic documents system (in-house ingestion agent + cover-letter/résumé generation)
+- `docs/component-map.md` — which part of `index.html` owns which UI
+- `docs/design-system.md` — themes, tokens, and required UI states
+- `docs/deployment.md` — runtime and systemd assumptions
 
 ## Major Decisions
 
-- **`docs/` is the single source of truth.** Agent tool folders (`.claude/`, `.agents/`, `.cursor/`) contain only pointer files. See `docs/skills/global-project-rules/SKILL.md`.
-- **`uv` is the package/environment manager** for all Python work.
-- **Current code layout is retained** under `utils/` + `app.py`. The initializer's `web/` convention and a React frontend overhaul are deferred (tracked in `docs/checklist.md`).
+- **`docs/` is the single source of truth.** `.claude/`, `.agents/`, and `.cursor/` hold pointer
+  files only. See `docs/skills/global-project-rules/SKILL.md`.
+- **`uv` is the only package/environment manager.**
+- **Runtime paths resolve through `utils/backend/paths.get_project_root()`** (`git rev-parse
+  --git-common-dir`), so every worktree shares one database and one config directory.
+- **Agents are hand-rolled**, not LangGraph: plain-Python nodes driven by
+  `utils/backend/agents/orchestrator.py`, with semi-automatic checkpoints.
+- **One editable Document Guidance doc** steers both generation graphs, on the first pass and every
+  refine. The earlier behavioral/writing-style/template subsystems were removed.
+- **One shared enrichment pass.** Compensation and industry are extracted from the job description
+  by `recommend/enrichment.enrich_jobs`, called by both the scrape pipeline and Analyze Matches.
+- **Current layout is retained** under `utils/` + `app.py`; the `web/` migration and a React rebuild
+  are deferred (`docs/checklist.md`).
 
-## Current Status
+## Status
 
-- Working Flask app: scraping, job listing/tracking, LLM management endpoints.
-- **RAG + LLM recommendation overhaul complete:** Profile + Options menus, résumé→profile
-  builder, configurable OpenAI-compatible endpoint, fastembed + BM25 hybrid scoring with
-  optional LLM verdict, parallel LinkedIn fetch, multi-country + job-type + LLM-keyword Find Jobs.
-- **UI/UX refinements complete:** cleaner New Jobs cards (no company icon, relocated match %
-  with a breakdown popover + color tiers, YYYY-MM-DD dates), a stylized résumé drag-and-drop +
-  "Build Profile (LLM)" action, a unified searchable country selector, Find Jobs prefilled from
-  the active profile, a live step-by-step scraping activity feed, and LLM compensation extraction
-  that recovers pay from job descriptions (e.g. LinkedIn).
-- **Pipeline + scoring refinements complete:** LinkedIn description fetch is serial (rate-limit
-  safe); analysis scores only the keyword-filtered remainder, ranks by semantic+bm25, sends the
-  top 30 to the LLM for a 2–3 sentence fit verdict, and folds that verdict into the score (LLM
-  weight 0.40, renormalized when unavailable); score weights are sliders that must total 1.0.
-- **Automated daily search complete:** `utils/backend/scheduler` + `deploy/systemd/`
-  user units run the scrape on boot and daily, **gated on the LLM being reachable**
-  (re-checks every 10 min ×6, else skips the day; once-per-day stamp). See
-  `docs/plans/systemd-daily-search.md`.
-- **Agentic Documents:** the cover-letter + résumé generation graphs and Application Mode have
-  shipped. The generators are steered by a single **editable Document Guidance** document
-  (default = the cover-letter Winning Formula + résumé tailoring principles) injected into every
-  generation and refine; the Profile sidebar was simplified from four tabs to **Candidate |
-  Guidance**, retiring the Behavioral/Writing-Style/Template subsystems and the upload-ingestion
-  pipeline. See `docs/plans/agentic-documents-system.md` and
-  `docs/plans/documents-sidebar-simplify.md`.
-- **Reasoning-endpoint LLM fitting fixed:** the OpenAI-compatible client bounds a reasoning
-  model's hidden chain-of-thought with a **thinking token budget** (`thinking_token_budget`,
-  default & minimum 1024, tunable in Options → LLM Endpoint), and raises the effective
-  `max_tokens` by that budget so calls stop exhausting `max_tokens` on reasoning and return
-  parseable JSON; verdict parsing also tolerates nested/string score shapes. This is what
-  "Analyze Matches" needs to fit **every** job rather than a couple per
-  run. See `docs/plans/llm-fit-reasoning-exhaustion.md`.
-- **Job card redesign complete:** New Jobs + Saved cards are now row-based (source+date,
-  industry tag, title+match%+breakdown, company, location+compensation, 3-line description,
-  Generate/Applied, then an SVG icon-action row: info · block · hide · save · link out). Each job
-  carries a detected **industry** (fixed taxonomy, distinct consistent color per category)
-  extracted from the description in the **same combined LLM pass** as compensation
-  (`recommend.compensation.extract_enrichment_llm`, gated by `enable_llm_industry`); the "Apply"
-  action was renamed **Generate**. See `docs/plans/job-card-redesign.md`.
-- **Job card rows + shared enrichment complete:** the card now reads as five information rows
-  (source ‖ industry · title, 2-line clamp · company + extraction date ‖ match % + "?" ·
-  location ‖ compensation · description, 4-line clamp) before its Generate/Applied and icon
-  action rows. Compensation and industry are extracted from the **description** by one shared
-  pass — `recommend/enrichment.enrich_jobs` — called by **both** "Find Jobs" and "Analyze
-  Matches" rather than two implementations; pay is always re-derived from the description
-  because board salary fields are unreliable. The `USDnan - USDnan hourly` /
-  `nannan - nannan nan` values (pandas `NaN` formatted as text) are fixed at the source, and
-  stored rows were repaired; a job with no usable pay now reads **"Not Specified"**. See
-  `docs/plans/job-card-rows-and-shared-enrichment.md`.
-- **Next:** physical migration to `web/` and a full React frontend rebuild — not started.
+The application is feature-complete for daily use: scraping, hybrid ranking with an optional LLM fit
+verdict, profile building and blocklists, saved-jobs and tracker workflows, cover-letter and résumé
+generation with LaTeX/PDF output, and an LLM-gated daily scrape under systemd.
+
+What is not done, in `docs/checklist.md`: the `web/` migration and React rebuild, `ruff`, browser
+automation for application submission, and a set of paths that are covered by mocked tests but have
+never been exercised against a live LLM endpoint or a live scrape.

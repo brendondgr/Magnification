@@ -6,12 +6,11 @@ Page routes and JSON API endpoints. Endpoint contracts are in `docs/api-contract
 
 | Path | Method | Purpose | Returns |
 | --- | --- | --- | --- |
-| `/` | GET | Serves the SPA shell | `index.html` |
-| `/parts/<filename>` | GET | Reusable UI partials | HTML from `templates/parts/` |
-| `/primary/<filename>` | GET | Primary view sections | HTML from `templates/primary/` |
-| `/static/<path>` | GET | Static CSS/JS/images | Flask static handler |
+| `/` | GET | Serves the whole UI | `utils/frontend/templates/index.html` |
+| `/static/<path>` | GET | Static JS/images | Flask static handler |
 
-The client loads partials (`header`, `mobile-nav`, `sidebar`, `new-jobs`, `tracker`, `job-detail-panel`) via `loadPartial()` in `index.html`.
+These are the only non-API routes. The UI is a single file — there are no HTML partials and no
+partial-fetching endpoints.
 
 ### Client-side view routing (hash)
 
@@ -42,10 +41,12 @@ The client loads partials (`header`, `mobile-nav`, `sidebar`, `new-jobs`, `track
 | Path | Method | Purpose |
 | --- | --- | --- |
 | `/api/jobs` | GET | List jobs (supports filtering) |
+| `/api/jobs/counts` | GET | Feed/hidden/total counts for the sidebar and headers |
 | `/api/jobs/<int:job_id>` | GET | Get a single job |
 | `/api/jobs/<int:job_id>/ignore` | PATCH | Hide/ignore a job |
+| `/api/jobs/<int:job_id>/save` | PATCH | Save/unsave a job (the Saved lane) |
 | `/api/jobs/<int:job_id>/status` | PATCH | Update application/tracker status |
-| `/api/database/clear` | POST | Clear all jobs from the database |
+| `/api/database/clear` | POST | Clear the database (`scope`: `full` \| `jobs`) |
 
 ## LLM API (`llm_bp`, prefix `/api`)
 
@@ -94,6 +95,7 @@ RAG scoring of jobs against the active profile (see `docs/recommendation.md`).
 | `/api/recommend/analyze` | POST | Embed + score jobs against the active profile synchronously (body: optional `{job_ids, reanalyze_all}`); persists `JobAnalysis` |
 | `/api/recommend/analyze/start` | POST | Start a **background** analysis (same body); returns `{job_id}` to poll — powers the Analyze Matches progress popup |
 | `/api/recommend/analyze/status/<job_id>` | GET | Poll a background analysis: `{status, progress, events, results}` (404 if unknown) |
+| `/api/recommend/rescore` | POST | Re-apply the current score weights to stored analyses without re-embedding or re-querying the LLM |
 | `/api/recommend/report` | GET | Jobs ranked by `rag_score` (query: `limit`, `include_ignored`) |
 | `/api/recommend/keywords` | POST | LLM-generate search terms + AND/OR keyword groups + job type (body: optional `{seed}`; falls back to the active profile) |
 

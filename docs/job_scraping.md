@@ -1,704 +1,146 @@
-# Job Scraping Implementation Plan - Job Finder
-
-## Overview
-This document outlines the implementation plan for integrating the `jobspy` Python library into the Job Finder job search application. The scraping system will collect job listings from multiple job boards concurrently, process and deduplicate results, store them in the database, and apply user-defined filters to mark irrelevant jobs as ignored.
-
----
-
-## Jobspy Integration Strategy
-
-### Supported Job Boards
-The system will scrape jobs from the following platforms:
-- **LinkedIn**
-- **Google Jobs**
-- **Indeed**
-- **ZipRecruiter**
-- **Glassdoor**
-
-### Data Extraction Goals
-Each scraping operation will attempt to extract the following information (as available from jobspy):
-- Job title
-- Company name
-- Location
-- Full job description
-- Compensation/salary information
-
-**Note**: The exact data structure returned by jobspy for each job board requires experimentation and will be documented once implementation begins. Each board may return data in slightly different formats or with varying levels of detail.
-
----
-
-## Architecture Overview
-
-### High-Level Workflow
-1. **Job Search Configuration**: Load job titles from configuration
-2. **Task Generation**: Create scraping tasks for each combination of job title × job board
-3. **Concurrent Scraping**: Execute all tasks concurrently using a ThreadPool
-4. **Data Aggregation**: Collect results from all scraping operations
-5. **Deduplication**: Remove duplicate job listings based on identifying criteria
-6. **Data Transformation**: Convert jobspy results into database-compatible format
-7. **Database Storage**: Insert jobs into the database with default `ignore=0`
-8. **Filtering & Classification**: Apply user-defined filters to mark irrelevant jobs
-9. **UI Refresh**: Trigger frontend update to display new jobs
-
----
-
-## File Structure & Implementation
-
-### Directory Organization
-All job scraping functionality will reside in:
-**Location**: `utils/backend/scrapers/`
-
-This directory will contain multiple focused files to maintain clean separation of concerns:
-
----
-
-### File: `scraper_config.py`
-**Location**: `utils/backend/scrapers/scraper_config.py`
-
-**Purpose**: Centralized configuration for scraping operations
-
-**Contents**:
-- Constants for supported job boards (LinkedIn, Google Jobs, Indeed, ZipRecruiter, Glassdoor)
-- ThreadPool size configuration (number of concurrent workers)
-- Timeout settings for scraping operations
-- Retry logic parameters (max retries, backoff strategy)
-- Field mapping configuration (map jobspy fields to database columns)
-- Error handling settings
-
-**Implementation Details**:
-- Define enumeration or list of supported job boards
-- Create configuration class or dictionary with scraping parameters
-- Include default values that can be overridden via environment variables
-- Document expected data structure from jobspy (to be filled in after experimentation)
-
----
-
-### File: `task_generator.py`
-**Location**: `utils/backend/scrapers/task_generator.py`
-
-**Purpose**: Generate scraping tasks from configuration
-
-**Contents**:
-- Function to read job titles from `config/jobs_config.json`
-- Function to create task objects for each job title × job board combination
-- Task data structure definition (contains job title and job board)
-- Validation to ensure job titles and boards are valid before task creation
-
-**Implementation Details**:
-- `generate_scraping_tasks()` function:
-  - Reads job titles from JSON config file
-  - Iterates through each job title
-  - For each title, creates a task for each of the 5 job boards
-  - Returns list of task objects (dictionaries or named tuples)
-  - Example: 3 job titles × 5 boards = 15 tasks
-
-**Task Object Structure**:
-```
-{
-    'job_title': str,
-    'job_board': str,
-    'task_id': str (optional, for tracking)
-}
-```
-
----
-
-### File: `jobspy_wrapper.py`
-**Location**: `utils/backend/scrapers/jobspy_wrapper.py`
-
-**Purpose**: Wrapper interface for jobspy library operations
-
-**Contents**:
-- Abstraction layer over jobspy API calls
-- Function to execute single scraping operation for one job title on one board
-- Error handling and retry logic for failed scrapes
-- Data normalization from jobspy format to internal format
-- Logging for each scraping operation
-
-**Implementation Details**:
-- `scrape_jobs(job_title, job_board)` function:
-  - Accepts job title string and job board identifier
-  - Calls appropriate jobspy function/method (implementation pending experimentation)
-  - Returns standardized list of job dictionaries
-  - Handles exceptions and returns empty list on failure
-  - Logs scraping start, completion, and any errors
-
-- Data transformation helper functions:
-  - Convert jobspy response to list of dictionaries
-  - Extract relevant fields (title, company, location, description, compensation)
-  - Handle missing or null values gracefully
-  - Normalize data types (strings, handle encoding issues)
-
-**Note**: The exact jobspy API calls and parameters will be determined through experimentation with the library. This file will serve as the single point of integration with jobspy, making future updates easier.
-
----
-
-### File: `concurrent_scraper.py`
-**Location**: `utils/backend/scrapers/concurrent_scraper.py`
-
-**Purpose**: Concurrent execution of scraping tasks using ThreadPool
-
-**Contents**:
-- ThreadPool initialization and management
-- Task execution coordination
-- Result aggregation from all concurrent operations
-- Progress tracking (optional)
-
-**Implementation Details**:
-- `execute_scraping_tasks(tasks)` function:
-  - Accepts list of task objects from task_generator
-  - Creates ThreadPoolExecutor with configured number of workers
-  - Submits each task to the thread pool
-  - Each task calls `jobspy_wrapper.scrape_jobs()`
-  - Collects results as they complete
-  - Waits for all tasks to finish
-  - Returns aggregated list of all scraped jobs
-
-- Concurrency considerations:
-  - Thread-safe result collection
-  - Handle task failures without blocking other tasks
-  - Optional timeout for individual tasks
-  - Graceful shutdown of thread pool
-
-- Logging:
-  - Log thread pool initialization
-  - Track task completion progress
-  - Report total jobs scraped from all boards
-
----
-
-### File: `data_processor.py`
-**Location**: `utils/backend/scrapers/data_processor.py`
-
-**Purpose**: Process, clean, and deduplicate scraped job data
-
-**Contents**:
-- Deduplication logic to identify and remove duplicate job listings
-- Data cleaning functions (remove unnecessary fields, normalize text)
-- Validation functions to ensure data meets database requirements
-- Transformation from scraped format to database model format
-
-**Implementation Details**:
-- `deduplicate_jobs(job_list)` function:
-  - Accepts list of job dictionaries from all scraping operations
-  - Identifies duplicates based on composite key (title + company + location)
-  - May also use fuzzy matching for similar job descriptions
-  - Returns list of unique jobs
-  - Logs number of duplicates removed
-
-- `clean_job_data(job)` function:
-  - Validates required fields (title, company, location)
-  - Strips unnecessary whitespace
-  - Handles encoding issues
-  - Removes or filters out irrelevant data fields
-  - Returns cleaned job dictionary
-
-- `transform_to_db_format(job)` function:
-  - Converts processed job dictionary to format matching database schema
-  - Maps fields to database column names
-  - Sets default values (e.g., `ignore=0`, `created_at=current_timestamp`)
-  - Returns dictionary ready for database insertion
-
-- `process_scraped_jobs(raw_jobs)` function:
-  - Orchestrates the full processing pipeline
-  - Calls deduplicate, clean, and transform functions in sequence
-  - Returns list of job objects ready for database storage
-
----
-
-### File: `job_filter.py`
-**Location**: `utils/backend/scrapers/job_filter.py`
-
-**Purpose**: Apply user-defined filters to mark irrelevant jobs
-
-**Contents**:
-- Load filter criteria from `config/jobs_config.json`
-- Matching logic for job titles and description keywords
-- Function to mark jobs as ignored based on filter results
-- Update database to set `ignore=1` for filtered jobs
-
-**Implementation Details**:
-- `load_filter_config()` function:
-  - Reads `config/jobs_config.json`
-  - Extracts `job_titles` and `description_keywords` lists
-  - Returns filter configuration object
-
-- `apply_filters(job, filter_config)` function:
-  - Accepts a single job and filter configuration
-  - Checks if job title matches any in the filter list (case-insensitive)
-  - Checks if any description keywords appear in job description
-  - Returns boolean: True if job should be kept, False if should be ignored
-
-- `filter_and_mark_jobs(job_ids)` function:
-  - Accepts list of job IDs that were just inserted into database
-  - Loads filter configuration
-  - For each job ID:
-    - Retrieves job from database
-    - Applies filters
-    - If job fails filters, updates database to set `ignore=1`
-  - Logs number of jobs marked as ignored
-  - Interacts with database operations from `utils/backend/database/operations.py`
-
-**Filter Matching Strategy**:
-- **Job Title Filter**: If `job_titles` list is not empty, only jobs with titles matching the list are kept
-- **Description Keyword Filter**: If `description_keywords` list is not empty, only jobs containing at least one keyword are kept
-- If both lists are empty, no filtering is applied (all jobs remain `ignore=0`)
-
----
-
-### File: `scraping_service.py`
-**Location**: `utils/backend/scrapers/scraping_service.py`
-
-**Purpose**: Main orchestration service for the entire scraping workflow
-
-**Contents**:
-- High-level function that coordinates all scraping operations
-- Calls task generation, concurrent scraping, processing, storage, and filtering
-- Error handling and logging for the entire workflow
-- Integration point with database operations
-- Trigger for frontend refresh
-
-**Implementation Details**:
-- `execute_full_scraping_workflow()` function:
-  - **Iteration loop (`max_iterations`, 1–5, config-driven)**: steps 2–5 (scrape → process →
-    db-dedup → LinkedIn → save) are extracted into an inner `_scrape_process_store(offset)` and
-    run once per iteration, advancing a jobspy page `offset` by `results_wanted` each pass so later
-    iterations surface *new* jobs. The in-batch + database dedup guarantees cross-pass uniqueness.
-    Steps 6–7 (filter + compensation + LLM analysis) run **once** over the accumulated new-job ids.
-    Forced to a single pass in non-DB mode (no store to dedup against).
-  - **Step 1**: Generate scraping tasks
-    - Calls `task_generator.generate_scraping_tasks()`
-    - Logs number of tasks generated
-  
-  - **Step 2**: Execute concurrent scraping
-    - Calls `concurrent_scraper.execute_scraping_tasks(tasks)` with the iteration's `offset`
-    - Logs total jobs scraped
-  
-  - **Step 3**: Process and deduplicate data
-    - Calls `data_processor.process_scraped_jobs(raw_jobs)`
-    - Logs number of unique jobs after processing
-  
-  - **Step 4**: Store jobs in database
-    - Imports `add_job()` from `utils/backend/database/operations.py`
-    - Iterates through processed jobs and inserts each into database
-    - Collects list of newly inserted job IDs
-    - Logs number of jobs stored
-  
-  - **Step 5**: Apply filters and mark ignored jobs
-    - Calls `job_filter.filter_and_mark_jobs(job_ids)`
-    - Logs number of jobs marked as ignored
-  
-  - **Step 6**: Trigger frontend refresh
-    - Calls appropriate service to notify frontend of new data
-    - Details TBD based on frontend implementation
-  
-  - Returns summary statistics (total scraped, stored, ignored)
-
-- Error handling:
-  - Wrap entire workflow in try-except
-  - Log errors at each step
-  - Continue processing even if some tasks fail
-  - Return partial results if available
-
-- `schedule_scraping_job()` function (optional):
-  - If automated scraping is desired
-  - Sets up periodic execution of scraping workflow
-  - Uses scheduler library (APScheduler or similar)
-
----
-
-### File: `scraper_utils.py`
-**Location**: `utils/backend/scrapers/scraper_utils.py`
-
-**Purpose**: Helper utilities for scraping operations
-
-**Contents**:
-- Common utility functions used across scraping modules
-- String normalization and cleaning functions
-- Date/time formatting utilities
-- Validation helpers
-
-**Implementation Details**:
-- `normalize_location(location)` function:
-  - Standardizes location strings (e.g., "New York, NY" vs "New York City")
-  - Handles remote work indicators
-  
-- `normalize_company_name(company)` function:
-  - Removes legal entity suffixes (Inc., LLC, etc.)
-  - Standardizes capitalization
-  
-- `extract_salary_info(text)` function:
-  - Parses salary information from various formats
-  - Returns standardized compensation string
-  
-- `calculate_task_id(job_title, job_board)` function:
-  - Generates unique identifier for a scraping task
-  - Used for tracking and logging
-
----
-
-## Database Integration
-
-### Interaction with Database Layer
-The scraping system will interact with the database operations defined in `utils/backend/database/operations.py`.
-
-**Primary Database Operations Used**:
-
-1. **Adding Jobs**:
-   - Function: `add_job(job_data)` from `operations.py`
-   - Called for each processed job in the storage step
-   - Automatically sets `created_at` and `updated_at` timestamps
-   - Returns job ID for newly inserted record
-
-2. **Creating Application Status Records**:
-   - Function: `create_application_status_records(job_id)` from `operations.py`
-   - Automatically called by `add_job()` for jobs with `ignore=0`
-   - Creates all 9 application status tracking records
-   - Ensures jobs are ready for application tracking
-
-3. **Updating Ignore Flag**:
-   - Function: `set_job_ignore(job_id, ignore_value)` from `operations.py`
-   - Called by `job_filter.py` for jobs that fail filters
-   - Sets `ignore=1` for filtered jobs
-   - Note: Application status records are not created for ignored jobs
-
-4. **Checking for Duplicates** (optional enhancement):
-   - Function: `get_job_by_criteria(title, company, location)` from `operations.py`
-   - Could be used to check database for existing jobs before insertion
-   - Helps prevent database-level duplicates
-   - May be implemented as future enhancement
-
-**Transaction Handling**:
-- All database operations should be wrapped in transactions
-- If any step fails during job insertion, rollback to maintain consistency
-- Ensures that a job and its application status records are created atomically
-
----
-
-## Configuration File Integration
-
-### jobs_config.json Structure
-**Location**: `config/jobs_config.json`
-
-**Current Structure**:
-```json
-{
-    "job_titles": [],
-    "description_keywords": []
-}
-```
-
-**Usage in Scraping**:
-
-1. **Job Titles Array**:
-   - Used by `task_generator.py` to create scraping tasks
-   - Each title becomes a search query across all job boards
-   - If empty, no scraping tasks are generated (fail safely)
-
-2. **Description Keywords Array**:
-   - Used by `job_filter.py` to filter scraped jobs
-   - Jobs containing these keywords in description are kept
-   - Jobs without matching keywords are marked as `ignore=1`
-   - If empty, no keyword filtering is applied
-
-**Future Enhancements**:
-- Add location filters
-- Add salary range filters
-- Add company blacklist/whitelist
-- Add job posting age filters (e.g., only jobs posted within last 7 days)
-
----
-
-## Logging Strategy
-
-All scraping operations will utilize the project's logging system located in `utils/libs/logger/`.
-
-**Log Categories**:
-
-1. **Task Generation Logs**:
-   - Number of job titles loaded from config
-   - Number of tasks generated
-   - List of job boards being queried
-
-2. **Scraping Execution Logs**:
-   - Start of each scraping task (job title + board)
-   - Completion of each task with result count
-   - Errors encountered during scraping
-   - ThreadPool initialization and shutdown
-
-3. **Processing Logs**:
-   - Total jobs collected before deduplication
-   - Number of duplicates removed
-   - Number of jobs passing validation
-   - Data transformation issues
-
-4. **Storage Logs**:
-   - Number of jobs inserted into database
-   - Any database insertion errors
-   - Transaction commit/rollback events
-
-5. **Filtering Logs**:
-   - Filter configuration loaded
-   - Number of jobs evaluated
-   - Number of jobs marked as ignored
-   - Specific reasons for filtering (title/keyword mismatch)
-
-6. **Workflow Summary Logs**:
-   - Total execution time
-   - Final statistics (scraped, stored, ignored, active)
-
-**Log Levels**:
-- **INFO**: Normal operation progress
-- **WARNING**: Recoverable issues (e.g., scraping failure for one board)
-- **ERROR**: Serious issues that prevent part of workflow
-- **DEBUG**: Detailed information for troubleshooting (e.g., individual job data)
-
----
-
-## Error Handling Strategy
-
-### Failure Scenarios & Recovery
-
-1. **Jobspy API Failures**:
-   - **Issue**: Jobspy library throws exception or returns error
-   - **Handling**: Catch exception in `jobspy_wrapper.py`, log error, return empty list
-   - **Recovery**: Other scraping tasks continue unaffected
-
-2. **Network Timeouts**:
-   - **Issue**: Job board not responding or slow response
-   - **Handling**: Set timeout in jobspy calls, catch timeout exception
-   - **Recovery**: Optionally retry with exponential backoff
-
-3. **Invalid Configuration**:
-   - **Issue**: `jobs_config.json` is empty or malformed
-   - **Handling**: Validate configuration in `task_generator.py`
-   - **Recovery**: Log error and exit workflow gracefully
-
-4. **Database Connection Issues**:
-   - **Issue**: Cannot connect to database during storage step
-   - **Handling**: Catch database exceptions, log error
-   - **Recovery**: Optionally queue jobs for retry or manual inspection
-
-5. **Duplicate Key Violations**:
-   - **Issue**: Job already exists in database (unlikely after deduplication)
-   - **Handling**: Catch unique constraint violation, skip insertion
-   - **Recovery**: Continue with next job
-
-6. **Thread Pool Exhaustion**:
-   - **Issue**: Too many concurrent tasks causing resource issues
-   - **Handling**: Limit thread pool size in configuration
-   - **Recovery**: Tasks queue and execute as threads become available
-
-**General Principles**:
-- Fail gracefully for individual tasks without stopping entire workflow
-- Log all errors with sufficient context for debugging
-- Return partial results when some operations succeed
-- Never crash the entire application due to scraping failures
-
----
-
-## Frontend Integration
-
-### Refresh Mechanism
-After the scraping workflow completes, the frontend Jobs Board must be notified to display new jobs.
-
-**Implementation Approach** (details TBD based on frontend architecture):
-
-1. **Service Layer Notification**:
-   - File: `utils/backend/services/job_service.py`
-   - Function: `notify_jobs_updated()`
-   - Sends signal or event to frontend components
-
-2. **Possible Refresh Methods**:
-   - **WebSocket**: Push notification to connected clients
-   - **Server-Sent Events (SSE)**: Stream update to frontend
-   - **Polling**: Frontend periodically checks for updates
-   - **Timestamp Endpoint**: Frontend checks last update timestamp
-
-3. **Frontend Action**:
-   - Receives notification
-   - Calls API endpoint to fetch updated job list
-   - Re-renders job board with new data
-   - Optionally highlights newly added jobs
-
-**API Endpoint for Job Retrieval**:
-- Endpoint: `GET /api/jobs`
-- Implemented in: `utils/backend/routes/` (specific route file TBD)
-- Returns list of active jobs (`ignore=0`)
-- Supports filtering, pagination, sorting
-
----
-
-## Testing Strategy
-
-### Test Files
-**Location**: `utils/backend/tests/`
-
-**Test Coverage**:
-
-1. **test_task_generator.py**:
-   - Test task generation with various configurations
-   - Test with empty job titles list
-   - Test with multiple job titles
-   - Verify correct number of tasks created (titles × boards)
-
-2. **test_jobspy_wrapper.py**:
-   - Mock jobspy library responses
-   - Test successful scraping
-   - Test error handling for failed scrapes
-   - Test data transformation functions
-   - **Note**: Requires experimentation with jobspy first
-
-3. **test_concurrent_scraper.py**:
-   - Test ThreadPool execution
-   - Test result aggregation
-   - Test handling of task failures
-   - Test thread safety of result collection
-
-4. **test_data_processor.py**:
-   - Test deduplication with identical jobs
-   - Test deduplication with similar jobs
-   - Test data cleaning functions
-   - Test transformation to database format
-   - Test validation of required fields
-
-5. **test_job_filter.py**:
-   - Test filter loading from config
-   - Test job title matching
-   - Test description keyword matching
-   - Test combined filters
-   - Test with empty filter lists
-
-6. **test_scraping_service.py**:
-   - Integration test for full workflow
-   - Mock all external dependencies (jobspy, database)
-   - Verify correct sequence of operations
-   - Test error propagation and handling
-
-**Testing Approach**:
-- Use `pytest` as testing framework
-- Mock external dependencies (jobspy, database)
-- Use fixtures for test data
-- Aim for high coverage of business logic
-- Integration tests for end-to-end workflow
-
----
-
-## Implementation Phases
-
-### Phase 1: Experimentation & Research
-- Install and explore jobspy library
-- Test scraping from each job board individually
-- Document data structures returned by jobspy
-- Identify field mappings to database schema
-- Determine API parameters and options
-
-### Phase 2: Core Scraping Infrastructure
-- Implement `scraper_config.py`
-- Implement `jobspy_wrapper.py` with basic scraping function
-- Implement `task_generator.py`
-- Write unit tests for these modules
-
-### Phase 3: Concurrent Execution
-- Implement `concurrent_scraper.py` with ThreadPool
-- Test concurrent execution with mock tasks
-- Add logging and error handling
-- Write unit tests
-
-### Phase 4: Data Processing
-- Implement `data_processor.py` with deduplication logic
-- Implement data cleaning and transformation
-- Test with sample scraped data
-- Write unit tests
-
-### Phase 5: Database Integration
-- Integrate with `utils/backend/database/operations.py`
-- Implement job storage logic
-- Test database insertion and transaction handling
-- Verify application status record creation
-
-### Phase 6: Filtering System
-- Implement `job_filter.py`
-- Test filter logic with various configurations
-- Integrate with database to update ignore flags
-- Write unit tests
-
-### Phase 7: Orchestration & Service Layer
-- Implement `scraping_service.py` to coordinate workflow
-- Add comprehensive logging throughout
-- Test end-to-end scraping workflow
-- Write integration tests
-
-### Phase 8: Frontend Integration
-- Implement refresh mechanism
-- Test frontend notification and data retrieval
-- End-to-end testing with full application
-
-### Phase 9: Optimization & Polish
-- Performance tuning (thread pool size, timeouts)
-- Enhanced error handling
-- Additional logging
-- Documentation updates based on implementation learnings
-
----
-
-## Future Enhancements
-
-### Potential Improvements
-1. **Incremental Scraping**:
-   - Track last scrape timestamp per job board
-   - Only fetch new jobs since last scrape
-   - Reduces redundant data collection
-
-2. **Smart Deduplication**:
-   - Use fuzzy matching algorithms for job descriptions
-   - Detect similar jobs from different boards
-   - Machine learning-based duplicate detection
-
-3. **Rate Limiting**:
-   - Respect job board rate limits
-   - Implement backoff strategies
-   - Distribute requests over time
-
-4. **Job Board Priority**:
-   - Configure which boards to scrape first
-   - Prioritize boards with higher quality results
-   - Dynamic board selection based on past success rates
-
-5. **Advanced Filtering**:
-   - Machine learning-based job relevance scoring
-   - Use LLM integration (from `utils/libs/llm/`) to analyze job fit
-   - Multi-criteria filtering (location, salary, company rating)
-
-6. **Scheduled Scraping**:
-   - Automated periodic scraping (daily, weekly)
-   - Configurable schedule via admin interface
-   - Email/notification when new relevant jobs are found
-
-7. **Scraping Analytics**:
-   - Track scraping success rates per board
-   - Monitor data quality metrics
-   - Visualize scraping history and trends
-
-8. **Job Update Detection**:
-   - Detect when existing jobs are updated (description, salary changes)
-   - Track job removal (no longer posted)
-   - Maintain historical job data
-
----
-
-## Summary
-
-This job scraping implementation plan provides a modular, scalable architecture for integrating the jobspy library into the Job Finder application. By separating concerns across multiple focused files within `utils/backend/scrapers/`, the system maintains clean code organization and testability.
-
-**Key Architecture Decisions**:
-- **Concurrent execution** via ThreadPool for efficient multi-board scraping
-- **Modular design** with single-responsibility files
-- **Robust error handling** to ensure partial failures don't crash the workflow
-- **Clean integration** with existing database operations
-- **Flexible filtering** system based on user configuration
-- **Comprehensive logging** for monitoring and debugging
-
-The phased implementation approach allows for iterative development, starting with experimentation to understand jobspy's behavior, followed by systematic construction of each component, and culminating in full integration with the database and frontend systems.
-
-Once the jobspy library has been explored and its data structures are understood, the detailed implementation of each file can proceed with confidence, filling in the specific API calls and data transformations required for each job board.
+# Job Scraping Pipeline — Magnification
+
+How Magnification pulls listings from job boards, cleans/dedups them, stores them, and hands the
+survivors off to enrichment + recommendation scoring. Source of truth: `utils/backend/scrapers/`,
+`utils/backend/routes/scrape_routes.py`, `utils/backend/scheduler/`.
+
+For the config/UI side (Find Jobs modal, `jobs_config.json` fields, progress popup) see
+`docs/find_jobs.md`. For the end-to-end system diagram see `docs/data-flow.md`. For the DB schema
+see `docs/database.md`.
+
+## Entry points
+
+Both entry points call the **same** orchestrator, `scraping_service.execute_full_scraping_workflow`:
+
+- **`POST /api/scrape/start`** (`utils/backend/routes/scrape_routes.py`) — spawns a daemon thread
+  running `run_scraping_background`, which calls `execute_full_scraping_workflow` with a
+  `progress_callback` that writes into an in-memory `scrape_jobs[job_id]` record (`status`,
+  `progress`, an append-only `events` log capped at 200 entries, `results`). The client polls
+  `GET /api/scrape/status/<job_id>`.
+- **The scheduler's daily runner** (`utils/backend/scheduler/daily_runner.run_daily_search`) — an
+  LLM-gated, once-per-day driver invoked out-of-band (e.g. via systemd timer). It re-checks
+  `check_llm_ready` up to `max_attempts` times (default 6, 10 min apart) and, the first time the
+  LLM answers, calls `execute_full_scraping_workflow(save_to_database=True)` with no
+  `progress_callback`. A stamp file (`data/daily_search_state.json`) guarantees at most one real
+  run per calendar day; the outcome (`success` / `scrape_error` / `scrape_failed` /
+  `llm_unavailable`) is recorded there.
+
+## Module map (`utils/backend/scrapers/`)
+
+| File | Owns |
+| --- | --- |
+| `scraping_service.py` | The orchestrator — `execute_full_scraping_workflow` (the shared entry point) and `scrape_jobs_quick`/`get_workflow_status` helpers. |
+| `task_generator.py` | `load_jobs_config` (reads `config/jobs_config.json`) and the `ScrapingTask` dataclass (unused by the live workflow, which builds tasks via `JobSpyScraper` directly). |
+| `jobspy_wrapper.py` | `JobScrapeTask` — runs `jobspy.scrape_jobs` once per site for one job title/country; `build_compensation_string` (the one place min/max/currency/interval become a display string, NaN-safe); `normalize_job_data`. |
+| `concurrent_scraper.py` | `JobSpyScraper` — builds one `JobScrapeTask` per (title × country), runs them on a `ThreadPoolExecutor`, aggregates `all_jobs` and per-task summaries. |
+| `data_processor.py` | `process_scraped_jobs` — in-batch dedup, field cleaning (incl. compensation), validation, transform to DB-row shape; `get_job_statistics`. |
+| `linkedin_scraper.py` | `fetch_descriptions_for_jobs` — fetches LinkedIn's guest-API description HTML for jobs missing one; forced serial (see below). |
+| `job_filter.py` | `load_filter_config`, `apply_title_filter`/`apply_keyword_filter` (flat-OR or nested-AND-of-OR), `filter_and_mark_jobs` (DB-backed, also applies profile block rules), `apply_profile_filters` (retroactive re-apply). |
+| `profile_filter.py` | Pure predicates for the active profile's block rules: `company_blocked`, `title_blocked`, `keyword_groups_satisfied`, combined in `job_blocked_by_profile`. No I/O. |
+| `scraper_config.py` | Constants: `SUPPORTED_SITES` (`indeed`, `linkedin`, `glassdoor`, `zip_recruiter`, `google`), defaults, thread/LinkedIn-fetch tuning, `FIELD_MAPPING`. |
+| `scraper_utils.py` | Standalone string helpers (`normalize_location`, `normalize_company_name`, `extract_salary_info`, …) — not wired into the live pipeline. |
+
+## The run, step by step
+
+`execute_full_scraping_workflow` (`scraping_service.py`) resolves `search_terms` / `sites` /
+`results_wanted` / `hours_old` / `location` / `countries` / `job_type` from `jobs_config.json`
+when the caller doesn't override them, then loops an inner closure,
+`_scrape_process_store(iteration, offset)`, once per **iteration**:
+
+1. **`init`** — load config, compute `max_iterations` (`config.max_iterations`, clamped `1..5`;
+   forced to `1` when `save_to_database=False`, since only DB mode can dedup across passes).
+2. **`scraping`** — `JobSpyScraper(job_titles=search_terms, sites, results_wanted, hours_old,
+   countries, job_type, offset)` builds one `JobScrapeTask` per (title × country) and runs them
+   concurrently (`ThreadPoolExecutor`, `cpu_count() - THREAD_RESERVE` workers, min 1). Each task
+   calls `jobspy.scrape_jobs` once per site sequentially. `offset` advances by `results_wanted`
+   each iteration so later passes page deeper into each board's results.
+3. **`processing`** — `data_processor.process_scraped_jobs`: `deduplicate_jobs` (in-batch, within
+   and across sites, keyed on lowercased `(title, company)` — location is deliberately excluded
+   so the same opening re-posted in multiple cities collapses to one row), then per-job
+   `clean_job_data` (string trim, `job_url`→`link` fallback) which builds the compensation string
+   via `jobspy_wrapper.build_compensation_string` whenever the board didn't already supply one
+   (`_finite_amount`/`_clean_token` reject jobspy's NaN salary fields so a board with no pay data
+   yields `''`, not `"USDnan - USDnan"`), then `validate_job` (requires title/company/location)
+   and `transform_to_db_format`.
+4. **DB dedup** — `database.operations.get_existing_job_keys()` returns every `(title, company)`
+   already in the table; any processed job matching one is dropped *before* the LinkedIn fetch or
+   any LLM call runs, so those expensive steps only ever touch jobs that are both new and pass
+   this check.
+5. **`fetching_descriptions`** — for the remaining LinkedIn-sourced jobs, `apply_title_filter`
+   (against `jobs_config.job_titles`) narrows the set first, then
+   `linkedin_scraper.fetch_descriptions_for_jobs` fetches descriptions for that narrowed set only.
+6. **`saving`** — if `save_to_database`, each remaining job is inserted via
+   `database.operations.add_job`; every job here already passed steps 3–5, so no per-job duplicate
+   check happens here.
+
+Steps 2–6 repeat once per iteration (offset increasing each time); job ids from every iteration
+accumulate into one list. After the loop:
+
+7. **`filtering`** — `job_filter.filter_and_mark_jobs(job_ids)` runs **once** over every job saved
+   across all iterations: applies `jobs_config` title/keyword filters *and* the active profile's
+   block rules (`profile_filter.job_blocked_by_profile`), setting `ignore=1` on non-matches.
+   Jobs with `saved=1` are always kept (never auto-hidden).
+8. **`extracting_enrichment`** then **`analyzing`** — run once, on every non-ignored job from this
+   run (see next section). **`completed`** (or **`failed`** on an unhandled exception, with the
+   error message in `details.message`).
+
+## Counters / progress semantics
+
+Every iteration builds a **fresh** `JobSpyScraper` whose own tally restarts at zero, so
+`execute_full_scraping_workflow` accumulates run-level totals itself in a local `totals` dict
+(`raw`, `processed`, `db_dedup_removed`, `stored`) rather than reading them off a single pass.
+Both the `progress_callback` payload (`details.jobs_found` / `jobs_saved` / `jobs_kept`) and the
+final `results` dict expose these **cumulative, monotonically non-decreasing** run totals; each
+corresponding entry in `results['steps']` (e.g. `scraping.raw_jobs_count`,
+`processing.processed_count`, `storage.stored_count`) also carries the pass-local figure as
+`last_pass_count` (`db_dedup.last_pass_removed` for the dedup step). Multi-iteration runs get an
+extra `results['steps']['iterations']` with a `passes` list. This is the exact contract documented
+in `docs/api-contract.md`'s Scrape section and `docs/data-flow.md` — this file doesn't restate the
+tile-by-tile UI mapping, see those instead.
+
+## LinkedIn description fetch: forced serial
+
+`linkedin_scraper._resolve_fetch_settings` **ignores** its `max_workers` argument and the
+`runtime_config.linkedin_workers` setting and always returns a worker count of **1** —
+`fetch_descriptions_for_jobs` runs one request at a time regardless of what's configured. Each
+request still waits a jittered pre-request delay (`runtime_config.linkedin_delay`, default from
+`LINKEDIN_FETCH_DELAY = 0.5`s). This is deliberate: LinkedIn's guest-API endpoint
+(`jobs-guest/jobs/api/jobPosting/{id}`) rate-limits aggressively (HTTP 429) under concurrent
+requests, so serial + jittered delay trades wall-clock time for reliability. `linkedin_workers` is
+kept in `runtime_config` for reference/back-compat but has no effect on this fetch.
+
+## Failure handling + logging
+
+- The scraper modules (`scraping_service.py`, `concurrent_scraper.py`, `jobspy_wrapper.py`,
+  `data_processor.py`, `job_filter.py`, `linkedin_scraper.py`) log through Python's standard
+  `logging` module (`logging.getLogger(__name__)`); the scheduler (`daily_runner.py`,
+  `llm_health.py`) and `recommend/enrichment.py` use `loguru`.
+- Per-site scrape failures are caught inside `JobScrapeTask.run`: an exception scraping one site
+  for one title is recorded in that task's `errors` dict and logged, `site_counts[site]` is set to
+  0, and the loop continues to the next site — one bad board never aborts the run.
+- Per-job store failures inside the saving step are caught individually; the job is skipped, the
+  error appended to `results['errors']`, and the loop continues.
+- The enrichment call (step 7a) and the recommendation-analysis call (step 7b) are each wrapped in
+  their own `try/except`: a failure there is logged and appended to `results['errors']` but does
+  **not** fail the overall workflow (`results['success']` can still be `True`).
+- Only an exception escaping the outer `try` in `execute_full_scraping_workflow` itself produces
+  `results['success'] = False` and the `failed` progress stage.
+
+## Post-scrape enrichment (shared with Analyze Matches)
+
+Step 7a calls `recommend.enrichment.enrich_jobs(kept_jobs, get_runtime_config(), on_progress=...)`
+— the **same function** `POST /api/recommend/analyze` uses — to extract compensation and industry
+from each job's description in one combined LLM pass, gated by
+`runtime_config.enable_llm_compensation` / `enable_llm_industry` and a reachable LLM endpoint. Step
+7b optionally calls `recommend.service.analyze_jobs(job_ids)` (gated by
+`runtime_config.enable_analysis` and an active profile existing) to embed, score, and persist a
+`JobAnalysis` row per job. Both are non-fatal to the scrape. See `docs/recommendation.md` for what
+each of those steps actually does.
+
+## See also
+
+- `docs/find_jobs.md` — the Find Jobs modal, `jobs_config.json` fields, and the progress-popup UI.
+- `docs/data-flow.md` — the full read/write data-flow diagram this pipeline sits inside.
+- `docs/database.md` — the `jobs` table schema and related models.
+- `docs/api-contract.md` — the `/api/scrape/*` request/response contract.
+- `docs/recommendation.md` — enrichment + hybrid RAG scoring that runs after a scrape.

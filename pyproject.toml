@@ -1,7 +1,7 @@
 [project]
 name = "magnification"
 version = "0.1.0"
-description = "Add your description here"
+description = "Local-first job-search app: scrapes job boards, ranks listings against your resume, and drafts tailored application documents."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -25,3 +25,10 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+# Tests import the app as `utils.backend...` / `app`, so the repo root must be on
+# sys.path. Without this, `uv run pytest` from the root fails to collect every test
+# module outside tests/ that doesn't hand-roll a sys.path append.
+pythonpath = ["."]
+testpaths = ["tests"]

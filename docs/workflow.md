@@ -95,10 +95,20 @@ enabled, so user units start at boot). Units + installer live in
 
 ## Testing & Verification
 
-- Tests live in top-level `tests/`, grouped by area (`tests/<area>/test_<behavior>.py`).
+- Tests live in top-level `tests/`, grouped by area (`tests/<area>/test_<behavior>.py`). The repo
+  root is put on `sys.path` by `[tool.pytest.ini_options] pythonpath = ["."]` in `pyproject.toml`,
+  so `uv run pytest` collects them from the root; don't re-add per-file `sys.path` hacks.
 - After backend changes: confirm `app.py` imports and the app starts.
-- After UI changes: validate the responsive/accessibility checklist in `docs/skills/accessibility-mobile/SKILL.md`.
-- Doc/skill integrity is checked by `tests/docs/test_skill_pointers.py`.
+- After UI changes: validate the responsive/accessibility checklist in
+  `docs/skills/accessibility-mobile/SKILL.md`. The browser pane does not composite frames in this
+  environment, so verify via the served HTML, the API, and wiring tests rather than screenshots.
+- Doc/skill integrity is checked by `tests/docs/test_skill_pointers.py`; every relative path a
+  Markdown doc names is checked by `tests/docs/test_doc_links.py` (`docs/plans/` is exempt — plans
+  are a historical record and may name files that no longer exist).
+- Two tests are **not** offline and can fail or hang without network/services:
+  `tests/test_config_loading.py` calls real job boards, and
+  `tests/recommend/test_recommend_service.py::test_analyze_api_and_report` needs the cached
+  embedding model and a reachable LLM endpoint. Deselect them when working offline.
 - **Every worktree now shares the real `data/magnificiation.db`** (see the shared-root note above).
   Tests that exercise `utils/backend/database/operations.py` must either run against an isolated
   in-memory engine (patch `init_db.SessionLocal`, e.g. `tests/database/test_clear_jobs.py`) or

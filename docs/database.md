@@ -1,402 +1,198 @@
-# Database Architecture Plan - Magnification Job Search Application
-
-## Overview
-This document outlines the SQLite database architecture for the Magnification job search application. The database consists of two primary tables: a Jobs table that stores job listings and an Application Status table that tracks the progression of applications through various stages.
-
----
-
-## Database Design
-
-### Core Principles
-- **Single SQLite Database**: All data stored in a single `.db` file for simplicity and portability
-- **Relational Structure**: Jobs and Application Status linked via foreign key relationship
-- **Conditional Population**: Application Status records only created for jobs where `ignore` is not set to 1
-- **Audit Trail**: Date tracking for status transitions enables analysis of application timelines
-
----
-
-## Table Schemas
-
-### 1. Jobs Table
-The primary table storing job listing information retrieved from web scrapers.
-
-**Table Name**: `jobs`
-
-**Columns**:
-- `id` (Integer, Primary Key, Auto-increment)
-- `title` (String, Not Null) - Job title
-- `company` (String, Not Null) - Company name
-- `location` (String, Not Null) - Job location
-- `link` (String) - URL to the job posting
-- `description` (String) - Full job description
-- `compensation` (String) - Salary/compensation information. Only ever a *usable* pay string: the jobspy salary formatter (`scrapers/jobspy_wrapper.build_compensation_string`) drops non-finite amounts and NaN currency/interval labels rather than stringifying them, and `recommend.compensation.clean_compensation` rejects anything carrying a bare `nan` token or no digits. Pre-existing malformed rows (`"USDnan - USDnan hourly"`, `"nannan - nannan nan"` — 1,283 of them) are blanked by the idempotent `migrate_clean_bad_compensation`, which also clears their `compensation_checked` flag so the description extractor re-derives the real figure. Empty → the UI shows "Not Specified".
-- `compensation_checked` (Integer, Default: 0) - Records that LLM compensation extraction has already run for this job (0 = not yet, 1 = checked). Compensation is extracted from the **description** for every job that has one, whatever the board reported (`recommend.compensation.needs_compensation_recovery`), so this flag is what limits it to one call per job rather than one per run; it is set once the LLM has been asked, whether or not pay was found. A forced reanalyze re-attempts regardless. Added to pre-existing databases by the idempotent `migrate_job_compensation_checked` migration.
-- `industry` (String(64)) - The job's detected industry/genre, one of a fixed taxonomy (Tech, Health, Finance, Business, Industrial, Science, Education, Government, Retail, Media, Legal, Energy, Other; source of truth: `recommend.compensation.INDUSTRIES`), extracted from the description by the LLM in the **same enrichment pass** as compensation. `NULL` until classified.
-- `industry_checked` (Integer, Default: 0) - Records that LLM industry classification has already run for this job (0 = not yet, 1 = checked). Unlike `compensation_checked`, it is set **only when a label actually came back**: the model is asked to always pick one, so an empty response means the call failed and the job must retry (`recommend.compensation.needs_industry_recovery`). A forced reanalyze re-attempts regardless. Added to pre-existing databases by the idempotent `migrate_job_industry` migration; rows stranded by the earlier always-stamp behavior are reopened by `migrate_reset_unlabeled_industry`.
-- `ignore` (Integer, Default: 0) - Flag to exclude from application tracking (0 = track, 1 = ignore)
-- `saved` (Integer, Default: 0) - Flag pinning the job to the **Saved** lane (0 = not saved, 1 = saved). Saved jobs are hidden from the New Jobs feed and always shown under the Saved tab, even after being marked Applied. Independent of `ignore` — but a saved job is an explicit user keep and is therefore **never auto-hidden** by the scrape/profile filters (`job_filter.filter_and_mark_jobs` and `job_filter.apply_profile_filters` skip any job with `saved=1`); only the manual hide button (`PATCH /api/jobs/<id>/ignore`) can set `ignore=1` on a saved job. Indexed (`idx_jobs_saved`). Added to pre-existing databases by the idempotent `migrate_job_saved` migration.
-- `date_first_applied` / `date_first_interview` / `date_first_offer` / `date_first_rejected` / `date_first_ghosted` (String, Nullable, YYYY-MM-DD) - **Durable, write-once pipeline timestamps** recording the *first* time the job reached each stage. Stamped by `update_application_status` the first time the mapped `application_statuses` milestone is checked (Applied → applied; any Interview 1-3 → interview; Offer/Accepted → offer; Rejected/Post-Interview Rejection → rejected; Ignored/Ghosted → ghosted) and **never cleared or overwritten** afterwards — so the pipeline history survives a card being dragged backward, unlike the mutable `application_statuses.date_reached`. "Found" is not a column here; the durable `created_at` already records it (exposed as `date_found`). Added to pre-existing databases by the idempotent `migrate_job_pipeline_dates` migration, which also **backfills** first-dates from existing checked status history.
-- `created_at` (DateTime, Default: Current timestamp) - When the job was added to the database (also the durable "found" date, serialized as `date_found`)
-- `updated_at` (DateTime, Default: Current timestamp) - Last update timestamp
-
----
-
-### 2. Application Status Table
-Tracks the progression of applications through various interview and decision stages.
-
-**Table Name**: `application_statuses`
-
-**Columns**:
-- `id` (Integer, Primary Key, Auto-increment)
-- `job_id` (Integer, Foreign Key → `jobs.id`) - Reference to the job application
-- `status` (String, Not Null) - Current status of the application
-- `checked` (Integer, Default: 0) - Checkpoint indicator (0 = not reached, 1 = reached)
-- `date_reached` (String, Nullable) - Date when the status was checked/reached (format: YYYY-MM-DD)
-
-**Status Values** (Enumerated):
-1. `Applied` - Initial application submitted
-2. `Interview 1` - First interview stage
-3. `Interview 2` - Second interview stage
-4. `Interview 3` - Third interview stage
-5. `Post-Interview Rejection` - Rejected after interview rounds
-6. `Offer` - Job offer received
-7. `Accepted` - Offer accepted by candidate
-8. `Rejected` - Application rejected (pre-interview)
-9. `Ignored/Ghosted` - No response or dropped communication
-
-**Relationship Rules**:
-- Each `job_id` will have exactly 9 application status records (one for each status value)
-- Records are only created for jobs where `jobs.ignore` = 0
-- Jobs with `jobs.ignore` = 1 will never have corresponding records in this table
-
----
-
-### 3. Profiles Table (recommendation system)
-Stores user profiles built from a resume; the active profile is the comparison target for RAG + LLM scoring.
-
-**Table Name**: `profiles`
-
-**Columns**:
-- `id` (Integer, PK, Auto-increment)
-- `name` (String(120), Not Null, default `"default"`) - human label
-- `is_active` (Integer, default 0) - 1 for the single active profile used for scoring
-- `source_filename` (String(512), Nullable) - original resume filename (pdf/tex/md)
-- `resume_text` (Text, Nullable) - extracted plain text of the resume
-- `interests_paragraph` (Text, Nullable) - open-body interests paragraph (LLM matching)
-- `skills` (JSON, Nullable) - list of skill strings
-- `job_titles` (JSON, Nullable) - list of search-query job titles
-- `keyword_groups` (JSON, Nullable) - list of `{label, terms:[...]}`; **AND across groups, OR within a group** (same convention as `utils/backend/scrapers/job_filter`)
-- `created_at` / `updated_at` (DateTime)
-
-**Invariant**: at most one profile has `is_active=1` (enforced by `set_active_profile` / `upsert_active_profile` in `operations.py`). Index: `idx_profiles_active`.
-
----
-
-### 4. Job Analyses Table (recommendation system)
-Per-job recommendation artifacts, **1:1 with `jobs`**. The embedding is profile-independent and computed once on retrieval; the scores are computed against `profile_id` and overwritten on re-analysis.
-
-**Table Name**: `job_analyses`
-
-**Columns**:
-- `id` (Integer, PK, Auto-increment)
-- `job_id` (Integer, FK → `jobs.id` ON DELETE CASCADE, **unique** → 1:1)
-- `profile_id` (Integer, FK → `profiles.id` ON DELETE SET NULL, Nullable)
-- `embedding` (LargeBinary, Nullable) - packed float32 bytes of the bge-small-en-v1.5 vector
-- `embedding_dim` (Integer, Nullable) - 384 for bge-small-en-v1.5
-- `extracted_skills` (JSON, Nullable) - skills found in the job description
-- `semantic_score` / `bm25_score` / `keyword_score` / `skill_score` (Float, Nullable) - component signals
-- `rag_score` (Float, Nullable) - combined hybrid relevance (0..1)
-- `keyword_group_hits` (JSON, Nullable) - `{group_label: [matched terms]}`
-- `skill_match` (JSON, Nullable) - `{matched:[...], missing:[...]}`
-- `llm_score` (Float, Nullable) - optional LLM verdict (0..100)
-- `llm_rationale` (Text, Nullable) - optional LLM explanation
-- `analyzed_at` (DateTime)
-
-**Relationship Rules**:
-- Deleting a `Job` cascades to its `JobAnalysis` (ORM-level cascade via the `Job.analysis` backref).
-- Indexes: `idx_job_analyses_job_id` (unique), `idx_job_analyses_profile_id`, `idx_job_analyses_rag_score`.
-
-> Both tables are created by `Base.metadata.create_all()` in `init_db.init_database()`; no destructive migration is required since they are new tables.
-- The `checked` field enables tracking which milestones have been reached
-- The `date_reached` field stores when a milestone transitioned from 0 to 1
-
----
-
-### 5–8. Retired tables (Uploaded Documents / Behavioral / Writing-Style / Templates)
-
-The `uploaded_documents`, `behavioral_profiles`, `writing_style_profiles`, and `document_templates`
-tables — and the upload-ingestion pipeline that fed them — were **retired** in favor of a single
-editable **Document Guidance** document (plain text in `config/document_guidance.json`, not a DB
-table). Their ORM models and CRUD were removed, so fresh databases no longer create these tables; a
-pre-existing database keeps them as harmless orphans (no destructive `DROP` migration was run). See
-`docs/plans/documents-sidebar-simplify.md` and `utils/backend/agents/document_guidance.py`.
-
----
-
-### 9. Job Evaluations Table (agentic documents system)
-Per-job application-fit verdict — **1:1 with `jobs`**, upserted by `job_id`. Distinct from Job Analyses (§4): Job Analyses is the RAG/embedding relevance signal, Job Evaluations is the agentic fit verdict (emphasize/gaps/risks/talking points).
-
-**Table Name**: `job_evaluations`
-
-**Columns**:
-- `id` (Integer, PK, Auto-increment)
-- `job_id` (Integer, FK → `jobs.id` ON DELETE CASCADE, **unique** → 1:1)
-- `profile_id` (Integer, FK → `profiles.id` ON DELETE SET NULL, Nullable)
-- `verdict` (String, Nullable)
-- `fit_score` (Float, Nullable)
-- `emphasize` (JSON, Nullable) - list of points to emphasize
-- `gaps` (JSON, Nullable) - list of gap strings
-- `risks` (Text, Nullable)
-- `talking_points` (JSON, Nullable) - list of talking-point strings
-- `created_at` / `updated_at` (DateTime)
-
-**Relationship Rules**:
-- Deleting a `Job` cascades to its `JobEvaluation` (same FK-cascade pattern as `JobAnalysis`, §4).
-- One evaluation per job: `job_evaluations` upserts by `job_id` rather than accumulating rows.
-
----
-
-### 10. Generated Documents Table (agentic documents system)
-Job-linked storage for generated cover letters/résumés. Currently a **dormant substrate**: the table and its CRUD exist, but the generation graphs that populate it are a later, deferred phase.
-
-**Table Name**: `generated_documents`
-
-**Columns**:
-- `id` (Integer, PK, Auto-increment)
-- `job_id` (Integer, FK → `jobs.id` ON DELETE CASCADE)
-- `kind` (String) - `cover_letter` or `resume`
-- `content` (Text, Nullable)
-- `format` (String, Nullable)
-- `status` (String, default `draft`) - `draft` or `approved`
-- `match_before` / `match_after` (Float, Nullable) - fit score before/after generation
-- `revision` (Integer, default 0)
-- `checkpoint_state` (JSON, Nullable) - in-progress generation state
-- `created_at` / `updated_at` (DateTime)
-
-**Relationship Rules**:
-- Deleting a `Job` cascades to its `GeneratedDocument` rows (same FK-cascade pattern as `JobAnalysis`, §4).
-- Not unique on `job_id`: multiple documents/revisions per job are expected (different `kind`, or successive `revision`s).
-
----
-
-> Tables 5-10 are created by `Base.metadata.create_all()` in `init_db.init_database()` — same as Job Analyses (§4), no migration is required since they are new tables.
-
-> `clear_jobs_database()` now also bulk-deletes `job_evaluations` and `generated_documents` alongside `application_statuses`/`job_analyses` (bulk delete bypasses the ORM cascade, so job-linked agentic-documents rows must be purged explicitly).
-
-> These six tables are the data foundation for the agentic documents system described in [`docs/plans/agentic-documents-system.md`](plans/agentic-documents-system.md) (build order §8.1-§8.2): document ingestion and profile/template storage are implemented now, while the cover-letter/résumé generation graphs remain a deferred phase.
-
----
-
-## File Organization & Implementation Plan
-
-### Database Models Directory
-**Location**: `utils/backend/database/`
-
-This directory will contain all database-related code, organized into separate files for clarity and maintainability.
-
-#### Models File: `models.py`
-**Purpose**: SQLAlchemy ORM model definitions
-
-**Contents**:
-- Import SQLAlchemy and related dependencies
-- Define `Job` model class with all columns specified in the Jobs table schema
-- Define `ApplicationStatus` model class with all columns specified in the Application Status table schema
-- Establish foreign key relationship between `ApplicationStatus.job_id` and `Job.id`
-- Add model methods for common operations (e.g., `get_status_by_name()`, `is_ignored()`)
-- Include relationship decorators to enable easy navigation from Job to its ApplicationStatus records
-
-#### Database Initialization File: `init_db.py`
-**Purpose**: Database initialization and schema creation
-
-**Contents**:
-- Initialize SQLAlchemy connection and engine
-- Create database session factory
-- Define function to create all tables on first run
-- Include database path configuration (should point to `data/magnificiation.db`)
-- Handle database migrations if schema changes occur
-
-#### Database Operations File: `operations.py`
-**Purpose**: Core CRUD operations and business logic for database interactions
-
-**Contents**:
-- Job operations:
-  - `add_job()` - Insert new job into the database
-  - `update_job()` - Modify existing job record
-  - `delete_job()` - Remove job from database
-  - `get_job_by_id()` - Retrieve single job
-  - `get_all_jobs()` - Retrieve all jobs with filtering options
-  - `get_active_jobs()` - Retrieve only jobs where `ignore` = 0
-  - `set_job_ignore()` - Toggle ignore flag on a job
-  
-- Application Status operations:
-  - `create_application_status_records()` - Create all 9 status records for a new job (helper function to populate new application statuses)
-  - `update_application_status()` - Update a specific status record (mark as checked and record date)
-  - `get_application_status_by_job()` - Retrieve all application status records for a job
-  - `get_status_by_name()` - Retrieve a specific status record by status name
-  - `reset_application_status()` - Clear application status records for a job
-  
-- Query operations:
-  - `get_jobs_by_status()` - Find all jobs at a particular application stage
-  - `get_jobs_by_company()` - Find all jobs from a specific company
-  - `get_timeline_for_job()` - Get chronological view of all checked statuses for a job
-  - `get_job_by_criteria()` - Find job by title, company, and location (for duplicate checking during scraping)
-  - `get_jobs_by_ids()` - Retrieve multiple jobs by their IDs (for batch operations during filtering)
-
-#### Database Utilities File: `utils.py`
-**Purpose**: Helper functions and utilities for database operations
-
-**Contents**:
-- Validation functions:
-  - `validate_status()` - Verify status value is one of the 9 allowed values
-  - `validate_job_data()` - Validate required fields before insertion
-  - `validate_date_format()` - Ensure dates follow YYYY-MM-DD format
-  
-- Conversion/Formatting functions:
-  - `format_job_for_display()` - Format job data for frontend presentation
-  - `get_status_list()` - Return list of valid status values
-  - `format_date()` - Handle date formatting and conversion
-  
-- Status management:
-  - `get_next_status_index()` - Determine next logical status in sequence
-  - `is_status_progression_valid()` - Validate logical application flow
-
-#### Configuration File: `config.py`
-**Purpose**: Database configuration and constants
-
-**Contents**:
-- Database path configuration (relative to project root: `data/magnificiation.db`)
-- Valid status enumeration as constants
-- SQLAlchemy configuration options
-- Connection string and engine settings
-
----
-
-## Integration Points
-
-### Job Scraping Integration
-**Location**: `utils/backend/scrapers/`
-
-The job scraping system integrates with database operations as follows:
-- `scraping_service.py` calls `operations.add_job()` to store each scraped and processed job
-- Jobs are inserted with default `ignore=0` flag
-- `operations.create_application_status_records()` is automatically invoked for jobs with `ignore=0`
-- `job_filter.py` calls `operations.set_job_ignore()` to mark filtered jobs with `ignore=1`
-- Jobs marked as ignored do not receive application status records
-
-### Backend Services Integration
-**Location**: `utils/backend/services/`
-
-The database operations will be called from service layer files that handle business logic:
-- Job scraping workflow orchestration via `scrapers/scraping_service.py`
-- Application tracking services will use `operations.update_application_status()` to record status changes
-
-### API Routes Integration
-**Location**: `utils/backend/routes/`
-
-Flask routes will expose endpoints that interact with the database:
-- `GET /api/jobs` - Retrieve all active jobs
-- `POST /api/jobs` - Add new job
-- `GET /api/jobs/<id>` - Get specific job and its application timeline
-- `PATCH /api/jobs/<id>/status` - Update application status for a job
-- `PATCH /api/jobs/<id>/ignore` - Toggle ignore flag
-
-### Frontend Data Consumption
-**Location**: `utils/frontend/static/js/`
-
-JavaScript services will make API calls to retrieve and display data:
-- Application status tracking displays will consume `/api/jobs/<id>` endpoint
-- Job lists will use `/api/jobs` endpoint with filtering
-- Status update forms will POST to `/api/jobs/<id>/status` endpoint
-
----
-
-## Database Storage Location
-
-**Database File Path**: `data/magnificiation.db`
-
-The SQLite database file will be stored in the `data/` directory at the project root. This follows the project structure convention of keeping persistent data separate from application code.
-
-**Access Pattern**:
-- All file paths should be relative to the project root
-- The application will construct the full path at runtime from configuration
-- This enables consistent operation regardless of current working directory
-
----
-
-## Key Implementation Considerations
-
-### Data Integrity
-1. **Foreign Key Constraints**: Enforce referential integrity between Jobs and Application Status tables
-2. **Cascade Rules**: When a job is deleted, its associated application status records should be deleted
-3. **Required Fields**: Enforce `NOT NULL` constraints on critical fields (title, company, location)
-
-### Application Logic
-1. **Atomic Operations**: When a job is added with `ignore=0`, automatically create 9 application status records in a transaction
-2. **Status Integrity**: Validate that status values match the predefined enumeration
-3. **Date Handling**: Always use YYYY-MM-DD format for date storage and conversion
-
-### Performance Considerations
-1. **Indexing**: Add indexes on frequently queried columns:
-   - `jobs.company` (for filtering by company)
-   - `jobs.ignore` (for active jobs queries)
-   - `application_statuses.job_id` (foreign key lookups)
-   - `application_statuses.checked` (for milestone tracking)
-
-2. **Query Optimization**: Use relationships and eager loading to minimize database roundtrips
-
-### Future Extensibility
-1. **Migration Strategy**: Implement a migration system if schema changes are needed
-2. **Backup Mechanism**: Plan for regular database backups to the `data/` directory
-3. **Logging**: All database operations should be logged via the project's logging system
-
----
-
-## Example Workflows
-
-### Adding a New Job (via Scraping Workflow)
-1. Scraping system collects jobs from multiple job boards concurrently
-2. Data processor deduplicates and cleans job data
-3. For each unique job:
-   - Transform data to match database schema
-   - Call `validate_job_data()` to ensure all required fields are present
-   - Call `add_job()` to insert into Jobs table with `ignore=0`
-   - `create_application_status_records()` automatically creates 9 status records
-4. Job filter evaluates each job against user-defined criteria
-5. Jobs failing filters have `set_job_ignore(job_id, 1)` called to mark them as ignored
-6. All operations wrapped in transaction for atomicity
-
-### Tracking Application Progress
-1. User indicates application was submitted
-2. API endpoint receives status update request
-3. Call `update_application_status()` with status name, check value (1), and current date
-4. Record persists with date_reached populated
-5. Frontend queries `get_application_status_by_job()` to display updated timeline
-
-### Filtering Active Applications
-1. Frontend requests list of jobs in "Interview 1" stage
-2. Call `get_jobs_by_status()` with `"Interview 1"` parameter
-3. Query joins Jobs and ApplicationStatus tables with filters
-4. Returns all jobs where the Interview 1 status has `checked=1`
-
----
-
-## Testing Strategy
-
-Test files should be created in `utils/backend/tests/`:
-- `test_models.py` - Unit tests for ORM models
-- `test_operations.py` - Unit tests for CRUD operations
-- `test_utils.py` - Unit tests for utility functions
-- `test_integration.py` - Integration tests for complete workflows
-
-Each test should verify:
-1. Correct data persistence
-2. Foreign key relationships
-3. Status validation
-4. Date handling
-5. Edge cases (ignored jobs, null values, etc.)
-
----
-
-## Summary
-
-This database architecture provides a clean, maintainable structure for storing job listings and tracking application progress through multiple interview stages. By separating models, operations, and utilities into distinct files within `utils/backend/database/`, the codebase remains organized and testable. The relational design with Jobs and Application Status tables enables comprehensive tracking of the entire application lifecycle while maintaining data integrity and enabling future extensions.
+# Database — Magnification
+
+SQLite via SQLAlchemy ORM. Source: `utils/backend/database/`.
+
+The database file lives at `<project_root>/data/magnificiation.db` (see `config.py`;
+`DATABASE_URL` is a plain `sqlite:///` path). `PROJECT_ROOT` is resolved by
+`utils/backend/paths.get_project_root()`, which shells out to `git rev-parse --git-common-dir`
+so the **main checkout and every git worktree share the same `data/`** — a worktree-relative
+`__file__` path would otherwise point at that worktree's own empty directory. `init_database()`
+(called once at app startup) runs `Base.metadata.create_all()` — creating any missing tables —
+and then `_run_migrations()`, a fixed sequence of idempotent additive migrations that patch
+pre-existing databases with columns added after their creation. Both are safe to call on every
+startup.
+
+## Models (`models.py`)
+
+### `jobs`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `id` | Integer PK | — |
+| `title` | String(255), NOT NULL | — |
+| `company` | String(255), NOT NULL | — |
+| `location` | String(255), NOT NULL | — |
+| `link` | String(2048) | URL to the posting |
+| `description` | Text | Full job description |
+| `compensation` | String(255) | Salary/pay string, or empty. Only ever a usable string — the jobspy formatter and `recommend.compensation.clean_compensation` both reject NaN-poisoned/digit-less values before they reach this column. |
+| `compensation_checked` | Integer, default 0 | **Gate flag**: 1 once LLM compensation extraction has run for this job (whether or not pay was found), so a no-pay job isn't re-queried every scrape/"Analyze Matches" run. A forced reanalyze re-attempts regardless. |
+| `industry` | String(64) | Detected industry (fixed taxonomy in `recommend.compensation.INDUSTRIES`), extracted in the same LLM pass as compensation. `NULL` until classified. |
+| `industry_checked` | Integer, default 0 | **Gate flag**, set only when a label actually came back (unlike `compensation_checked`, which is set unconditionally). Jobs stamped-but-unlabeled by an older code path are re-opened by `migrate_reset_unlabeled_industry`. |
+| `site` | String(50) | Job board the listing came from |
+| `ignore` | Integer, default 0 | 1 excludes the job from the tracker/feed |
+| `saved` | Integer, default 0 | **Gate-adjacent flag**: 1 pins the job to the Saved lane, hides it from the New Jobs feed, and exempts it from scrape/profile auto-filtering (`saved=1` jobs are skipped by `job_filter`). Only the manual hide action can still set `ignore=1` on a saved job. |
+| `date_first_applied` / `date_first_interview` / `date_first_offer` / `date_first_rejected` / `date_first_ghosted` | String(10), Nullable | Durable, **write-once** pipeline timestamps (YYYY-MM-DD). Stamped by `update_application_status` the first time the mapped `application_statuses` milestone is checked, never cleared/overwritten afterwards (survives a card being dragged backward). No "found" column — `created_at` already serves that role. |
+| `created_at` | DateTime | Also the durable "found" date (serialized as `date_found`) |
+| `updated_at` | DateTime | — |
+
+Indexes: `idx_jobs_company`, `idx_jobs_ignore`, `idx_jobs_saved`.
+
+### `application_statuses`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `id` | Integer PK | — |
+| `job_id` | Integer, FK → `jobs.id` ON DELETE CASCADE, NOT NULL | — |
+| `status` | String(50), NOT NULL | One of the 9 `APPLICATION_STATUSES` (`config.py`): Applied, Interview 1/2/3, Post-Interview Rejection, Offer, Accepted, Rejected, Ignored/Ghosted |
+| `checked` | Integer, default 0 | **Gate flag**: 1 = milestone reached. `reset_application_status` clears every row for a job back to 0. |
+| `date_reached` | String(10), Nullable | YYYY-MM-DD when `checked` last flipped to 1; mutable (unlike `jobs.date_first_*`) |
+
+Every non-ignored job gets all 9 rows created together (`add_job` → `_create_status_records_for_job`). Indexes: `idx_app_status_job_id`, `idx_app_status_checked`.
+
+### `profiles`
+
+Single-active-row comparison target for the recommendation system.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `id` | Integer PK | — |
+| `name` | String(120), default `"default"` | Human label |
+| `is_active` | Integer, default 0 | 1 for the one profile used for scoring; invariant enforced by `set_active_profile`/`upsert_active_profile` |
+| `source_filename` | String(512) | Original resume filename (pdf/tex/md) |
+| `resume_text` | Text | Extracted resume plain text |
+| `interests_paragraph` | Text | Free-body interests paragraph (LLM matching) |
+| `skills` | JSON | list[str] |
+| `job_titles` | JSON | list[str] search-query titles |
+| `keyword_groups` | JSON | list[{label, terms:[...], scopes:[...]}] — AND across groups, OR within a group; `scopes` ⊆ {title, description}; an unsatisfied group hard-blocks a job at scrape time |
+| `blocked_companies` | JSON | list[str], case-insensitive company hide-list |
+| `title_blocklist` | JSON | list[str], any title substring match hides the job |
+| `llm_instructions` | Text | Free-text guidance steering the LLM profile build |
+| `created_at` / `updated_at` | DateTime | — |
+
+Index: `idx_profiles_active`.
+
+### `job_analyses` (1:1 with `jobs`)
+
+RAG/embedding relevance signal, upserted by `job_id`. Embedding is profile-independent (computed once on retrieval); scores are recomputed per `profile_id`.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `id` | Integer PK | — |
+| `job_id` | Integer, FK → `jobs.id` ON DELETE CASCADE, unique | 1:1 |
+| `profile_id` | Integer, FK → `profiles.id` ON DELETE SET NULL, Nullable | Profile the scores were computed against |
+| `embedding` | LargeBinary | Packed float32 bytes, bge-small-en-v1.5 |
+| `embedding_dim` | Integer | 384 |
+| `extracted_skills` | JSON | Skills found in the description |
+| `semantic_score` / `bm25_score` / `keyword_score` / `skill_score` | Float | Component signals |
+| `rag_score` | Float | Combined hybrid relevance (0..1) |
+| `keyword_group_hits` | JSON | `{group_label: [matched terms]}` |
+| `skill_match` | JSON | `{matched:[...], missing:[...]}` |
+| `llm_score` | Float | Optional LLM verdict (0..100) |
+| `llm_rationale` | Text | Optional LLM explanation |
+| `analyzed_at` | DateTime | — |
+
+Deleting a `Job` cascades (ORM-level, via `Job.analysis` backref). Indexes: `idx_job_analyses_job_id` (unique), `idx_job_analyses_profile_id`, `idx_job_analyses_rag_score`.
+
+### `job_evaluations` (1:1 with `jobs`)
+
+Agentic-documents application-fit verdict — distinct from `job_analyses` (ranking signal vs. fit narrative). Upserted by `job_id`.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `id` | Integer PK | — |
+| `job_id` | Integer, FK → `jobs.id` ON DELETE CASCADE, unique | 1:1 |
+| `profile_id` | Integer, FK → `profiles.id` ON DELETE SET NULL, Nullable | — |
+| `verdict` | Text | Short fit verdict |
+| `fit_score` | Float | 0..100 |
+| `emphasize` | JSON | list[str] |
+| `gaps` | JSON | list[str] |
+| `risks` | Text | Free-text |
+| `talking_points` | JSON | list[str] |
+| `created_at` / `updated_at` | DateTime | — |
+
+Deleting a `Job` cascades. Indexes: `idx_job_evaluations_job_id` (unique), `idx_job_evaluations_profile_id`.
+
+### `generated_documents` (many per `jobs`)
+
+Storage for generated cover letters/résumés.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `id` | Integer PK | — |
+| `job_id` | Integer, FK → `jobs.id` ON DELETE CASCADE | Not unique — multiple docs/revisions per job |
+| `kind` | String(32), default `cover_letter` | `cover_letter` or `resume` |
+| `content` | Text | Rendered document body |
+| `format` | String(16), default `markdown` | markdown / latex / docx |
+| `status` | String(16), default `draft` | `draft` or `approved` |
+| `match_before` / `match_after` | Float | Fit-score lift before/after generation |
+| `revision` | Integer, default 1 | — |
+| `checkpoint_state` | JSON | In-progress generation state, so a run survives HTTP round-trips |
+| `created_at` / `updated_at` | DateTime | — |
+
+Deleting a `Job` cascades. Indexes: `idx_generated_documents_job_id`, `idx_generated_documents_kind`.
+
+> The `uploaded_documents`, `behavioral_profiles`, `writing_style_profiles`, and
+> `document_templates` tables (and their ingestion pipeline) were retired in favor of a single
+> editable Document Guidance document (`config/document_guidance.json`, not a DB table); their
+> ORM models were removed from `models.py`. A pre-existing database keeps them as harmless
+> orphans — no destructive migration was run. See `utils/backend/agents/document_guidance.py`.
+
+## Migrations (`_run_migrations`, `init_db.py`)
+
+All are idempotent (safe to run on every startup) and no-op when the database file or the target table doesn't exist yet. Run in this order:
+
+| Module | Adds / repairs |
+| --- | --- |
+| `migrate_profile_blocklists` | `profiles.blocked_companies`, `profiles.title_blocklist` (JSON, stored as TEXT) |
+| `migrate_profile_llm_instructions` | `profiles.llm_instructions` (TEXT) |
+| `migrate_job_saved` | `jobs.saved` (INTEGER default 0) |
+| `migrate_job_compensation_checked` | `jobs.compensation_checked` (INTEGER default 0) |
+| `migrate_job_industry` | `jobs.industry` (VARCHAR(64)), `jobs.industry_checked` (INTEGER default 0) |
+| `migrate_job_pipeline_dates` | `jobs.date_first_applied/interview/offer/rejected/ghosted` (TEXT); backfills each from the earliest matching checked `application_statuses.date_reached` |
+| `migrate_clean_bad_compensation` | Data repair: blanks malformed `compensation` strings (e.g. `"USDnan - USDnan hourly"`) via `recommend.compensation.clean_compensation`, and clears `compensation_checked` on the repaired rows so the description extractor re-derives real pay. Runs after the column migrations. |
+| `migrate_reset_unlabeled_industry` | Data repair: clears `industry_checked` on rows stamped by an earlier always-stamp code path that carry no `industry` label, so they're reclassified |
+
+`migrate_site_field` (adds `jobs.site`) exists in the same directory but is **not** wired into
+`_run_migrations` — `site` ships as a `create_all` column on fresh databases, and this script is
+a standalone legacy tool (run manually if ever needed against a pre-`site` database).
+
+## Operations
+
+### Jobs — read/write (`operations.py`)
+
+`add_job`, `update_job`, `delete_job`, `clear_jobs_database` (bulk-deletes `job_analyses`, `job_evaluations`, `generated_documents`, `application_statuses` then `jobs`, since bulk delete bypasses ORM cascade), `get_job_by_id`, `get_all_jobs`, `get_active_jobs`, `get_feed_jobs` (feed visibility: not ignored, or saved, or already applied), `get_job_counts`, `get_jobs_by_ids`, `set_job_ignore`, `set_job_saved`
+
+### Dedupe
+
+`get_existing_job_keys` — set of lowercased `(title, company)` tuples for the whole table, used by the scrape pipeline to drop already-tracked jobs before spending LinkedIn/LLM calls on them (location intentionally excluded)
+
+### Application status + write-once pipeline dates
+
+`create_application_status_records`, `update_application_status` (also stamps the matching `jobs.date_first_*` column on first check, via `PIPELINE_DATE_COLUMN` + `_stamp_pipeline_date`), `get_application_status_by_job`, `get_statuses_for_jobs` (batched, chunked at 500 IDs), `get_status_by_name`, `reset_application_status`
+
+### Query
+
+`get_jobs_by_status`, `get_jobs_by_company`, `get_timeline_for_job`
+
+### Profile
+
+`create_profile`, `update_profile`, `get_profile_by_id`, `get_active_profile`, `list_profiles`, `set_active_profile`, `upsert_active_profile` (update-if-active-exists else create), `delete_profile`
+
+### Analysis
+
+`save_job_analysis` (upsert by `job_id`), `get_analysis_for_job`, `get_analysis_for_jobs`
+
+### Agentic documents (`documents_ops.py`)
+
+`save_job_evaluation` (upsert by `job_id`), `get_job_evaluation`, `create_generated_document`, `update_generated_document`, `delete_generated_document`, `get_generated_document`, `list_generated_documents`
+
+## Testing
+
+Tests live in top-level `tests/database/`. Because every worktree shares the one real
+`data/magnificiation.db` (see the intro), tests must never touch it: the standard pattern
+(`tests/database/test_job_saved.py` and siblings) creates an in-memory `sqlite://` engine with
+`StaticPool`, runs `Base.metadata.create_all(bind=engine)`, and `monkeypatch`es
+`init_db.SessionLocal` to a session factory bound to that engine — every `get_db_context()` call
+in `operations.py`/`documents_ops.py` then transparently resolves to the isolated engine.
+Profile-touching tests that can't fully isolate this way must snapshot and restore the active
+profile instead.

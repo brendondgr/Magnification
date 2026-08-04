@@ -5,76 +5,106 @@ description: Read this skill first before doing any work in the Magnification re
 
 # Global Project Rules — Magnification
 
-Magnification is a Flask/Jinja job-search application: a job-scraping backend (`utils/backend`), a server-rendered frontend (`utils/frontend`), SQLite storage, and a local-LLM integration (`utils/LocalLLM`). A React frontend overhaul is planned but not yet started.
+Magnification is a local-first job-search application: a scraping backend and hybrid recommender
+(`utils/backend`), a single served page (`utils/frontend`), SQLite storage, in-house document
+generation agents, and a configurable OpenAI-compatible LLM integration. A React frontend rebuild is
+planned but has not started.
 
-Every AI agent and contributor must read this file before making changes.
+Every agent and contributor reads this file before making changes.
 
 ## Source of Truth
 
-The repository's durable instructions live in `docs/`. Agent-specific folders (`.claude/`, `.agents/`, `.cursor/`) contain only pointer files — never the canonical instructions.
+Durable instructions live in `docs/`. The agent folders (`.claude/`, `.agents/`, `.cursor/`) contain
+pointer files only — never canonical content.
 
 Read before acting:
 
 1. `docs/skills/global-project-rules/SKILL.md` (this file)
-2. `docs/documentation.md` — project purpose, stack, architecture, status
-3. `docs/structure.md` — repository tree and the reason each path exists
-4. `docs/workflow.md` — install, run, test, lint, env, docs-maintenance, and git rules
-5. `docs/checklist.md` — active checklist and known follow-up work
-6. The relevant canonical skill under `docs/skills/<skill>/` for the task at hand
+2. `docs/documentation.md` — purpose, stack, architecture, status
+3. `docs/structure.md` — the repository tree and why each path exists
+4. `docs/workflow.md` — install, run, test, environment, docs-maintenance, and git rules
+5. `docs/checklist.md` — what is still open
+6. The canonical skill for the task at hand, under `docs/skills/<skill>/`
 
-For any web/UI/route/data-flow work, also read `docs/architecture.md`, `docs/routes.md`, `docs/component-map.md`, `docs/data-flow.md`, `docs/design-system.md`, and `docs/api-contract.md`.
+For web, UI, route, or data-flow work, also read `docs/architecture.md`, `docs/routes.md`,
+`docs/api-contract.md`, `docs/component-map.md`, `docs/data-flow.md`, and `docs/design-system.md`.
+For subsystem work, read the matching reference: `docs/database.md`, `docs/job_scraping.md`,
+`docs/find_jobs.md`, `docs/recommendation.md`, `docs/profile.md`.
 
 ## Installed Skills
 
-- `docs/skills/planner/` — create and refine implementation plans before coding.
-- `docs/skills/repository-structure/` — repository layout standards.
-- `docs/skills/website-architecture/` — web app structure, routes, data flow, design-quality gate.
-- `docs/skills/accessibility-mobile/` — mobile-responsive and touch accessibility checks.
-- `docs/skills/portfolio-readme/` — write/audit GitHub profile and project READMEs, and repo pinning/curation advice.
+Six canonical skills, each with a pointer file in all three agent folders:
 
-## Environment Manager
+- `global-project-rules` — this file; the mandatory entry point.
+- `planner` — create and refine implementation plans before coding.
+- `repository-structure` — layout standards and file-length limits.
+- `website-architecture` — app mode, routes, data flow, design-quality gate.
+- `accessibility-mobile` — responsive and accessibility checks (the accessibility authority here).
+- `portfolio-readme` — write or audit the README and portfolio-facing material.
 
-This is a Python project managed with **`uv`**. Do not introduce pip/conda workflows into committed instructions.
+Adding or removing a skill means updating: `docs/skills/<name>/SKILL.md` (with `name:` frontmatter
+matching the folder), all three pointer files, this list, and the `SKILLS` list in
+`tests/docs/test_skill_pointers.py`.
+
+## Environment
+
+Python ≥ 3.12 managed with **`uv`**. Do not put pip or conda workflows into committed instructions.
 
 - Install: `uv sync`
-- Run app: `uv run app.py`
+- Run: `uv run app.py`
 - Add a dependency: `uv add <package>`
-- Run tests: `uv run pytest`
+- Test: `uv run pytest`
 
-The full command list lives in `docs/workflow.md`.
+The full command list, including the systemd units and the fastembed wheel workaround, is in
+`docs/workflow.md`.
 
 ## Documentation Maintenance
 
-When a change affects any of the following, update the matching doc in the same change:
+Update the matching doc in the **same change** as the code:
 
-- Project purpose, stack, or status → `docs/documentation.md`
-- Files or directories added/moved/removed → `docs/structure.md`
-- Commands, environment, or dependencies → `docs/workflow.md`
-- New or changed routes/endpoints → `docs/routes.md` and `docs/api-contract.md`
-- New UI components or ownership → `docs/component-map.md`
-- Data sources or flow → `docs/data-flow.md`
-- Visual/design decisions → `docs/design-system.md`
-- Outstanding work → `docs/checklist.md`
+| Change | Doc |
+| --- | --- |
+| Purpose, stack, or status | `docs/documentation.md` |
+| Files or directories added, moved, removed | `docs/structure.md` |
+| Commands, environment, dependencies | `docs/workflow.md` |
+| Routes or endpoints | `docs/routes.md` + `docs/api-contract.md` |
+| UI components or ownership | `docs/component-map.md` |
+| Data sources or flow | `docs/data-flow.md` |
+| Visual or design decisions | `docs/design-system.md` |
+| Work left open | `docs/checklist.md` |
 
-Implementation plans go in `docs/plans/`.
+Implementation plans go in `docs/plans/` and stay there as a historical record — supersede a plan
+with a banner, don't delete it. Keep `docs/checklist.md` a list of what is **open** plus a ledger
+pointing at those plans; do not grow it back into a build log.
 
 ## Testing and Verification
 
-- Keep lightweight tests under the top-level `tests/` directory, grouped by area (`tests/<area>/test_<behavior>.py`).
-- Verify the Flask app still imports and starts after backend changes.
-- For UI changes, validate the responsive/accessibility checklist in `docs/skills/accessibility-mobile/SKILL.md`.
-- Favor modular files: max 800 lines, ideally under 500.
+- Tests live in top-level `tests/`, grouped by area (`tests/<area>/test_<behavior>.py`), and run
+  offline — mock the LLM client, and skip when the embedding model isn't cached.
+- Every worktree shares the real database. A test that touches it must isolate itself (patch
+  `init_db.SessionLocal` onto an in-memory engine) or snapshot and restore what it changes.
+- After backend changes, confirm `import app` still works.
+- After UI changes, run the checklist in `docs/skills/accessibility-mobile/SKILL.md`. The browser
+  pane does not composite in this environment — verify via the served HTML, the API, and wiring
+  tests, and say that is what you did.
+- Never POST configuration or options to a running app to "verify" a change; that overwrites the
+  user's real shared config.
+- Favor modular files: 800 lines hard cap, under 500 preferred.
 
 ## Git Workflow
 
 - Do non-trivial work on a feature branch, not directly on `main`.
 - Commit per logical phase. **Do not push unless the user explicitly asks.**
-- End commit messages with the `Co-Authored-By` trailer when applicable.
+- End agent-authored commit messages with the `Co-Authored-By` trailer.
+- Other agents may share this checkout and switch its branch mid-task; use a git worktree for
+  long-running non-trivial work.
 
 ## Cleanup
 
-Do not leave competing sources of truth. Starter/scaffold inputs and superseded docs must be removed once their content has been migrated into `docs/`.
+Do not leave competing sources of truth. When content is migrated, the old file goes — a doc that
+describes a system that no longer exists is worse than no doc.
 
 ## Definition of Done
 
-Setup or a feature is not complete until the applicable checklist items in `docs/checklist.md` are verified. Do not claim completion while checklist items remain unmet — finish the work or list the blocking items.
+Work is not complete while its checklist items in `docs/checklist.md` are unmet. Finish them, or
+state plainly which ones are blocked and why.
