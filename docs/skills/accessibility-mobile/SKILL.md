@@ -5,9 +5,16 @@ description: Use this skill when implementing, auditing, or documenting mobile-f
 
 # Mobile Accessibility and Responsive UX
 
-Use this skill for any website, web app, dashboard, admin panel, or frontend UI that must work well on phones and tablets. Pair it with `ada-compliance` for accessibility requirements and with `ui-frontend` for visual implementation details.
+Use this skill for any UI work in this repository that has to hold up on phones and tablets. It is
+the accessibility authority here — no separate compliance skill is installed. Pair it with
+`docs/design-system.md`, which owns the visual tokens and required UI states.
 
-Before declaring a web interface complete, verify the checklist below or document any intentionally deferred items in `docs/checklist.md`.
+Before declaring a UI change complete, verify the checklist below, or record what you deliberately
+deferred in `docs/checklist.md`.
+
+**Verification note for this environment:** the browser pane does not composite frames here, so
+screenshots and layout metrics are unreliable. Verify against the served HTML, the accessibility
+tree, computed styles, and the API instead, and say so when reporting.
 
 ## Responsive Layout and Viewport
 
@@ -30,7 +37,7 @@ Before declaring a web interface complete, verify the checklist below or documen
 ## Touch and Navigation
 
 - Primary tap targets are at least 44x44 CSS pixels.
-- Smaller secondary targets still meet the accessibility minimum defined by `ada-compliance`.
+- Smaller secondary targets stay at or above the WCAG 2.1 AA minimum of 24×24 CSS pixels.
 - Tap targets have enough spacing to avoid accidental activation.
 - All interactive elements provide visible pressed, focused, disabled, and loading states.
 - No required interaction depends on hover alone.

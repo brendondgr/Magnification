@@ -1,109 +1,77 @@
 ---
 name: repository-structure
-description: Use this skill when setting up, restructuring, documenting, or enforcing repository layout standards for projects, including web apps, backend systems, CLI tools, and agentic AI systems.
+description: Use when setting up, restructuring, documenting, or enforcing repository layout, structure docs, or project organization.
 ---
+
 # Repository Structure Standard
 
-This document defines the universal file structure for all repositories within the ecosystem. Adhering to this structure ensures consistency, maintainability, and ease of navigation across different projects.
+The layout rules for this repository. `docs/structure.md` is the authoritative tree — this file is
+the standard that tree is held to. Where the two disagree, `docs/structure.md` describes reality
+and this file describes intent; reconcile them rather than leaving the gap.
 
-## Core Directory Structure
-
-```text
-root/
-├── docs/       # Project documentation and architectural overviews
-├── libs/       # Shared libraries and internal packages
-├── utils/      # Utility functions and helper classes
-└── [workflow]/ # Domain-specific folders (e.g., web/, api/, core/)
-```
-
-### Workflow-Specific Structures
-App-specific structures are documented individually to keep our core guidelines clean.
-- [Web Interfaces](structures/web-interfaces.md)
-- [Lab Reports](structures/lab-reports.md)
-- [LangGraph Structure](structures/langgraph.md)
-
-For websites, dashboards, and web applications, this skill must be paired with `website-architecture`. The web architecture skill owns the route map, app mode, frontend/backend boundary, data flow, documentation requirements, and deployment assumptions before files are generated.
-
----
-
-## 1. Documentation (`docs/`)
-All documentation regarding the project, including architecture, setup guides, and structural maps, resides here.
-
-- **Mandatory File:** `docs/structure.md`
-  - This file must be kept up-to-date with the current file structure.
-  - It should detail main sub-folders and primary files, explaining their purpose without including source code.
-
----
-
-## 2. Utilities (`utils/`)
-Utilities that support the main codebase.
-
-- **Small Utilities:** Basic utilities (e.g., a simple logger) should be kept as individual files directly within `utils/`.
-- **Large Utilities:** If a utility requires complex logic or becomes a large class, it should be placed in its own sub-folder.
-- **Initialization:** For Python projects, sub-folders must include an `__init__.py` file for proper package initialization.
-
----
-
-## 3. Libraries (`libs/`)
-Internal libraries and external-facing components are modularized within the `libs/` directory.
-
-## 4. Tests (`tests/`)
-Python projects should create lightweight tests over time in a top-level `tests/` directory.
-
-- Keep tests small and focused as features are added.
-- Group related Python tests into sub-directories that match the area or purpose they cover.
-- Use descriptive names so the test tree stays readable as it grows.
-- Prefer `tests/<area>/test_<behavior>.py` over a single oversized flat test folder.
-
-### Example Test Layout
+## Current Layout
 
 ```text
-tests/
-├── api/
-│   ├── test_auth.py
-│   └── test_routes.py
-├── data/
-│   └── test_parsing.py
-└── utils/
-    └── test_formatting.py
+Magnification/
+├── app.py        # Flask entry point
+├── docs/         # Source of truth: docs, plans, canonical skills
+├── utils/        # All application code
+│   ├── backend/  # Blueprints, scrapers, recommender, agents, database, scheduler
+│   ├── frontend/ # The single served page + static assets
+│   └── LocalLLM/ # Self-contained local-LLM management library
+├── tests/        # Lightweight offline tests, grouped by area
+├── deploy/       # systemd units + the jobsctl wrapper
+├── config/       # Runtime JSON config (gitignored)
+├── data/         # SQLite database + generated artifacts (gitignored)
+└── images/       # Brand assets + README media
 ```
 
----
+There is no `libs/` directory: nothing here is a shared internal package. If code is ever extracted
+for reuse across projects, add `libs/` then — not preemptively.
 
-## Global Code Guidelines
+**Known deviation:** the web-interface convention (`structures/web-interfaces.md`) puts web code
+under `web/`. This repo keeps it under `utils/` + `app.py`. That migration is deferred and tracked
+in `docs/checklist.md`; do not start it as a side effect of other work.
 
-### File Length Limits
-- **Maximum Length:** 800 lines.
-- **Ideal Length:** Under 500 lines.
-- **Rule:** Favor modularity. If a file exceeds 800 lines, outsource logic to secondary files/modules.
+## Rules
 
-### Package Management
-We use `uv` as the primary package manager for all Python projects.
-- **Primary Commands:** `uv add`, `uv init`, `uv run`.
-- Avoid using other package managers unless explicitly required by environment constraints.
+### Documentation
 
----
+- `docs/structure.md` is mandatory and must be updated in the same change that adds, moves, or
+  removes a file or directory.
+- Documentation never lives in an agent folder (`.claude/`, `.agents/`, `.cursor/`) — those hold
+  pointer files only.
 
-## Universal Examples
+### Application code (`utils/`)
 
-### Utility Organization (`utils/`)
+- A small utility is one file directly under its package; anything with real internal structure gets
+  its own sub-package.
+- Every Python sub-package has an `__init__.py`.
+- Pure logic (predicates, formatters, normalizers) belongs in an I/O-free module so it can be tested
+  without a database or a network — `scrapers/profile_filter.py` and `recommend/compensation.py` are
+  the pattern to copy.
 
-- **Single Functionality:**
-  - `utils/logger.py` – A lightweight logging class.
-- **Complex Sub-system:**
-  - `utils/auth_handler/`
-    - `__init__.py` – Orchestrates the authentication exports.
-    - `oauth.py` – Handles OAuth2 flows.
-    - `session.py` – Manages user sessions.
+### Tests (`tests/`)
 
-### Directory Summary Table (Sample `docs/structure.md` entry)
+- `tests/<area>/test_<behavior>.py`, mirroring the package the code lives in.
+- Tests are offline: no network, no live LLM. Mock the client, or skip when a model isn't cached.
+- Tests that touch the database must isolate themselves — every worktree shares the real
+  `data/magnificiation.db`. See `docs/workflow.md`.
 
-| File / Folder | Purpose |
-| :--- | :--- |
-| `utils/database.py` | Minimal database connection wrapper. |
-| `utils/payment_engine/` | Sub-folder for complex transaction logic. |
-| `libs/analytics/` | Internal event-tracking package. |
+### File length
 
----
+- Hard cap 800 lines; aim under 500. Split logic into modules rather than growing a file.
+- One accepted exception: `utils/frontend/templates/index.html`, a single-file design export whose
+  runtime requires the component class inline. Documented in `docs/component-map.md`.
 
-*Last Updated: 2026-03-27*
+### Package management
+
+`uv` only — `uv add`, `uv sync`, `uv run`. Do not add pip or conda workflows to committed
+instructions.
+
+## Related
+
+- `structures/web-interfaces.md` — the web-layout modes, including the `web/` convention this repo
+  currently deviates from.
+- `docs/skills/website-architecture/SKILL.md` — owns routes, app mode, data flow, and the
+  design-quality gate for any web work.

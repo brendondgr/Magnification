@@ -26,6 +26,11 @@ this file no longer repeats them.
 
 ### Housekeeping
 
+- [ ] **Two tests are not offline.** `tests/test_config_loading.py` hits real job boards and
+  `tests/recommend/test_recommend_service.py::test_analyze_api_and_report` needs the cached
+  embedding model plus a reachable LLM endpoint (it fails against a 502-ing proxy). Both violate
+  the offline-tests rule in `docs/workflow.md` — mock them or mark them so a plain `uv run pytest`
+  is green everywhere.
 - [ ] **`utils/backend/database/migrate_site_field.py` is orphaned** — a working migration that
   `init_db._run_migrations()` never calls and nothing else imports. Fresh databases get `jobs.site`
   from `create_all`, so it only matters for a pre-existing DB missing that column. Wire it in or
