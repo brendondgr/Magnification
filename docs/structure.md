@@ -28,10 +28,11 @@ Magnification/
 │   ├── data-flow.md            # Where data comes from and how it moves
 │   ├── deployment.md           # Runtime, build, deploy assumptions
 │   ├── design-system.md        # Visual motif, tokens, UI states
-│   ├── database.md             # Database schema deep-dive
-│   ├── job_scraping.md         # Scraping pipeline deep-dive
-│   ├── find_jobs.md            # Find-Jobs flow deep-dive
-│   ├── ui.md                   # UI notes
+│   ├── database.md             # Schema, migrations, operations layer
+│   ├── job_scraping.md         # Scraping pipeline reference
+│   ├── find_jobs.md            # Find-Jobs config + run flow
+│   ├── recommendation.md       # Hybrid RAG + LLM recommender
+│   ├── profile.md              # Résumé → profile builder
 │   ├── assets/                 # Static SVG diagrams embedded in README.md
 │   ├── plans/                  # Implementation/handoff plans
 │   └── skills/                 # Canonical agent skills (source of truth)
@@ -48,28 +49,35 @@ Magnification/
 │
 ├── utils/                      # All application Python + frontend assets
 │   ├── backend/
-│   │   ├── routes/             # Flask blueprints: config, scrape, job, llm, options, documents (per-job job-evaluation + generated-documents read), guidance (editable Document Guidance: GET/PUT /api/document-guidance, POST .../reset), document_generation (cover-letter/résumé generation: start, status/<task_id>, <task_id>/resume, GET/PATCH <doc_id>, GET <doc_id>/pdf, GET <doc_id>/tex)
-│   │   ├── scrapers/           # Scraping pipeline (jobspy wrapper, concurrent, linkedin, filter, service)
-│   │   ├── llm/                # OpenAI-compatible client + endpoint config (recommendation system)
-│   │   ├── recommend/          # RAG/LLM recommendation: embedder, bm25, ranker, skills, compensation (pure extraction layer + pay-string normalizer + industry taxonomy), enrichment (the ONE shared compensation+industry pass used by both Find Jobs and Analyze Matches), service, keywords, profile_builder, runtime_config
-│   │   ├── agents/             # In-house agents (no LangGraph): orchestrator.py (node-pipeline driver: progress + semi-auto checkpoints), context.py (DB read: job/JobAnalysis/profile + the editable Document Guidance), scoring.py (résumé match-lift via recommend/ranker), prompts.py, document_guidance.py (the single editable house-style document — default = cover-letter Winning Formula + résumé tailoring principles — persisted to config/document_guidance.json and injected into every generation & refine), nodes_shared.py (research/evaluate/truthfulness + guidance_preamble), nodes_cover_letter.py + cover_letter.py (cover-letter graph, incl. the refine_flow forced-fit audit→rewrite stage), nodes_resume.py + resume.py (résumé fine-tuner graph), service.py (generation_tasks store + daemon-thread runner), latex.py (deterministic offline LaTeX assembly — wraps graph prose into a compilable single-column `article`)
-│   │   ├── pdf_compile.py      # Compile document LaTeX → PDF via pdflatex; cache under data/generated_pdfs/
-│   │   ├── database/           # SQLAlchemy models (Job, ApplicationStatus, Profile, JobAnalysis, + per-job generation tables job_evaluations/generated_documents), init, CRUD, idempotent migrations (incl. migrate_job_saved, migrate_job_compensation_checked, migrate_job_industry — jobs.industry + industry_checked, migrate_job_pipeline_dates — durable write-once tracker dates + backfill, migrate_clean_bad_compensation — blank NaN-poisoned pay strings + reopen them for extraction, migrate_reset_unlabeled_industry — reopen jobs flagged industry_checked without a label), documents_ops.py
-│   │   └── scheduler/          # LLM-gated daily job-search runner + CLI (systemd-driven: llm_health, daily_runner, __main__)
+│   │   ├── paths.py            # get_project_root() — one data/config root shared by every worktree
+│   │   ├── routes/             # The ten blueprints (see docs/routes.md for the full map)
+│   │   ├── scrapers/           # Scraping pipeline (see docs/job_scraping.md)
+│   │   ├── llm/                # OpenAI-compatible client + endpoint config
+│   │   ├── recommend/          # Hybrid recommender + the one shared enrichment pass (docs/recommendation.md)
+│   │   ├── agents/             # In-house generation graphs, no LangGraph (see the rationale table below)
+│   │   ├── pdf_compile.py      # Compile document LaTeX → PDF via pdflatex; cached under data/generated_pdfs/
+│   │   ├── database/           # Models, init, CRUD, idempotent migrations (see docs/database.md)
+│   │   └── scheduler/          # LLM-gated daily search runner + CLI (llm_health, daily_runner, __main__)
 │   ├── frontend/
 │   │   ├── templates/          # index.html — single dc-runtime design export (no Jinja partials)
 │   │   └── static/             # js/dc-runtime.js (vendored React runtime), img/ (brand mark + favicons)
 │   └── LocalLLM/               # Local LLM management library (cli, core, server, utils)
 │
-├── tests/                      # Lightweight tests grouped by area
-│   ├── job_scraper.py
-│   ├── test_config_loading.py
-│   ├── test_frontend_wiring.py # dc-runtime page + job/config API contract
-│   ├── agents/                 # Generation-graph + guidance + LaTeX builder tests (test_cover_letter_*.py, test_resume_graph.py, test_document_guidance.py, test_latex.py)
-│   ├── documents/              # Documents API tests (test_documents_api.py, test_pdf_route.py)
-│   ├── database/               # Profile + JobAnalysis CRUD round-trip, incl. test_agentic_documents.py for the new documents-foundation tables
-│   ├── scheduler/              # LLM-health probe + once-per-day runner (offline, mocked)
-│   └── docs/                   # Doc/skill-pointer verification tests
+├── tests/                      # Lightweight offline tests grouped by area
+│   ├── test_config_loading.py  # Job-search config load/save
+│   ├── test_frontend_wiring.py # Served page + job/config API contract
+│   ├── job_scraper.py          # Manual scraper probe (hits the network; not a pytest module)
+│   ├── agents/                 # Generation graphs, orchestrator, guidance, scoring, LaTeX
+│   ├── backend/                # Shared project-root resolution, lazy jobs feed
+│   ├── database/               # CRUD, migrations, pipeline dates, clear-scope (in-memory engines)
+│   ├── docs/                   # Doc/skill-pointer + doc-link verification
+│   ├── documents/              # Documents, generation, and PDF-route APIs
+│   ├── frontend/               # Theme-token parity with the served page
+│   ├── llm/                    # OpenAI-compatible client + Options API
+│   ├── profile/                # Profile API, blocklists, résumé parsing, skill quick-add
+│   ├── recommend/              # Ranker, BM25, embedder, enrichment, analyze/gap-fill, rescore
+│   ├── scheduler/              # LLM-health probe + once-per-day runner (mocked)
+│   └── scrapers/               # Cleaning, dedupe, iterations, cumulative counts, events
 │
 ├── images/                     # Brand source assets (magnify.svg / magnify.png) + README screenshots/demo
 │
@@ -89,10 +97,10 @@ Magnification/
 | `docs/skills/` | Canonical skill definitions; agent folders only point here. |
 | `.claude/`, `.agents/`, `.cursor/` | Tool-specific pointer files. No canonical content. |
 | `utils/backend/` | API routes, scraping pipeline, database layer, the cover-letter/résumé generation graphs, and the scheduled daily-search runner. |
-| `utils/backend/agents/` | In-house, plain-Python agents (no LangGraph): the cover-letter and résumé generation graphs (orchestrator, context loader, résumé match-lift scoring, shared/letter/résumé node modules, generation task-store service). Both are steered by the single editable **Document Guidance** (`document_guidance.py`) injected into every generation and refine, and end with a deterministic render step (`latex.py`) that wraps their prose into a compilable LaTeX document; `utils/backend/pdf_compile.py` compiles that source to a cached PDF for preview/download. (The former ingestion agent + Behavioral/Writing/Template subsystems were retired — see `docs/plans/documents-sidebar-simplify.md`.) |
+| `utils/backend/agents/` | In-house, plain-Python agents (no LangGraph): `orchestrator.py` drives a node pipeline with progress events and semi-automatic checkpoints; `context.py` loads the job, analysis, and profile; `nodes_shared.py` + `nodes_cover_letter.py` / `nodes_resume.py` hold the nodes; `service.py` runs a graph in a daemon thread; `latex.py` renders the result deterministically. Both graphs are steered by the single editable **Document Guidance** (`document_guidance.py`, persisted to `config/document_guidance.json`) on the first pass and every refine, and `utils/backend/pdf_compile.py` compiles the LaTeX to a cached PDF. (The former ingestion agent and the Behavioral/Writing/Template subsystems were retired — see `docs/plans/documents-sidebar-simplify.md`.) |
 | `utils/backend/scheduler/` | LLM-gated, once-per-day job-search runner + CLI invoked by the systemd units. |
 | `deploy/systemd/` | Systemd **user** units + installer for the web app on boot and the automated daily search (see `deploy/systemd/README.md`). |
-| `utils/frontend/` | Jinja templates and static CSS/JS/image assets. |
+| `utils/frontend/` | The single served page (`templates/index.html`) and its static assets (`static/js/dc-runtime.js`, `static/img/`). No build step, no partials. |
 | `images/` | Source brand assets plus README media. `images/magnify.svg` is the canonical logo; the copy served to the browser lives at `utils/frontend/static/img/magnify.svg`. `FullBodyScreenshot.png` / `InProgressJobSearch.png` are the README screenshots, and `FullAppOverview-web.webm` / `.mp4` are the compressed walkthrough (1280×660, 24 fps — re-encode any new capture the same way; the full-size master stays out of git via `.gitignore`). |
 | `utils/LocalLLM/` | Self-contained local-LLM management library. |
 | `tests/` | Lightweight, area-grouped tests. |

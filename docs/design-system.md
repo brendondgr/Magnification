@@ -1,6 +1,9 @@
 # Design System — Magnification
 
-Captured from `utils/frontend/static/css/variables.css` and the inline Tailwind config in `index.html`. This is the design-quality brief required by `docs/skills/website-architecture/SKILL.md`. Keep tokens here in sync with `variables.css`.
+The design-quality brief required by `docs/skills/website-architecture/SKILL.md`. The live tokens
+are the per-theme maps in `Component.THEMES` inside `utils/frontend/templates/index.html` — there
+are no external stylesheets. Keep this file in sync with that block;
+`tests/frontend/test_theme_tokens.py` pins the contract.
 
 ## Visual Motif
 
@@ -30,18 +33,11 @@ The mark's artboard is 1081 × 1170 (taller than wide), so scale it by **height*
 
 ## Color Tokens
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `--color-primary` | `#FF6B6B` Electric Coral | Primary actions, accents |
-| `--color-secondary` | `#4C3BCF` Deep Indigo | Secondary emphasis |
-| `--color-tertiary` | `#00D9C0` Vivid Teal | Tertiary highlights |
-| `--color-bg-base` | `#FEFBF6` Warm Off-White | Page background |
-| `--color-bg-surface` | `#FFF8F0` Soft Cream | Surfaces / panels |
-| `--color-bg-elevated` | `#FFFFFF` | Elevated cards |
-| `--color-text-main` | `#1f2937` | Primary text |
-| `--color-text-muted` | `#64748b` | Secondary text |
+The live palette is the two theme maps in **Live Themes** below. Every color in the UI comes from
+one of those tokens or from the two fixed palettes described here.
 
-Plus a large **categorization palette** (`--color-cat-*`: yellow-orange, yellow, orange, red, blue, purple, teal, green, black, gray, brown, pink, kiwi, rose) — each with `bg` / `border` / `text` triplets used for job tags and status chips.
+**Source palette** (`Component.SITE_COLORS`): one brand color per job board for the source badge —
+LinkedIn `#0A66C2`, Indeed `#2557A7`, Glassdoor `#0CAA41`, ZipRecruiter `#3A7D34`, Google `#EA4335`.
 
 **Industry palette** (`Component.INDUSTRY_COLORS` in `index.html`): one fixed, distinct color per
 industry label so the job-card industry pill reads consistently everywhere (all "Health" pills
@@ -67,22 +63,14 @@ value.
 
 ## Typography
 
-- Headings: **Space Grotesk** (`.font-heading`)
-- Body: **DM Sans** (`.font-body`)
-- Mono / metadata: **JetBrains Mono** (`.font-mono-custom`)
+Fonts are theme tokens, not classes — every rule sets `font:` with one of them inline.
+
+- Headings (`--font-head`): **Space Grotesk** on `midnight`, **Newsreader** on `arctic`
+- Body (`--font-body`): **Archivo**, both themes
+- Numeric / label / metadata (`--font-mono`): **JetBrains Mono**, both themes
 - Body text ≥ 16px on mobile (per `docs/skills/accessibility-mobile/SKILL.md`).
 
 ## Surfaces, Radius, Shadow, Motion
-
-> **Note:** the color tokens above (`--color-*`, `.glass`, `.hover-lift`, Tailwind config,
-> FontAwesome/Lucide) describe an earlier design export. The shipped `index.html` is a
-> dc-runtime template whose live tokens are defined per-theme in `Component.THEMES`
-> (`--bg`, `--surface`, `--surface2`, `--card`, `--text`, `--muted`, `--border`, `--border2`,
-> `--accent`, `--accent2`, `--accent-ink`, `--accent-text`, `--danger`, `--c-applied`/`--c-interview`/
-> `--c-offer`/`--c-reject`/`--c-archive`, `--radius`, `--r-sm`, `--font-head`/`--font-body`/`--font-mono`,
-> `--shadow`) — see **Live Themes** below. Reconciling the legacy `--color-*` export above
-> with the live tokens end-to-end is a follow-up (`docs/checklist.md`); the Motion notes below
-> reflect the current template.
 
 ### Live Themes (logo-derived)
 
@@ -174,7 +162,9 @@ Rules encoded in the tokens:
 
 ## Iconography
 
-FontAwesome + Lucide. Prefer one library per surface for consistency.
+No icon library is loaded. Every icon is an inline SVG built with `React.createElement` — 24×24
+viewBox, `fill:none`, `stroke:currentColor`, `strokeWidth:2` — so icons inherit the surrounding
+token color in both themes. Keep new icons to that same shape and stroke weight.
 
 ## Domain Vocabulary (UI copy)
 
@@ -186,7 +176,8 @@ Every view must design: **loading, empty, partial-data, error, success,** and **
 
 ## Mobile-Specific Decisions
 
-- Bottom tab nav (`parts/mobile-nav.html`) on small screens; top tabs + sidebar on desktop.
+- Bottom tab nav (built inline by `mkMobTab` in `index.html`) on small screens; top tabs + sidebar
+  on desktop.
 - Single-column card flow on mobile; multi-column grid / kanban on wider viewports.
 - Tap targets ≥ 44×44px; the job-detail slide-over and modals must not trap focus or hide the active input behind the mobile keyboard.
 
