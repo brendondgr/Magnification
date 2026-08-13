@@ -308,6 +308,13 @@
             </div>
           </div>
 
+          <sc-if value="{{ jobsFailed }}" hint-placeholder-val="">
+            <div class="jf-in" role="alert" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;border:var(--bw) solid var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);border-radius:var(--r-sm)">
+              <span style="font:500 13px/1.4 var(--font-body);color:var(--text)">{{ jobsError }} The board below is showing whatever was already loaded.</span>
+              <button onclick="{{ retryJobs }}" style="margin-left:auto;height:34px;padding:0 14px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 12px/1 var(--font-body);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)">Try again</button>
+            </div>
+          </sc-if>
+
           <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;flex:1;min-width:0;min-height:0">
             <sc-for list="{{ columns }}" as="col" hint-placeholder-count="4">
               <div ondragover="{{ col.onDragOver }}" ondragleave="{{ col.onDragLeave }}" ondrop="{{ col.onDrop }}" style="{{ col.style }}">
@@ -316,12 +323,13 @@
                   <span style="font:600 14px/1 var(--font-head);color:var(--text)">{{ col.label }}</span>
                   <span style="{{ col.badge }}">{{ col.count }}</span>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:11px;padding:14px;overflow-y:auto;flex:1;min-height:0">
+                <div aria-busy="{{ jobsBusy }}" style="display:flex;flex-direction:column;gap:11px;padding:14px;overflow-y:auto;flex:1;min-height:0">
+                  <sc-if value="{{ jobsSkeleton }}" hint-placeholder-val="">{{ skeletonTrackerCards }}</sc-if>
                   <sc-for list="{{ col.jobs }}" as="job" hint-placeholder-count="2">
-                    <div draggable="true" ondragstart="{{ job.onDragStart }}" ondragend="{{ job.onDragEnd }}" onclick="{{ job.onOpen }}" style="cursor:grab;background:var(--card);border:var(--bw) solid var(--border);border-radius:var(--r-sm);padding:14px;animation:jf-rise .35s ease;transition:transform .15s,box-shadow .15s" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
+                    <div class="jf-reveal" draggable="true" ondragstart="{{ job.onDragStart }}" ondragend="{{ job.onDragEnd }}" onclick="{{ job.onOpen }}" style="cursor:grab;background:var(--card);border:var(--bw) solid var(--border);border-radius:var(--r-sm);padding:14px;transition:transform var(--dur-fast) var(--ease-soft),box-shadow var(--dur-fast) var(--ease-soft)" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));box-shadow:var(--shadow)">
                       <div style="min-width:0">
-                        <div style="font:600 14px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</div>
-                        <div style="font:400 12px/1.3 var(--font-body);color:var(--muted);margin-top:4px">{{ job.company }}</div>
+                        <div data-wrap="" style="font:600 14px/1.25 var(--font-body);color:var(--text)">{{ job.title }}</div>
+                        <div data-wrap="" style="font:400 12px/1.3 var(--font-body);color:var(--muted);margin-top:4px">{{ job.company }}</div>
                       </div>
                     </div>
                   </sc-for>
@@ -351,8 +359,15 @@
               <sc-if value="{{ anyMatches }}" hint-placeholder-val="">
                 <button onclick="{{ toggleSort }}" style="{{ sortStyle }}" style-hover="background:var(--surface2)">{{ sortLabel }}</button>
               </sc-if>
-              <button onclick="{{ analyzeJobs }}" style="{{ analyzeStyle }}" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+              <!-- Loading variant (§13): the spinner replaces the icon inside a fixed
+                   min-width, so the button never changes size mid-run. -->
+              <button onclick="{{ analyzeJobs }}" aria-busy="{{ analyzeBusyAttr }}" disabled="{{ analyzeDisabled }}" style="{{ analyzeStyle }}" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
+                <sc-if value="{{ analyzeBusy }}" hint-placeholder-val="">
+                  <span class="jf-spin" aria-hidden="true" style="display:inline-block;width:14px;height:14px;flex:0 0 auto;border-radius:99px;border:2px solid color-mix(in srgb,var(--accent-ink) 30%,transparent);border-top-color:var(--accent-ink)"></span>
+                </sc-if>
+                <sc-if value="{{ analyzeIdle }}" hint-placeholder-val="{{ true }}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+                </sc-if>
                 {{ analyzeLabel }}
               </button>
               <sc-if value="{{ hasIgnored }}" hint-placeholder-val="">
@@ -361,9 +376,26 @@
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px">
+          <!-- LOADING (§3): skeleton cards on the same grid tracks as the real ones,
+               so the handoff moves nothing. Nothing at all renders for the first
+               300ms — see Component.SKELETON_DELAY. -->
+          <sc-if value="{{ jobsSkeleton }}" hint-placeholder-val="">
+            <div aria-busy="true" aria-label="Loading jobs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:16px">{{ skeletonCards }}</div>
+          </sc-if>
+
+          <!-- ERROR: what failed, in the app's voice, with the retry inline. -->
+          <sc-if value="{{ jobsFailed }}" hint-placeholder-val="">
+            <div class="jf-in" role="alert" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:64px 20px;text-align:center;color:var(--muted)">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.6"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="13"></line><line x1="12" y1="16.5" x2="12.01" y2="16.5"></line></svg>
+              <div style="font:600 15px/1.4 var(--font-body);color:var(--text)">{{ jobsError }}</div>
+              <div style="font:400 13px/1.5 var(--font-body);max-width:340px">Your saved jobs and tracker are still on disk — this is only the fetch that failed.</div>
+              <button onclick="{{ retryJobs }}" style="margin-top:4px;padding:0 18px;height:40px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform var(--dur-fast) var(--ease-soft),filter var(--dur-fast) var(--ease-soft)" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Try again</button>
+            </div>
+          </sc-if>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:16px">
             <sc-for list="{{ gridJobs }}" as="job" hint-placeholder-count="6">
-              <article style="{{ job.cardStyle }}" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
+              <article class="jf-in jf-stagger" style="{{ job.cardStyle }}" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));box-shadow:var(--shadow)">
                 <!-- Row 1 — source (left) · industry (right) -->
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="{{ job.siteBadge }}">{{ job.site }}</span>
@@ -435,11 +467,20 @@
             </sc-for>
           </div>
 
+          <!-- EMPTY (only once the feed is actually ready): an invitation to act,
+               with the primary action inline. Two variants, because "your search
+               matched nothing" and "you have no jobs" need different offers. -->
           <sc-if value="{{ gridEmpty }}" hint-placeholder-val="">
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:70px 20px;color:var(--muted)">
+            <div class="jf-in" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:70px 20px;color:var(--muted)">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-              <div style="font:500 15px/1 var(--font-body)">No new jobs to show</div>
-              <button onclick="{{ openFind }}" style="margin-top:4px;padding:0 18px;height:40px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Find Jobs</button>
+              <sc-if value="{{ gridEmptySearch }}" hint-placeholder-val="">
+                <div style="font:500 15px/1.4 var(--font-body);text-align:center">No job in the feed matches that search.</div>
+                <button onclick="{{ clearNewSearch }}" style="margin-top:4px;padding:0 18px;height:40px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2);border-color:var(--border)">Clear search</button>
+              </sc-if>
+              <sc-if value="{{ gridEmptyNoSearch }}" hint-placeholder-val="{{ true }}">
+                <div style="font:500 15px/1.4 var(--font-body);text-align:center">No new jobs to show — run a search and they land here.</div>
+                <button onclick="{{ openFind }}" style="margin-top:4px;padding:0 18px;height:40px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform var(--dur-fast) var(--ease-soft),filter var(--dur-fast) var(--ease-soft)" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Find Jobs</button>
+              </sc-if>
             </div>
           </sc-if>
 
@@ -472,9 +513,21 @@
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px">
+          <sc-if value="{{ jobsSkeleton }}" hint-placeholder-val="">
+            <div aria-busy="true" aria-label="Loading saved jobs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:16px">{{ skeletonCards }}</div>
+          </sc-if>
+
+          <sc-if value="{{ jobsFailed }}" hint-placeholder-val="">
+            <div class="jf-in" role="alert" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:64px 20px;text-align:center;color:var(--muted)">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.6"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="13"></line><line x1="12" y1="16.5" x2="12.01" y2="16.5"></line></svg>
+              <div style="font:600 15px/1.4 var(--font-body);color:var(--text)">{{ jobsError }}</div>
+              <button onclick="{{ retryJobs }}" style="margin-top:4px;padding:0 18px;height:40px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform var(--dur-fast) var(--ease-soft),filter var(--dur-fast) var(--ease-soft)" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Try again</button>
+            </div>
+          </sc-if>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:16px">
             <sc-for list="{{ savedJobs }}" as="job" hint-placeholder-count="6">
-              <article style="{{ job.cardStyle }}" style-hover="transform:translateY(-2px);box-shadow:var(--shadow)">
+              <article class="jf-in jf-stagger" style="{{ job.cardStyle }}" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));box-shadow:var(--shadow)">
                 <!-- Row 1 — source (left) · industry (right) -->
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="{{ job.siteBadge }}">{{ job.site }}</span>
@@ -547,10 +600,17 @@
           </div>
 
           <sc-if value="{{ savedEmpty }}" hint-placeholder-val="">
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:70px 20px;color:var(--muted)">
+            <div class="jf-in" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:70px 20px;color:var(--muted)">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-              <div style="font:500 15px/1 var(--font-body)">No saved jobs yet</div>
-              <div style="font:400 13px/1.5 var(--font-body);text-align:center;max-width:280px">Use the Save button on a job card to pin it here.</div>
+              <sc-if value="{{ savedEmptySearch }}" hint-placeholder-val="">
+                <div style="font:500 15px/1.4 var(--font-body);text-align:center">No saved job matches that search.</div>
+                <button onclick="{{ clearSavedSearch }}" style="margin-top:4px;padding:0 18px;height:40px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2);border-color:var(--border)">Clear search</button>
+              </sc-if>
+              <sc-if value="{{ savedEmptyNoSearch }}" hint-placeholder-val="{{ true }}">
+                <div style="font:500 15px/1 var(--font-body)">No saved jobs yet</div>
+                <div style="font:400 13px/1.5 var(--font-body);text-align:center;max-width:280px">Use the Save button on a job card to pin it here.</div>
+                <button onclick="{{ goNewJobs }}" style="margin-top:4px;padding:0 18px;height:40px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2);border-color:var(--border)">Browse New Jobs</button>
+              </sc-if>
             </div>
           </sc-if>
         </section>
@@ -739,6 +799,16 @@
       </div>
 
       <div style="flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:22px">
+        <!-- Panel loading ladder (§3): nothing → field skeleton → fields, or an error with a retry. -->
+        <sc-if value="{{ pfSkeleton }}" hint-placeholder-val="">
+          <div aria-busy="true" aria-label="Loading your profile">{{ skeletonPanelFields }}</div>
+        </sc-if>
+        <sc-if value="{{ pfHasError }}" hint-placeholder-val="">
+          <div class="jf-in" role="alert" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;border:var(--bw) solid var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);border-radius:var(--r-sm)">
+            <span style="font:500 13px/1.5 var(--font-body);color:var(--text)">{{ pfError }}</span>
+            <button onclick="{{ retryProfile }}" style="height:38px;padding:0 15px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)">Try again</button>
+          </div>
+        </sc-if>
         <sc-if value="{{ docsTabCandidate }}" hint-placeholder-val="{{ true }}">
         <div>
           <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Model Instructions</label>
@@ -757,9 +827,14 @@
                 <div style="font:600 11px/1.3 var(--font-body);color:var(--c-offer-text);text-align:center;word-break:break-all">✓ {{ pfResumeName }}</div>
               </sc-if>
             </label>
-            <button onclick="{{ buildProfile }}" style="{{ buildBtnStyle }}" style-hover="filter:brightness(1.08)" style-active="filter:brightness(.95)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
-              Build Profile (LLM)
+            <button onclick="{{ buildProfile }}" aria-busy="{{ pfBusyAttr }}" style="{{ buildBtnStyle }}" style-hover="filter:brightness(1.08)" style-active="filter:brightness(.95)">
+              <sc-if value="{{ pfBusy }}" hint-placeholder-val="">
+                <span class="jf-spin" aria-hidden="true" style="display:inline-block;width:16px;height:16px;border-radius:99px;border:2px solid color-mix(in srgb,currentColor 30%,transparent);border-top-color:currentColor"></span>
+              </sc-if>
+              <sc-if value="{{ pfIdle }}" hint-placeholder-val="{{ true }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+              </sc-if>
+              {{ buildBtnLabel }}
             </button>
           </div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -867,6 +942,9 @@
         </sc-if>
 
         <!-- ===== GUIDANCE TAB ===== -->
+        <sc-if value="{{ guidanceSkeleton }}" hint-placeholder-val="">
+          <div aria-busy="true" aria-label="Loading document guidance">{{ skeletonGuidance }}</div>
+        </sc-if>
         <sc-if value="{{ docsTabGuidance }}" hint-placeholder-val="">
           <div>
             <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Document Guidance</label>
@@ -913,6 +991,9 @@
       </div>
 
       <div style="flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:18px">
+        <sc-if value="{{ optSkeleton }}" hint-placeholder-val="">
+          <div aria-busy="true" aria-label="Loading options">{{ skeletonPanelFields }}</div>
+        </sc-if>
         <!-- LLM TAB -->
         <sc-if value="{{ optTabLlm }}" hint-placeholder-val="{{ true }}">
           <button onclick="{{ toggleLlmEnabled }}" style="{{ llmEnabledRow }}" style-hover="border-color:var(--accent)">
@@ -947,7 +1028,12 @@
             <p style="margin:8px 0 0;font:400 12px/1.4 var(--font-body);color:var(--muted)">How many tokens a reasoning model may spend thinking before it must answer (minimum 1024). Max Tokens above is added on top, so the answer still fits. Endpoints that don't support it are handled gracefully.</p>
           </div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button onclick="{{ testLlmOptions }}" style="display:flex;align-items:center;gap:7px;padding:0 16px;height:42px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color .15s ease,border-color .15s ease" style-hover="background:var(--surface2);border-color:var(--border)">Test connection</button>
+            <button onclick="{{ testLlmOptions }}" aria-busy="{{ optBusyAttr }}" style="display:flex;align-items:center;justify-content:center;gap:7px;min-width:164px;padding:0 16px;height:42px;background:transparent;border:var(--bw) solid var(--border2);border-radius:var(--r-sm);color:var(--text);font:600 13px/1 var(--font-body);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2);border-color:var(--border)">
+              <sc-if value="{{ optBusy }}" hint-placeholder-val="">
+                <span class="jf-spin" aria-hidden="true" style="display:inline-block;width:14px;height:14px;border-radius:99px;border:2px solid color-mix(in srgb,currentColor 28%,transparent);border-top-color:currentColor"></span>
+              </sc-if>
+              {{ testBtnLabel }}
+            </button>
             <button onclick="{{ saveLlmOptions }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:42px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:transform .15s ease,filter .15s ease" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">Save Endpoint</button>
           </div>
           <sc-if value="{{ llmTestText }}" hint-placeholder-val="">
@@ -1103,7 +1189,7 @@
                 </sc-if>
 
                 <!-- step-by-step agent feed -->
-                <div style="padding:14px 15px;max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:0">
+                <div aria-live="polite" aria-atomic="false" style="padding:14px 15px;max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:0">
                   <div style="font:600 10px/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Agent process</div>
                   <sc-if value="{{ appActive.hasFeed }}" hint-placeholder-val="">
                     <sc-for list="{{ appActive.feedRows }}" as="f" hint-placeholder-count="3">
@@ -1396,7 +1482,7 @@
             <sc-if value="{{ hasScrapeEvents }}" hint-placeholder-val="">
               <div style="width:100%;margin-top:22px">
                 <div style="font:600 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Live Activity</div>
-                <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+                <div aria-live="polite" aria-atomic="false" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
                   <sc-for list="{{ scrapeEvents }}" as="ev" hint-placeholder-count="4">
                     <div style="display:flex;gap:10px;align-items:center">
                       <span style="flex:0 0 auto;width:7px;height:7px;border-radius:99px;background:{{ ev.dot }}"></span>
@@ -1469,7 +1555,7 @@
           <sc-if value="{{ hasAnalyzeEvents }}" hint-placeholder-val="">
             <div style="width:100%;margin-top:22px">
               <div style="font:600 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Live Activity</div>
-              <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+              <div aria-live="polite" aria-atomic="false" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
                 <sc-for list="{{ analyzeEvents }}" as="ev" hint-placeholder-count="4">
                   <div style="display:flex;gap:10px;align-items:center">
                     <span style="flex:0 0 auto;width:7px;height:7px;border-radius:99px;background:{{ ev.dot }}"></span>
@@ -1631,7 +1717,19 @@ class Component extends DCLogic {
       optionsOpen:false, optionsTab:'llm', optBusy:false, optStatus:'', llmTest:null,
       llm:{enabled:false,base_url:'http://127.0.0.1:8080/v1',api_key:'',model:'',temperature:0.2,max_tokens:1024,timeout:60,thinking_token_budget:1024},
       runtime:{enable_analysis:true,enable_llm_rerank:true,enable_llm_skills:false,enable_llm_compensation:true,enable_llm_industry:true,embed_workers:4,embed_batch_size:32,linkedin_workers:1,linkedin_delay:0.5,llm_workers:4,llm_fraction:1.0,weights:{semantic:0.30,bm25:0.15,keyword:0.10,skill:0.05,llm:0.40}},
-      jobs:[], loading:true,
+      jobs:[],
+      // ---- Loading ladder for the job feed (docs/frontend-polish-spec.md §3) ----
+      // jobsState is the real state machine: loading -> ready | error.
+      // jobsSkeleton is the 300ms delay gate — a wait shorter than that renders
+      // nothing at all, because a flashed-and-gone placeholder is worse than none.
+      jobsState:'loading', jobsSkeleton:false, jobsError:'',
+      // Polite announcement of async results for screen readers.
+      liveStatus:'',
+      // Panel-level loading gates (same 300ms rule).
+      pfLoading:false, pfSkeleton:false, optLoading:false, optSkeleton:false,
+      guidanceLoading:false, guidanceSkeleton:false,
+      // The overlay currently animating out, so exits can be animated (§13).
+      closing:'',
       // Ignored jobs are left on the server until "Show Ignored" is switched on (they
       // outnumber the visible feed by ~500:1). Once pulled they stay in state.jobs for
       // the rest of the session — ignoredLoaded keeps every later refetch inclusive.
@@ -1639,7 +1737,36 @@ class Component extends DCLogic {
     };
     this.dragId=null;
     this._scrapeJobId=null;
+    this._gates={};
   }
+
+  // ---------- Loading-state ladder helpers (§3) ----------
+  // 0-300ms: render nothing. 300ms+: the skeleton. >15s: give up into an error
+  // state with a retry, so a shimmer can never loop forever over a dead request.
+  static SKELETON_DELAY = 300;
+  static LOAD_TIMEOUT = 15000;
+
+  // Flip `key` true only if the wait outlives the delay gate.
+  _gate(key, ms){
+    this._gates=this._gates||{};
+    clearTimeout(this._gates[key]);
+    this._gates[key]=setTimeout(()=>this.setState({[key]:true}), ms==null?Component.SKELETON_DELAY:ms);
+  }
+  _ungate(key){
+    if(this._gates&&this._gates[key]) clearTimeout(this._gates[key]);
+    if(this.state[key]) this.setState({[key]:false});
+  }
+  _clearGates(){ Object.values(this._gates||{}).forEach(clearTimeout); this._gates={}; }
+  // Honour the user's motion preference before scheduling anything time-based.
+  _reduced(){ try{ return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return false; } }
+  // Animate an overlay out, then commit the state change that unmounts it (§13).
+  closeWithExit(key, commit){
+    if(this._reduced()){ this.setState({closing:''}); commit(); return; }
+    this.setState({closing:key});
+    clearTimeout(this._exitT);
+    this._exitT=setTimeout(()=>{ this.setState({closing:''}); commit(); }, 140);
+  }
+  announce(msg){ this.setState({liveStatus:msg}); }
   componentDidMount(){
     this.loadJobs();
     // Routing: keep the active view in sync with the URL hash (deep-link + back/forward).
@@ -1650,7 +1777,7 @@ class Component extends DCLogic {
       try{ history.replaceState(null,'','#'+Component.ROUTES[this.state.tab]); }catch(_){ }
     }
   }
-  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); this._clearAppPollers(); if(this._hashHandler) window.removeEventListener('hashchange', this._hashHandler); }
+  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); clearTimeout(this._jobsTimeout); clearTimeout(this._exitT); this._clearGates(); this._clearAppPollers(); if(this._hashHandler) window.removeEventListener('hashchange', this._hashHandler); if(this._keyHandler) window.removeEventListener('keydown', this._keyHandler, true); }
 
   // Navigate to a top-level view: update the URL hash (source of truth) and the active tab.
   goTab(k){
@@ -1665,18 +1792,41 @@ class Component extends DCLogic {
   // Load the feed. Ignored jobs are omitted unless they have already been pulled in
   // this session (state.ignoredLoaded), so a refetch never silently drops them.
   async loadJobs(){
+    const req = (this._jobsReq = (this._jobsReq||0) + 1);
+    this.setState({jobsState:'loading', jobsError:''});
+    this._gate('jobsSkeleton');                       // nothing renders for 300ms
+    clearTimeout(this._jobsTimeout);
+    this._jobsTimeout=setTimeout(()=>{
+      if(this._jobsReq===req && this.state.jobsState==='loading')
+        this._jobsFailed('The job feed did not answer within 15 seconds.');
+    }, Component.LOAD_TIMEOUT);
     try{
       const inc = this.state.ignoredLoaded ? 1 : 0;
       const res = await fetch('/api/jobs?with_analysis=1&include_ignored='+inc);
       if(!res.ok) throw new Error('HTTP '+res.status);
       const data = await res.json();
-      this.setState({jobs:Array.isArray(data)?data.map(j=>this.mapDbJob(j)):[], loading:false});
+      if(this._jobsReq!==req) return;                 // a newer load already won
+      clearTimeout(this._jobsTimeout);
+      this._ungate('jobsSkeleton');
+      const jobs=Array.isArray(data)?data.map(j=>this.mapDbJob(j)):[];
+      this.setState({jobs, jobsState:'ready', jobsError:''});
+      this.announce(jobs.length+' job'+(jobs.length===1?'':'s')+' loaded');
     }catch(e){
       console.error('Failed to load jobs:', e);
-      this.setState({jobs:[], loading:false});
-      this.showToast('Could not load jobs');
+      if(this._jobsReq!==req) return;
+      this._jobsFailed('Could not reach the job feed — '+((e&&e.message)||'network error')+'.');
+      return;
     }
     this.refreshCounts();
+  }
+
+  // Never leave a skeleton shimmering over a request that failed (§3.4): say what
+  // broke, in the app's own voice, and offer the retry.
+  _jobsFailed(msg){
+    clearTimeout(this._jobsTimeout);
+    this._ungate('jobsSkeleton');
+    this.setState({jobsState:'error', jobsError:msg});
+    this.announce('The job feed failed to load.');
   }
 
   // How many ignored jobs the feed payload is leaving out — drives the "Show Ignored (n)"
@@ -2370,9 +2520,14 @@ class Component extends DCLogic {
   openProfile(){ this.setState({profileOpen:true,pfStatus:'',pfDragging:false}); this.loadProfile(); this.loadOptions(); this.loadDocuments(); }
   closeProfile(){ this.setState({profileOpen:false}); }
   async loadProfile(){
+    this.setState({pfLoading:true, pfError:''});
+    this._gate('pfSkeleton');
     try{
-      const r=await fetch('/api/profile'); const d=await r.json();
-      this.setState({profile:{
+      const r=await fetch('/api/profile');
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const d=await r.json();
+      this._ungate('pfSkeleton');
+      this.setState({pfLoading:false, profile:{
         interests_paragraph:d.interests_paragraph||'', skills:d.skills||[], job_titles:d.job_titles||[],
         keyword_groups:Array.isArray(d.keyword_groups)?d.keyword_groups:[],
         blocked_companies:Array.isArray(d.blocked_companies)?d.blocked_companies:[],
@@ -2380,7 +2535,11 @@ class Component extends DCLogic {
         llm_instructions:d.llm_instructions||'',
         resume_text:d.resume_text||'', source_filename:d.source_filename||'', exists:!!d.exists
       }});
-    }catch(e){ console.error('profile load failed', e); this.showToast('Could not load profile'); }
+    }catch(e){
+      console.error('profile load failed', e);
+      this._ungate('pfSkeleton');
+      this.setState({pfLoading:false, pfError:'Could not load your profile — '+((e&&e.message)||'network error')+'.'});
+    }
   }
   pfSet(patch){ this.setState(st=>({profile:Object.assign({},st.profile,patch)})); }
   // Résumé dropzone handlers — drag highlight + drop-to-upload (mirrors the file input).
@@ -2452,9 +2611,13 @@ class Component extends DCLogic {
 
   // ---------- Profile & Documents sidebar: the editable Document Guidance ----------
   loadDocuments(){
+    this.setState({guidanceLoading:true});
+    this._gate('guidanceSkeleton');
     fetch('/api/document-guidance').then(r=>r.json()).then(d=>{
-      if(d && d.success){ this.setState({guidanceText:d.guidance||'', guidanceIsDefault:!!d.is_default, guidanceStatus:''}); }
-    }).catch(e=>console.error('guidance load failed', e));
+      this._ungate('guidanceSkeleton');
+      if(d && d.success){ this.setState({guidanceLoading:false, guidanceText:d.guidance||'', guidanceIsDefault:!!d.is_default, guidanceStatus:''}); }
+      else { this.setState({guidanceLoading:false, guidanceStatus:'Could not load the guidance.'}); }
+    }).catch(e=>{ console.error('guidance load failed', e); this._ungate('guidanceSkeleton'); this.setState({guidanceLoading:false, guidanceStatus:'Could not load the guidance.'}); });
   }
   saveGuidance(){
     this.setState({guidanceBusy:true, guidanceStatus:'Saving…'});
@@ -2484,11 +2647,18 @@ class Component extends DCLogic {
   openOptions(){ this.setState({optionsOpen:true,optStatus:'',llmTest:null}); this.loadOptions(); }
   closeOptions(){ this.setState({optionsOpen:false}); }
   async loadOptions(){
+    this.setState({optLoading:true});
+    this._gate('optSkeleton');
     try{
       const [lr,rr]=await Promise.all([fetch('/api/options/llm'),fetch('/api/options/runtime')]);
       const llm=await lr.json(); const runtime=await rr.json();
-      this.setState({llm:Object.assign({},this.state.llm,llm),runtime:Object.assign({},this.state.runtime,runtime,{weights:Object.assign({},this.state.runtime.weights,runtime.weights||{})})});
-    }catch(e){ console.error('options load failed', e); this.showToast('Could not load options'); }
+      this._ungate('optSkeleton');
+      this.setState({optLoading:false, llm:Object.assign({},this.state.llm,llm),runtime:Object.assign({},this.state.runtime,runtime,{weights:Object.assign({},this.state.runtime.weights,runtime.weights||{})})});
+    }catch(e){
+      console.error('options load failed', e);
+      this._ungate('optSkeleton');
+      this.setState({optLoading:false, optStatus:'Could not load options — showing the last known values.'});
+    }
   }
   llmSet(patch){ this.setState(st=>({llm:Object.assign({},st.llm,patch)})); }
   rtSet(patch){ this.setState(st=>({runtime:Object.assign({},st.runtime,patch)})); }
@@ -2515,7 +2685,7 @@ class Component extends DCLogic {
       .catch(e=>{ console.error(e); this.setState({optBusy:false}); this.showToast('Could not save runtime settings'); });
   }
 
-  decorate(j){
+  decorate(j, idx){
     const sc=Component.SITE_COLORS[j.site]||'#888';
     const av=(sz)=>({width:sz+'px',height:sz+'px',flex:'0 0 auto',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:(sz>40?'12px':'9px'),background:'var(--surface2)',border:'var(--bw) solid var(--border)',font:'700 '+(sz>40?16:13)+'px/1 var(--font-head)',color:'var(--text)'});
     const stop=(e)=>{ e.stopPropagation(); };
@@ -2563,10 +2733,77 @@ class Component extends DCLogic {
       onMarkApplied:(e)=>{ stop(e); this.markApplied(j.id); },
       onLink:(e)=>{ stop(e); const url=j.link||('https://www.google.com/search?q='+encodeURIComponent(j.title+' '+j.company)); window.open(url,'_blank'); },
       ignoreBtn:'display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .15s ease;border:var(--bw) solid '+(j.ignore?'var(--danger)':'var(--border2)')+';background:'+(j.ignore?'color-mix(in srgb,var(--danger) 12%,transparent)':'transparent')+';color:'+(j.ignore?'var(--danger)':'var(--muted)'),
-      cardStyle:'display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius);padding:18px;animation:jf-rise .35s ease;transition:transform .15s,box-shadow .15s;border:var(--bw) solid '+(j.ignore?'var(--danger)':'var(--border)')+';opacity:'+(j.ignore?'.62':'1')
+      // --i drives the capped 45ms entrance stagger (.jf-stagger); the entrance
+      // itself is the .jf-in class on the article, not an inline animation.
+      // container-type makes the card respond to its grid column, not the viewport.
+      cardStyle:'display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius);padding:18px;container-type:inline-size;content-visibility:auto;contain-intrinsic-size:auto 420px;--i:'+(idx||0)+';transition:transform var(--dur-fast) var(--ease-soft),box-shadow var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft);border:var(--bw) solid '+(j.ignore?'var(--danger)':'var(--border)')+';opacity:'+(j.ignore?'.62':'1')
     });
   }
   css(k){ return k.replace(/[A-Z]/g,m=>'-'+m.toLowerCase()); }
+
+  // ---------- Skeletons (docs/frontend-polish-spec.md §3) ----------
+  // A skeleton is a tracing of the real layout, not a stack of grey boxes: same
+  // row count, same widths, same gaps, same radii as the component it stands in
+  // for, so nothing moves when the real content lands. Built with
+  // React.createElement rather than markup because the same trace is needed in
+  // three places (New Jobs, Saved, Tracker) and drift between copies is exactly
+  // what breaks the user's model of the page.
+  _bar(key, w, h, st){
+    return React.createElement('span',{key,className:'jf-skel',
+      style:Object.assign({display:'block',width:w,height:h,flex:'0 0 auto'},st||{})});
+  }
+  skeletonJobCard(i){
+    const R=React.createElement, b=(k,w,h,st)=>this._bar(k,w,h,st);
+    const row=(k,kids,st)=>R('div',{key:k,style:Object.assign({display:'flex',alignItems:'center',gap:'8px'},st||{})},kids);
+    return R('article',{key:'skjob'+i,'aria-hidden':'true',
+      style:{display:'flex',flexDirection:'column',background:'var(--card)',
+             border:'var(--bw) solid var(--border)',borderRadius:'var(--radius)',padding:'18px'}},[
+      // row 1 — source badge · industry pill
+      row('r1',[b('site','66px','20px',{borderRadius:'6px'}), b('ind','86px','22px',{borderRadius:'7px',marginLeft:'auto'})]),
+      // row 2 — title, the same two clamped lines the real card allows
+      b('t1','92%','16px',{marginTop:'13px'}),
+      b('t2','56%','16px',{marginTop:'7px'}),
+      // row 3 — company + date · match badge
+      row('r3',[b('co','52%','14px'), b('match','72px','21px',{borderRadius:'7px',marginLeft:'auto'})],{marginTop:'11px'}),
+      // row 4 — location chip · compensation chip
+      row('r4',[b('loc','100%','28px',{borderRadius:'7px',flex:'1 1 auto'}), b('pay','96px','28px',{borderRadius:'7px'})],{margin:'13px 0'}),
+      // row 5 — description, four lines with a short last line
+      b('d1','100%','11px',{marginBottom:'8px'}),
+      b('d2','100%','11px',{marginBottom:'8px'}),
+      b('d3','100%','11px',{marginBottom:'8px'}),
+      b('d4','62%','11px',{marginBottom:'18px'}),
+      // row 6 — the two primary actions
+      row('r6',[b('a1','100%','38px',{borderRadius:'var(--r-sm)',flex:'1 1 auto'}), b('a2','100%','38px',{borderRadius:'var(--r-sm)',flex:'1 1 auto'})],{marginTop:'auto'}),
+      // row 7 — the five icon actions
+      row('r7',[0,1,2,3,4].map(n=>b('i'+n,'100%','34px',{borderRadius:'var(--r-sm)',flex:'1 1 auto'})),{gap:'6px',marginTop:'10px'})
+    ]);
+  }
+  // Six is what the grid shows above the fold at the common widths; the real feed
+  // arriving with more or fewer never changes the height of anything already read.
+  skeletonJobCards(n){ const out=[]; for(let i=0;i<(n||6);i++) out.push(this.skeletonJobCard(i)); return out; }
+  skeletonTrackerCards(n){
+    const R=React.createElement, out=[];
+    for(let i=0;i<(n||2);i++){
+      out.push(R('div',{key:'sktr'+i,'aria-hidden':'true',
+        style:{background:'var(--card)',border:'var(--bw) solid var(--border)',
+               borderRadius:'var(--r-sm)',padding:'14px'}},[
+        this._bar('t','86%','14px'),
+        this._bar('c','52%','12px',{marginTop:'7px'})
+      ]));
+    }
+    return out;
+  }
+  // Panel fields: a label bar plus an input-height bar, repeated.
+  skeletonFields(n, h){
+    const R=React.createElement, out=[];
+    for(let i=0;i<(n||4);i++){
+      out.push(R('div',{key:'skf'+i,'aria-hidden':'true',style:{marginBottom:'18px'}},[
+        this._bar('l','38%','11px',{marginBottom:'10px'}),
+        this._bar('v','100%',(h||42)+'px',{borderRadius:'var(--r-sm)'})
+      ]));
+    }
+    return out;
+  }
 
   renderVals(){
     const s=this.state; const T=Component.THEMES[s.theme];
@@ -2588,7 +2825,7 @@ class Component extends DCLogic {
     const columns=Component.COLS.map(c=>{
       const jobs=s.jobs.filter(j=>j.applied&&j.column===c.key&&this.keywordMatch(j,s.searchTracker)).map(j=>this.decorate(j));
       const over=s.dragOverCol===c.key;
-      return {key:c.key,label:c.label,count:jobs.length,jobs,empty:jobs.length===0,
+      return {key:c.key,label:c.label,count:jobs.length,jobs,empty:jobs.length===0&&s.jobsState==='ready',
         dot:'width:9px;height:9px;border-radius:3px;background:var('+c.c+')',
         badge:'margin-left:auto;font:600 12px/1 var(--font-mono);color:var(--muted);background:var(--bg);padding:4px 9px;border-radius:99px;border:var(--bw) solid var(--border)',
         style:'flex:0 0 300px;display:flex;flex-direction:column;background:var(--surface);border-radius:var(--radius);min-height:0;height:100%;max-height:100%;overflow:hidden;transition:border-color .15s,box-shadow .15s;border:var(--bw) solid '+(over?'var(--accent)':'var(--border)')+';box-shadow:'+(over?'0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)':'none'),
@@ -2598,7 +2835,11 @@ class Component extends DCLogic {
       };
     });
     const trackedCount=s.jobs.filter(j=>j.applied).length;
-    const pipelineStats=Component.COLS.map(c=>({label:c.label,count:s.jobs.filter(j=>j.applied&&j.column===c.key).length,dot:'width:9px;height:9px;border-radius:3px;flex:0 0 auto;background:var('+c.c+')'}));
+    // An em dash while the feed loads, so the rail never asserts "0 applied" about
+    // a pipeline it has not read yet.
+    const pipelineStats=Component.COLS.map(c=>({label:c.label,
+      count:(s.jobsState==='loading'?'—':s.jobs.filter(j=>j.applied&&j.column===c.key).length),
+      dot:'width:9px;height:9px;border-radius:3px;flex:0 0 auto;background:var('+c.c+')'}));
 
     // new jobs grid (saved jobs are pulled out into the Saved lane)
     const all=s.jobs.filter(j=>!j.applied&&!j.saved&&this.keywordMatch(j, s.searchNew));
@@ -2608,7 +2849,7 @@ class Component extends DCLogic {
       : visibleUnsorted;
     const anyMatches=all.some(j=>j.match!=null);
     const PAGE=50; const page=s.page; const start=page*PAGE;
-    const gridJobs=visible.slice(start,start+PAGE).map(j=>this.decorate(j));
+    const gridJobs=visible.slice(start,start+PAGE).map((j,i)=>this.decorate(j,i));
     // Before the ignored rows are pulled they aren't in state.jobs at all, so the button's
     // presence and its count come from the server-side tally instead.
     const ignoredCount=s.ignoredLoaded?all.filter(j=>j.ignore).length:s.hiddenCount;
@@ -2622,7 +2863,7 @@ class Component extends DCLogic {
     const savedList=savedFiltered.slice().sort(s.savedSortByMatch
       ? (a,b)=>((b.match==null?-1:b.match)-(a.match==null?-1:a.match))
       : (a,b)=>((Date.parse(b.createdAt)||0)-(Date.parse(a.createdAt)||0)));
-    const savedJobs=savedList.map(j=>this.decorate(j));
+    const savedJobs=savedList.map((j,i)=>this.decorate(j,i));
 
     // selected job
     let selectedJob=null;
@@ -2785,11 +3026,30 @@ class Component extends DCLogic {
       isTracker:s.tab==='tracker', isNewJobs:s.tab==='newjobs', isSaved:s.tab==='saved',
       columns, trackedCount,
 
-      savedJobs, savedEmpty:savedJobs.length===0,
+      // ---- The loading ladder for every feed (§3) ----
+      // Nothing renders for the first 300ms; then skeletons; then either the
+      // content, the empty invitation, or the error with a retry. The empty and
+      // error states are gated on the machine, never inferred from a zero count —
+      // that inference is what made the old page flash "No new jobs" on load.
+      jobsSkeleton:s.jobsSkeleton&&s.jobsState==='loading',
+      jobsReady:s.jobsState==='ready', jobsFailed:s.jobsState==='error', jobsError:s.jobsError,
+      jobsBusy:s.jobsState==='loading'?'true':'false',
+      retryJobs:()=>this.loadJobs(),
+      skeletonCards:this.skeletonJobCards(6),
+      skeletonTrackerCards:this.skeletonTrackerCards(2),
+
+      savedJobs, savedEmpty:savedJobs.length===0&&s.jobsState==='ready',
+      savedEmptySearch:!!(s.searchSaved||'').trim(),
+      savedEmptyNoSearch:!(s.searchSaved||'').trim(),
+      clearSavedSearch:()=>this.setState({searchSaved:''}),
+      goNewJobs:()=>this.goTab('newjobs'),
       savedCountLabel:savedList.length+' saved job'+(savedList.length===1?'':'s'),
 
-      gridJobs, gridEmpty:gridJobs.length===0,
-      gridCountLabel:visible.length+' job'+(visible.length===1?'':'s')+' · sourced from '+Object.keys(s.sites).filter(k=>s.sites[k]).length+' boards',
+      gridJobs, gridEmpty:gridJobs.length===0&&s.jobsState==='ready',
+      gridEmptySearch:!!(s.searchNew||'').trim(),
+      gridEmptyNoSearch:!(s.searchNew||'').trim(),
+      clearNewSearch:()=>this.setState({searchNew:'',page:0}),
+      gridCountLabel:(s.jobsState==='loading'?'Loading the feed…':(s.jobsState==='error'?'Feed unavailable':visible.length+' job'+(visible.length===1?'':'s')+' · sourced from '+Object.keys(s.sites).filter(k=>s.sites[k]).length+' boards')),
       hasIgnored, showIgnoredLabel:s.ignoredLoading?'Loading ignored…':(s.showIgnored?'Hide Ignored':'Show Ignored ('+ignoredCount+')'),
       toggleShowIgnored:()=>{ if(s.ignoredLoading) return;
         const next=!s.showIgnored;
@@ -2798,7 +3058,11 @@ class Component extends DCLogic {
       showIgnoredStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color .15s ease,border-color .15s ease;border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.showIgnored?'var(--surface2)':'transparent'),
       analyzeJobs:()=>this.analyzeJobs(),
       analyzeLabel:s.analyzing?'Analyzing…':'Analyze matches',
-      analyzeStyle:'display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--r-sm);cursor:'+(s.analyzing?'default':'pointer')+';font:600 13px/1 var(--font-body);border:none;color:var(--accent-ink);background:var(--accent);transition:transform .15s ease,filter .15s ease;opacity:'+(s.analyzing?'.6':'1'),
+      analyzeBusy:!!s.analyzing, analyzeIdle:!s.analyzing,
+      analyzeBusyAttr:s.analyzing?'true':'false', analyzeDisabled:!!s.analyzing,
+      // min-width holds the button's size across the label swap; cursor:not-allowed
+      // and the dimmed fill are the disabled state (§5).
+      analyzeStyle:'display:flex;align-items:center;justify-content:center;gap:7px;min-width:172px;padding:9px 15px;border-radius:var(--r-sm);cursor:'+(s.analyzing?'not-allowed':'pointer')+';font:600 13px/1 var(--font-body);border:none;color:var(--accent-ink);background:var(--accent);transition:transform var(--dur-fast) var(--ease-soft),filter var(--dur-fast) var(--ease-soft);opacity:'+(s.analyzing?'.6':'1'),
       anyMatches, sortByMatch:s.sortByMatch,
       toggleSort:()=>this.setState(st=>({sortByMatch:!st.sortByMatch,page:0})),
       sortLabel:s.sortByMatch?'Sort: Match':'Sort: Newest',
@@ -2880,6 +3144,8 @@ class Component extends DCLogic {
       onResumeFile:(e)=>this.onResumeFile(e),
       onResumeDragOver:(e)=>this.onResumeDragOver(e), onResumeDragLeave:(e)=>this.onResumeDragLeave(e), onResumeDrop:(e)=>this.onResumeDrop(e),
       dropzoneStyle, buildBtnStyle, buildHint, buildProfile:()=>this.buildProfile(),
+      pfBusy:!!s.pfBusy, pfIdle:!s.pfBusy, pfBusyAttr:s.pfBusy?'true':'false',
+      buildBtnLabel:s.pfBusy?'Working…':'Build Profile (LLM)',
       rebuildProfile:()=>this.rebuildProfile(), saveProfile:()=>this.saveProfile(),
       pfLlmInstructions:pf.llm_instructions||'', onPfLlmInstructions:(e)=>this.pfSet({llm_instructions:e.target.value}),
       pfInterests:pf.interests_paragraph||'', onPfInterests:(e)=>this.pfSet({interests_paragraph:e.target.value}),
@@ -2896,7 +3162,17 @@ class Component extends DCLogic {
       onPfTitleBlockKey:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); addPfTag('title_blocklist','pfTitleBlockDraft',s.pfTitleBlockDraft); } },
 
       // ---- Profile & Documents tabs (Candidate | Guidance) ----
-      docsTabCandidate:s.docsTab==='candidate', docsTabGuidance:s.docsTab==='guidance',
+      // The tab body waits for its fetch: nothing for 300ms, then a field skeleton,
+      // then the real fields. Rendering empty inputs first reads as "your profile is
+      // blank", which is the same lie the job grid used to tell.
+      docsTabCandidate:s.docsTab==='candidate'&&!s.pfLoading&&!s.pfError,
+      docsTabGuidance:s.docsTab==='guidance'&&!s.guidanceLoading,
+      pfSkeleton:s.pfSkeleton&&s.pfLoading, pfError:s.pfError||'',
+      pfHasError:!!s.pfError, retryProfile:()=>this.loadProfile(),
+      guidanceSkeleton:s.guidanceSkeleton&&s.guidanceLoading,
+      skeletonPanelFields:this.skeletonFields(5),
+      skeletonGuidance:this.skeletonFields(1,300),
+      optSkeleton:s.optSkeleton&&s.optLoading,
       setDocsCandidate:()=>this.setState({docsTab:'candidate'}), setDocsGuidance:()=>this.setState({docsTab:'guidance'}),
       docsTabCandidateStyle:tabStyle(s.docsTab==='candidate'), docsTabGuidanceStyle:tabStyle(s.docsTab==='guidance'),
       docSaveStyle,
@@ -2907,10 +3183,11 @@ class Component extends DCLogic {
 
       // ---- options panel ----
       optionsOpen:s.optionsOpen, closeOptions:()=>this.closeOptions(),
-      optTabLlm:s.optionsTab==='llm', optTabRuntime:s.optionsTab==='runtime',
+      optTabLlm:s.optionsTab==='llm'&&!s.optLoading, optTabRuntime:s.optionsTab==='runtime'&&!s.optLoading,
       setOptTabLlm:()=>this.setState({optionsTab:'llm'}), setOptTabRuntime:()=>this.setState({optionsTab:'runtime'}),
       optLlmTabStyle:tabStyle(s.optionsTab==='llm'), optRtTabStyle:tabStyle(s.optionsTab==='runtime'),
-      optBusy:s.optBusy, optStatus:s.optStatus,
+      optBusy:!!s.optBusy, optBusyAttr:s.optBusy?'true':'false', optStatus:s.optStatus,
+      testBtnLabel:s.optBusy?'Testing…':'Test connection',
       llmEnabled:llm.enabled, toggleLlmEnabled:()=>this.llmSet({enabled:!llm.enabled}),
       llmEnabledRow:toggleRow(llm.enabled), llmEnabledChk:toggleChk(llm.enabled),
       llmBaseUrl:llm.base_url, onLlmBaseUrl:(e)=>this.llmSet({base_url:e.target.value}),
