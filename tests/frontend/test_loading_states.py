@@ -206,6 +206,58 @@ def test_touch_targets_reach_44px_on_coarse_pointers(html):
     assert "min-height:44px" in html
 
 
+def test_every_overlay_is_findable_and_labelled_as_a_dialog(html):
+    """Esc, the focus trap, and focus restore all key off [data-overlay]."""
+    for name in ("detail", "profile", "options", "apply", "find", "analyze", "match"):
+        assert f'data-overlay="{name}"' in html
+    assert html.count('role="dialog" aria-modal="true"') == 7
+
+
+def test_escape_closes_the_topmost_overlay(html):
+    assert "if(e.key==='Escape')" in html
+    assert "this.closeOverlay(root.getAttribute('data-overlay'))" in html
+
+
+def test_tab_is_trapped_and_focus_is_restored(html):
+    assert "if(e.key!=='Tab') return;" in html
+    assert "this._lastFocus=document.activeElement" in html
+    assert "document.body.style.overflow='hidden'" in html
+
+
+# --------------------------------------------------------------------------- #
+# Responsiveness (§8a)
+# --------------------------------------------------------------------------- #
+
+def test_no_grid_track_can_overflow_a_320px_viewport(html):
+    assert "minmax(min(330px,100%),1fr)" in html
+    assert "minmax(330px,1fr)" not in html
+
+
+def test_full_height_sections_use_dvh(html):
+    assert "dvh" in html
+    assert re.search(r"(?<![\w-])\d+vh\b", html) is None
+
+
+def test_cards_query_their_container_not_the_viewport(html):
+    assert "container-type:inline-size" in html
+    assert "@container (max-width: 320px)" in html
+    assert "[data-cardactions]{flex-direction:column}" in html
+
+
+def test_type_and_gutters_are_fluid(html):
+    assert "--step-h1:clamp(" in html
+    assert "--gutter:clamp(" in html
+    assert "font:600 var(--step-h1)/1.1 var(--font-head)" in html
+
+
+def test_reading_text_holds_a_14px_floor_on_phones(html):
+    assert "[data-carddesc]{font-size:14px !important" in html
+
+
+def test_offscreen_cards_are_cheap_to_skip(html):
+    assert "content-visibility:auto;contain-intrinsic-size:auto 420px" in html
+
+
 # --------------------------------------------------------------------------- #
 # The runtime patch (§5)
 # --------------------------------------------------------------------------- #

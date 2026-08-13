@@ -1807,8 +1807,64 @@ class Component extends DCLogic {
   // Called by every opener so a pending exit can never close what was just reopened.
   _cancelExit(){ this._exitTok=(this._exitTok||0)+1; clearTimeout(this._exitT); if(this.state.closing) this.setState({closing:''}); }
   announce(msg){ this.setState({liveStatus:msg}); }
+  // ---------- Overlay focus management (docs/frontend-polish-spec.md §9, §13) ----------
+  // One handler for every overlay: Esc dismisses the topmost, Tab is trapped
+  // inside it, focus is stored on open and restored to the trigger on close, and
+  // the page behind is scroll-locked.
+  _overlayOpen(){
+    const s=this.state;
+    return !!(s.selectedId!=null || s.profileOpen || s.optionsOpen ||
+              (s.app && s.app.open) || s.findOpen || s.analyzeOpen || s.matchInfoId!=null);
+  }
+  // Template order matches z-order, so the last one in the DOM is the topmost.
+  _topOverlay(){ const els=document.querySelectorAll('[data-overlay]'); return els.length?els[els.length-1]:null; }
+  _focusables(root){
+    return Array.prototype.slice.call(root.querySelectorAll(
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),iframe,[tabindex]:not([tabindex="-1"])'));
+  }
+  closeOverlay(name){
+    if(name==='detail') this.closeWithExit('detail',()=>this.setState({selectedId:null}));
+    else if(name==='profile') this.closeProfile();
+    else if(name==='options') this.closeOptions();
+    else if(name==='apply') this.closeApply();
+    else if(name==='find') this.closeFind();
+    else if(name==='analyze') this.closeAnalyze();
+    else if(name==='match') this.closeWithExit('match',()=>this.setState({matchInfoId:null}));
+  }
+  componentDidUpdate(){
+    const now=this._overlayOpen();
+    if(now===this._ovWas) return;
+    this._ovWas=now;
+    try{
+      if(now){
+        this._lastFocus=document.activeElement;
+        document.body.style.overflow='hidden';
+        setTimeout(()=>{
+          const root=this._topOverlay(); if(!root) return;
+          const f=this._focusables(root);
+          if(f.length) f[0].focus();
+          else { root.setAttribute('tabindex','-1'); root.focus(); }
+        },0);
+      } else {
+        document.body.style.overflow='';
+        const el=this._lastFocus; this._lastFocus=null;
+        if(el && el.focus) setTimeout(()=>{ try{ el.focus(); }catch(_){ } },0);
+      }
+    }catch(_){ }
+  }
+
   componentDidMount(){
     this.loadJobs();
+    this._keyHandler=(e)=>{
+      const root=this._topOverlay(); if(!root) return;
+      if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); this.closeOverlay(root.getAttribute('data-overlay')); return; }
+      if(e.key!=='Tab') return;
+      const f=this._focusables(root); if(!f.length) return;
+      const first=f[0], last=f[f.length-1], inside=root.contains(document.activeElement);
+      if(e.shiftKey && (document.activeElement===first || !inside)){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && (document.activeElement===last || !inside)){ e.preventDefault(); first.focus(); }
+    };
+    window.addEventListener('keydown', this._keyHandler, true);
     // Routing: keep the active view in sync with the URL hash (deep-link + back/forward).
     this._hashHandler=()=>{ const k=this.tabFromHash(); if(k && k!==this.state.tab) this.setState({tab:k}); };
     window.addEventListener('hashchange', this._hashHandler);
