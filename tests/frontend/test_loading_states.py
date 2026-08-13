@@ -43,8 +43,9 @@ def test_delay_gate_and_timeout_constants(html):
 
 
 def test_skeleton_only_renders_once_the_gate_has_opened(html):
-    """jobsSkeleton is the gated flag ANDed with the real machine state."""
-    assert "jobsSkeleton:s.jobsSkeleton&&s.jobsState==='loading'" in html
+    """The gated flag, ANDed with the machine state and with having no content —
+    a refetch over data already on screen must keep the data."""
+    assert "jobsSkeleton:s.jobsSkeleton&&s.jobsState==='loading'&&s.jobs.length===0" in html
 
 
 def test_feed_has_a_real_state_machine(html):

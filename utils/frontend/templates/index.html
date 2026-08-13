@@ -110,6 +110,27 @@
   @keyframes jf-reveal-in{from{opacity:0;transform:translateY(var(--lift-md))}to{opacity:1;transform:none}}
 
   /* ============================================================================
+     CONTAINER QUERIES (§8a). The job card sets container-type:inline-size in
+     decorate(), so it reshapes for the column it lands in — the grid track, the
+     narrow Saved lane, whatever — instead of guessing from the viewport.
+     ============================================================================ */
+  @container (max-width: 320px){
+    [data-cardactions]{flex-direction:column}
+    [data-cardactions] > *{width:100%;min-width:0 !important}
+  }
+  @container (max-width: 260px){
+    [data-cardicons]{flex-wrap:wrap}
+  }
+
+  /* Reading text keeps a 14px floor on phones (§1.6). The mono badges and chips
+     stay at their designed size — see docs/design-system.md, which pins the
+     card's row rhythm; growing them would break it. */
+  @media (max-width:880px){
+    [data-carddesc]{font-size:14px !important;line-height:1.55 !important}
+    [data-cardtitle]{font-size:16px !important}
+  }
+
+  /* ============================================================================
      ACCESSIBILITY FLOOR (§9)
      ============================================================================ */
   /* Focus ring on everything interactive. !important is deliberate: the design
@@ -187,9 +208,15 @@
     opacity:0;pointer-events:none;z-index:60;
     transition:opacity var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft);
   }
-  [data-tip]:hover::after,[data-tip]:focus-visible::after,
-  [data-tip]:hover::before,[data-tip]:focus-visible::before{
+  /* Keyboard focus always reveals the tip; hover only where hovering is real,
+     otherwise a tap leaves the bubble stuck open (§5). */
+  [data-tip]:focus-visible::after,[data-tip]:focus-visible::before{
     opacity:1;transform:translateX(-50%) translateY(0);
+  }
+  @media (hover:hover) and (pointer:fine){
+    [data-tip]:hover::after,[data-tip]:hover::before{
+      opacity:1;transform:translateX(-50%) translateY(0);
+    }
   }
 </style>
 </helmet>
@@ -254,7 +281,7 @@
   </header>
 
   <!-- ============ BODY ============ -->
-  <div style="display:flex;align-items:stretch;min-height:calc(100vh - 66px)">
+  <div style="display:flex;align-items:stretch;min-height:calc(100dvh - 66px)">
 
     <!-- SIDEBAR -->
     <aside data-desk="" style="{{ sidebarStyle }}">
@@ -298,10 +325,10 @@
 
       <!-- ===== TRACKER ===== -->
       <sc-if value="{{ isTracker }}" hint-placeholder-val="{{ true }}">
-        <section data-screen-label="Tracker" style="flex:1;min-width:0;height:calc(100vh - 66px);max-height:calc(100vh - 66px);overflow:hidden;display:flex;flex-direction:column;padding:24px 24px 96px;animation:jf-fade var(--dur-base) var(--ease-out)">
+        <section data-screen-label="Tracker" style="flex:1;min-width:0;height:calc(100dvh - 66px);max-height:calc(100dvh - 66px);overflow:hidden;display:flex;flex-direction:column;padding:24px 24px 96px;animation:jf-fade var(--dur-base) var(--ease-out)">
           <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">
             <div>
-              <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">Application Tracker</h1>
+              <h1 style="margin:0;font:600 var(--step-h1)/1.1 var(--font-head);letter-spacing:-.02em">Application Tracker</h1>
               <p style="margin:8px 0 0;font:400 14px/1 var(--font-body);color:var(--muted)">Drag a card between columns to update its status.</p>
             </div>
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -353,7 +380,7 @@
         <section data-screen-label="New Jobs" style="flex:1;padding:24px 24px 96px;animation:jf-fade var(--dur-base) var(--ease-out)">
           <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
-              <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">New Jobs</h1>
+              <h1 style="margin:0;font:600 var(--step-h1)/1.1 var(--font-head);letter-spacing:-.02em">New Jobs</h1>
               <p style="margin:8px 0 0;font:400 14px/1 var(--font-body);color:var(--muted)">{{ gridCountLabel }}</p>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -410,7 +437,7 @@
                 </div>
 
                 <!-- Row 2 — title (never more than two lines) -->
-                <h3 style="margin:11px 0 0;font:600 16px/1.25 var(--font-body);color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ job.title }}</h3>
+                <h3 data-cardtitle="" data-wrap="" style="margin:11px 0 0;font:600 16px/1.25 var(--font-body);color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ job.title }}</h3>
 
                 <!-- Row 3 — company + extraction date (left) · match % + breakdown (right) -->
                 <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
@@ -436,10 +463,10 @@
                 </div>
 
                 <!-- Row 5 — description (never more than four lines) -->
-                <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
+                <p data-carddesc="" data-wrap="" style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
 
                 <!-- Row 6 — primary actions -->
-                <div style="display:flex;gap:8px;margin-top:auto">
+                <div data-cardactions="" style="display:flex;gap:8px;margin-top:auto">
                   <button onclick="{{ job.onApply }}" style="flex:1;min-width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform var(--dur-fast) var(--ease-soft),filter var(--dur-fast) var(--ease-soft)" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     Generate
@@ -451,7 +478,7 @@
                 </div>
 
                 <!-- Row 7 — icon actions: info · block · hide · save · link out (spread evenly to fill the width) -->
-                <div style="display:flex;gap:6px;margin-top:10px">
+                <div data-cardicons="" style="display:flex;gap:6px;margin-top:10px">
                   <button onclick="{{ job.onOpen }}" data-tip="View job details" aria-label="View job details" style="{{ job.iconBtn }};flex:1;min-width:0;width:auto" style-hover="background:var(--surface2);border-color:var(--accent);color:var(--accent-text)" style-active="transform:scale(.9)">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                   </button>
@@ -504,7 +531,7 @@
         <section data-screen-label="Saved" style="flex:1;padding:24px 24px 96px;animation:jf-fade var(--dur-base) var(--ease-out)">
           <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
-              <h1 style="margin:0;font:600 28px/1 var(--font-head);letter-spacing:-.02em">Saved</h1>
+              <h1 style="margin:0;font:600 var(--step-h1)/1.1 var(--font-head);letter-spacing:-.02em">Saved</h1>
               <p style="margin:8px 0 0;font:400 14px/1 var(--font-body);color:var(--muted)">{{ savedCountLabel }}</p>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -542,7 +569,7 @@
                 </div>
 
                 <!-- Row 2 — title (never more than two lines) -->
-                <h3 style="margin:11px 0 0;font:600 16px/1.25 var(--font-body);color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ job.title }}</h3>
+                <h3 data-cardtitle="" data-wrap="" style="margin:11px 0 0;font:600 16px/1.25 var(--font-body);color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ job.title }}</h3>
 
                 <!-- Row 3 — company + extraction date (left) · match % + breakdown (right) -->
                 <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
@@ -568,10 +595,10 @@
                 </div>
 
                 <!-- Row 5 — description (never more than four lines) -->
-                <p style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
+                <p data-carddesc="" data-wrap="" style="margin:0 0 16px;font:400 13px/1.6 var(--font-body);color:var(--muted);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ job.shortDesc }}</p>
 
                 <!-- Row 6 — primary actions -->
-                <div style="display:flex;gap:8px;margin-top:auto">
+                <div data-cardactions="" style="display:flex;gap:8px;margin-top:auto">
                   <button onclick="{{ job.onApply }}" style="flex:1;min-width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:var(--r-sm);font:600 13px/1 var(--font-body);cursor:pointer;transition:transform var(--dur-fast) var(--ease-soft),filter var(--dur-fast) var(--ease-soft)" style-hover="transform:translateY(-1px);filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     Generate
@@ -583,7 +610,7 @@
                 </div>
 
                 <!-- Row 7 — icon actions: info · block · hide · save · link out (spread evenly to fill the width) -->
-                <div style="display:flex;gap:6px;margin-top:10px">
+                <div data-cardicons="" style="display:flex;gap:6px;margin-top:10px">
                   <button onclick="{{ job.onOpen }}" data-tip="View job details" aria-label="View job details" style="{{ job.iconBtn }};flex:1;min-width:0;width:auto" style-hover="background:var(--surface2);border-color:var(--accent);color:var(--accent-text)" style-active="transform:scale(.9)">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                   </button>
@@ -790,7 +817,7 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <h2 style="margin:0;font:600 18px/1 var(--font-head)">Profile &amp; Documents</h2>
+          <h2 style="margin:0;font:600 var(--step-h2)/1.15 var(--font-head)">Profile &amp; Documents</h2>
           <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Résumé, behavioral, writing style &amp; templates</div>
         </div>
         <button onclick="{{ closeProfile }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
@@ -982,7 +1009,7 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <h2 style="margin:0;font:600 18px/1 var(--font-head)">Options</h2>
+          <h2 style="margin:0;font:600 var(--step-h2)/1.15 var(--font-head)">Options</h2>
           <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">LLM endpoint &amp; recommendation runtime</div>
         </div>
         <button onclick="{{ closeOptions }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
@@ -1115,14 +1142,14 @@
   <!-- ============ APPLICATION MODE ============ -->
   <sc-if value="{{ appOpen }}" hint-placeholder-val="">
     <div onclick="{{ closeApply }}" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);animation:{{ appScrimAnim }};display:flex;align-items:center;justify-content:center;padding:24px">
-      <div data-overlay="apply" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:{{ appPanelW }};max-height:94vh;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;animation:{{ appAnim }}">
+      <div data-overlay="apply" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:{{ appPanelW }};max-height:94dvh;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;animation:{{ appAnim }}">
 
         <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
           <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink);flex:0 0 auto">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           </div>
           <div style="flex:1;min-width:0">
-            <h2 style="margin:0;font:600 18px/1 var(--font-head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Apply to {{ appCompany }}</h2>
+            <h2 style="margin:0;font:600 var(--step-h2)/1.15 var(--font-head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Apply to {{ appCompany }}</h2>
             <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ appTitle }}</div>
           </div>
           <button onclick="{{ closeApply }}" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
@@ -1267,7 +1294,7 @@
                   </sc-if>
                 </div>
                 <sc-if value="{{ appActive.hasPdf }}" hint-placeholder-val="">
-                  <iframe ref="{{ appActive.pdfRef }}" title="PDF preview" style="width:100%;min-height:min(74vh,780px);border:none;background:#fff;display:block"></iframe>
+                  <iframe ref="{{ appActive.pdfRef }}" title="PDF preview" style="width:100%;min-height:min(74dvh,780px);border:none;background:#fff;display:block"></iframe>
                 </sc-if>
                 <sc-if value="{{ appActive.pdfLoading }}" hint-placeholder-val="">
                   <div style="min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted)">
@@ -1305,14 +1332,14 @@
   <!-- ============ FIND JOBS MODAL ============ -->
   <sc-if value="{{ findOpen }}" hint-placeholder-val="">
     <div onclick="{{ closeFind }}" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);animation:{{ findScrimAnim }};display:flex;align-items:center;justify-content:center;padding:24px">
-      <div data-overlay="find" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:min(640px,100%);max-height:90vh;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;animation:{{ findAnim }}">
+      <div data-overlay="find" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:min(640px,100%);max-height:90dvh;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;animation:{{ findAnim }}">
 
         <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
           <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
           </div>
           <div>
-            <h2 style="margin:0;font:600 18px/1 var(--font-head)">Find Jobs</h2>
+            <h2 style="margin:0;font:600 var(--step-h2)/1.15 var(--font-head)">Find Jobs</h2>
             <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Configure a scrape across job boards</div>
           </div>
           <button onclick="{{ closeFind }}" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
@@ -1471,7 +1498,7 @@
             </div>
 
             <div style="margin-top:22px;text-align:center">
-              <div style="font:600 18px/1 var(--font-head);color:var(--text)">{{ stage }}</div>
+              <div style="font:600 var(--step-h2)/1.15 var(--font-head);color:var(--text)">{{ stage }}</div>
               <div style="margin-top:8px;font:400 13px/1.4 var(--font-body);color:var(--muted)">{{ statusMsg }}</div>
             </div>
 
@@ -1514,14 +1541,14 @@
   <!-- ============ ANALYZE MATCHES PROGRESS POPUP ============ -->
   <sc-if value="{{ analyzeOpen }}" hint-placeholder-val="">
     <div onclick="{{ closeAnalyze }}" style="position:fixed;inset:0;z-index:72;background:rgba(0,0,0,.55);animation:{{ analyzeScrimAnim }};display:flex;align-items:center;justify-content:center;padding:24px">
-      <div data-overlay="analyze" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:min(560px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;animation:{{ analyzeAnim }}">
+      <div data-overlay="analyze" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:min(560px,100%);max-height:90dvh;overflow-y:auto;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;animation:{{ analyzeAnim }}">
 
         <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
           <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
           </div>
           <div>
-            <h2 style="margin:0;font:600 18px/1 var(--font-head)">Analyze Matches</h2>
+            <h2 style="margin:0;font:600 var(--step-h2)/1.15 var(--font-head)">Analyze Matches</h2>
             <div style="margin-top:4px;font:400 12px/1 var(--font-body);color:var(--muted)">Scoring jobs against your profile</div>
           </div>
           <button onclick="{{ closeAnalyze }}" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
@@ -1542,7 +1569,7 @@
           </div>
 
           <div style="margin-top:22px;text-align:center">
-            <div style="font:600 18px/1 var(--font-head);color:var(--text)">{{ aStage }}</div>
+            <div style="font:600 var(--step-h2)/1.15 var(--font-head);color:var(--text)">{{ aStage }}</div>
             <div style="margin-top:8px;font:400 13px/1.4 var(--font-body);color:var(--muted)">{{ aStatusMsg }}</div>
           </div>
 
@@ -1585,7 +1612,7 @@
   <!-- ============ MATCH BREAKDOWN POPUP ============ -->
   <sc-if value="{{ matchPopup }}" hint-placeholder-val="">
     <div onclick="{{ closeMatchPopup }}" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);animation:{{ matchScrimAnim }};display:flex;align-items:center;justify-content:center;padding:24px">
-      <div data-overlay="match" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:min(440px,100%);max-height:84vh;overflow-y:auto;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;animation:{{ matchAnim }}">
+      <div data-overlay="match" role="dialog" aria-modal="true" onclick="{{ stop }}" style="width:min(440px,100%);max-height:84dvh;overflow-y:auto;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;animation:{{ matchAnim }}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
           <div style="min-width:0">
             <div style="font:600 11px/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Profile Match</div>
@@ -2836,7 +2863,7 @@ class Component extends DCLogic {
 
   renderVals(){
     const s=this.state; const T=Component.THEMES[s.theme];
-    const rootStyle=Object.assign({minHeight:'100vh',background:'var(--bg)',color:'var(--text)',fontFamily:'var(--font-body)',position:'relative',overflowX:'hidden'},T);
+    const rootStyle=Object.assign({minHeight:'100dvh',background:'var(--bg)',color:'var(--text)',fontFamily:'var(--font-body)',position:'relative',overflowX:'hidden'},T);
 
     const navTabs=[['newjobs','New Jobs'],['saved','Saved'],['tracker','Tracker']].map(([k,l])=>({key:k,label:l,onClick:()=>this.goTab(k),
       style:'padding:9px 16px;border:none;border-radius:var(--r-sm);cursor:pointer;font:600 14px/1 var(--font-body);background:'+(s.tab===k?'var(--surface2)':'transparent')+';color:'+(s.tab===k?'var(--text)':'var(--muted)')}));
@@ -3076,7 +3103,10 @@ class Component extends DCLogic {
       // content, the empty invitation, or the error with a retry. The empty and
       // error states are gated on the machine, never inferred from a zero count —
       // that inference is what made the old page flash "No new jobs" on load.
-      jobsSkeleton:s.jobsSkeleton&&s.jobsState==='loading',
+      // Skeletons stand in for content that isn't there yet. A refetch over data
+      // already on screen keeps the data — replacing it with bars would be a
+      // downgrade, not a loading state.
+      jobsSkeleton:s.jobsSkeleton&&s.jobsState==='loading'&&s.jobs.length===0,
       jobsReady:s.jobsState==='ready', jobsFailed:s.jobsState==='error', jobsError:s.jobsError,
       jobsBusy:s.jobsState==='loading'?'true':'false',
       retryJobs:()=>this.loadJobs(),
