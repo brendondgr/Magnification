@@ -280,6 +280,55 @@ def apply_profile_filters(job_ids: Optional[List[int]] = None,
     return {'blocked': blocked, 'checked': len(jobs)}
 
 
+def apply_all_filters(job_ids: Optional[List[int]] = None) -> Dict[str, Any]:
+    """
+    Re-apply **both** rule sets to the jobs currently visible in the feed.
+
+    Backs the New Jobs "Filter" button: the per-search ``jobs_config`` title/description keyword
+    filter *and* the active profile's block rules (blocked companies, title blocklist, scoped
+    keyword groups) are evaluated together, so a user who tightened either one sees it take effect
+    without re-scraping.
+
+    Scope and semantics match the other on-demand helper (``apply_profile_filters``):
+
+      * only currently visible jobs are considered — already-hidden rows are left alone;
+      * jobs the user explicitly **saved** (``saved=1``) are an intentional keep and are never
+        auto-hidden;
+      * one-directional — a job is only ever hidden, never un-hidden.
+
+    Args:
+        job_ids: Optional scope. When omitted, every visible job is checked.
+
+    Returns:
+        Dict with ``checked`` (jobs evaluated) and ``hidden`` (newly hidden).
+    """
+    from ..database.operations import (
+        get_jobs_by_ids, get_all_jobs, set_job_ignore, get_active_profile,
+    )
+    from . import profile_filter
+
+    filter_config = load_filter_config()
+    profile = get_active_profile()
+
+    jobs = get_jobs_by_ids(job_ids) if job_ids else get_all_jobs(include_ignored=False)
+
+    checked = 0
+    hidden = 0
+    for job in jobs:
+        if job.get('saved'):
+            continue  # explicit user keep — never auto-hide it
+        if job.get('ignore'):
+            continue  # already hidden — leave it
+        checked += 1
+        keep = apply_filters(job, filter_config) and not profile_filter.job_blocked_by_profile(job, profile)
+        if not keep:
+            set_job_ignore(job['id'], 1)
+            hidden += 1
+
+    logger.info(f"Applied all filters on demand: {hidden} newly hidden of {checked} checked")
+    return {'checked': checked, 'hidden': hidden}
+
+
 def get_filter_summary(filter_config: Optional[Dict[str, Any]] = None) -> str:
     """
     Get a human-readable summary of the current filter configuration.

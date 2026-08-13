@@ -54,6 +54,27 @@ def get_job_counts():
         logger.error(f"Error counting jobs: {e}")
         return jsonify({'error': str(e)}), 500
 
+@job_bp.route('/api/jobs/filter', methods=['POST'])
+def filter_jobs():
+    """Re-apply the title/description keyword filter + the profile block rules to the feed.
+
+    Backs the New Jobs "Filter" button. Only currently visible jobs are checked, saved jobs are
+    exempt, and the pass is one-directional (jobs are hidden, never un-hidden).
+
+    Body (optional): {"job_ids": [int, ...]} to scope the pass.
+    Response: {"success": true, "checked": <n>, "hidden": <n>}.
+    """
+    from ..scrapers.job_filter import apply_all_filters
+    try:
+        data = request.json if request.is_json else {}
+        job_ids = (data or {}).get('job_ids') or None
+        result = apply_all_filters(job_ids)
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.error(f"Error applying filters: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @job_bp.route('/api/jobs/<int:job_id>', methods=['GET'])
 def get_job(job_id):
     """Get a single job with details."""
