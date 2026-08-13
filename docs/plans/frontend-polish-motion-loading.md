@@ -146,6 +146,80 @@ wiring; re-run the accessibility-mobile checklist in `docs/skills/accessibility-
 | `docs/design-system.md`, `docs/component-map.md`, `docs/structure.md`, `docs/checklist.md` | Kept in sync in the same change |
 | `docs/plans/frontend-polish-motion-loading.md` | This plan |
 
+## Outcome
+
+All six phases shipped, one commit each. Verified against the app running from this worktree on
+port 5090 (`polish-ui` in `.claude/launch.json`) by driving the component's state directly and
+reading back the DOM and the computed styles — the browser pane in this environment reports a 0×0
+viewport, so **no screenshot or layout measurement was possible**; everything below was checked
+structurally or through computed style, never by looking at a rendered pixel.
+
+What was confirmed live:
+
+| Check | Result |
+| --- | --- |
+| Five feed states | loading → 6 skeleton cards / 114 shimmer bars, ready → 11 cards, error → `role="alert"` + Try again, empty-no-search, empty-with-search + Clear search |
+| No false empty during load | count label reads "Loading the feed…", "No new jobs to show" absent |
+| Delay gate | skeletons never appear for the local DB fetch (it finishes inside 300ms) |
+| Entrance stagger | delays 0 / 135 / 315 / **360 / 360**ms — capped at 8 items, 360ms cumulative |
+| Overlay exit | detail panel enters `jf-slide` 340ms, exits `jf-slide-out` 140ms `both`, then unmounts and clears `closing` |
+| Esc + focus | Esc dismisses, body scroll locks and releases, focus enters the panel and returns to the exact trigger button |
+| Focus trap | 17 focusables trapped; Tab from the last wraps to the first, Shift+Tab wraps back |
+| Hover gating | zero ungated `:hover` rules across every stylesheet the page loads |
+| Tokens resolve | `--dur-fast` 140ms, `--dur-slow` 340ms, `--stagger-step` 45ms, card `container-type: inline-size`, `content-visibility: auto` |
+
+`uv run pytest`: 428 passed, 8 failed — the 7 pre-existing `test_doc_links` parametrizations
+(below) plus `test_recommend_service.py::test_analyze_api_and_report`, which `docs/checklist.md`
+already records as needing a live LLM endpoint. No new failures.
+
+### Acceptance Checklist (spec §14), self-reported
+
+**States** — all pass. Every async component renders idle/loading/success/error/empty
+(`index.html` feed sections + panel sections); no indicator under 300ms
+(`Component.SKELETON_DELAY`); skeletons mirror the real card and time out at
+`Component.LOAD_TIMEOUT`; the only `<img>` is the header logo, which carries `width`/`height` and
+is served from the same origin.
+
+**Motion** — all pass. No hardcoded duration or easing remains in the page; exits run at
+`--dur-fast` against `--dur-base`/`--dur-slow` entrances; the animated keyframes touch only
+`opacity`, `transform`, and `background-position`; cumulative stagger is 360ms; the signature
+moment is the skeleton→cards handoff and nothing else is choreographed.
+
+**Interaction** — all pass. Hover/focus-visible/active/disabled are present on interactive
+elements, every generated `:hover` is behind `@media (hover:hover) and (pointer:fine)`, and search,
+sort, and pagination all filter the in-memory set synchronously.
+
+**Scroll** — pass. `.jf-reveal` uses `animation-timeline: view()` behind `@supports` with the
+revealed state as the base; anchor targets carry `scroll-margin-block-start`.
+
+**Responsive** — pass, with one stated deviation. No fixed track can overflow 320px; components
+use container queries; type and gutters are `clamp()`; touch targets reach 44px under
+`pointer:coarse`; `dvh` throughout. *Deviation:* the card's mono badges, dates, and chips stay
+below 14px on phones — `docs/design-system.md` pins the card's row rhythm, and growing them breaks
+it. Reading text (title, description) does hold the floor.
+
+**Accessibility** — pass. `prefers-reduced-motion` is honoured globally and softened per component;
+`aria-busy` on loaders, `aria-live` on the status region and all three feeds; focus is visible,
+trapped, and restored. Contrast was **not** re-measured — the palette is unchanged from the
+already-audited theme tokens, and the states added here reuse them.
+
+**Performance** — **not verified.** `content-visibility: auto` with `contain-intrinsic-size` is in
+place, there are no unthrottled scroll or pointer listeners, and no `will-change` is set anywhere.
+But CLS/INP/LCP on a 4× throttled CPU could not be profiled here; tracked in `docs/checklist.md`.
+
+### Deviations from the spec, and why
+
+1. **§1.5 / §14 "only transform/opacity/filter/clip-path"** — the desktop sidebar still transitions
+   `width` (258px ⇄ 0). It is a discrete user toggle, not a loop or a scroll-driven animation, and
+   every transform-based alternative either overlays the content or animates `margin` instead. The
+   generation progress bar, which *did* re-render on every 700ms poll, was converted to
+   `transform: scaleX()`. The two SVG progress rings animate `stroke-dasharray`, which is paint,
+   not layout, and has no transform equivalent.
+2. **§1.6 "no text smaller than 14px on mobile"** — see Responsive above.
+3. **§4 (streaming LLM text)** — not applicable; nothing streams tokens to the browser. The
+   transferable parts (a status line that changes, `aria-live`, a reserved container height) are
+   implemented on the polled agent and scrape feeds.
+
 ## Known baseline (not caused by this work)
 
 `tests/docs/test_doc_links.py` fails 7 parametrizations in a fresh worktree because docs reference

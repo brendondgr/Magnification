@@ -12,7 +12,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 | File | Role |
 | --- | --- |
 | `templates/index.html` | The whole app: an `<x-dc>` template (header, sidebar, New Jobs grid, Tracker kanban, job detail panel, Profile panel, Options panel, Find Jobs modal) + a `<script type="text/x-dc">` block holding `class Component extends DCLogic` (all state, methods, and `renderVals()`). |
-| `static/js/dc-runtime.js` | Vendored runtime: parses `<x-dc>` + the component script, loads React/ReactDOM/Babel from unpkg, and renders. Reads the component from the inline script's `textContent` (no external-src support). |
+| `static/js/dc-runtime.js` | Vendored runtime: parses `<x-dc>` + the component script, loads React/ReactDOM/Babel from unpkg, and renders. Reads the component from the inline script's `textContent` (no external-src support). **One local patch:** `createPseudoSheet` wraps generated `:hover` rules in `@media (hover:hover) and (pointer:fine)` so hover states never stick on touch. |
 
 > **File-size exception:** `index.html` far exceeds the repo's 800-line guideline (~2,800 lines).
 > It is a generated single-file design export and the runtime requires the component class
@@ -28,7 +28,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 | Area | State keys | Key methods |
 | --- | --- | --- |
-| Jobs / Tracker / Saved | `jobs, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `unsave`, `copyJobMarkdown`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
+| Jobs / Tracker / Saved | `jobs, jobsState('loading'\|'ready'\|'error'), jobsSkeleton, jobsError, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, page, dragOverCol` | `loadJobs`, `_jobsFailed`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `unsave`, `copyJobMarkdown`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, maxIterations, useLLM, percent, stage, statusMsg, found, saved, notHidden, scrapeEvents, scrapeDone` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
@@ -177,6 +177,28 @@ The Guidance tab loads the guidance on open (`loadDocuments` → `GET /api/docum
 it in place (`guidanceText`), and `saveGuidance` / `resetGuidance` persist or clear the override. The
 former Behavioral / Writing / Templates tabs and their upload-ingestion flow were removed (see
 `docs/plans/documents-sidebar-simplify.md`).
+
+## Loading, motion, and focus (frontend-polish-spec)
+
+`docs/frontend-polish-spec.md` is the standing contract; `docs/design-system.md` records how the
+tokens and the ladder are shaped. The component-side machinery:
+
+| Concern | State | Methods |
+| --- | --- | --- |
+| **Loading ladder** | `jobsState`, `jobsSkeleton`, `jobsError`, `pfLoading`/`pfSkeleton`/`pfError`, `optLoading`/`optSkeleton`, `guidanceLoading`/`guidanceSkeleton`, `liveStatus` | `_gate(key,ms)` / `_ungate` / `_clearGates` (the 300ms delay gate), `_jobsFailed`, `announce`, statics `SKELETON_DELAY` + `LOAD_TIMEOUT` |
+| **Skeletons** | — | `_bar`, `skeletonJobCard`, `skeletonJobCards`, `skeletonTrackerCards`, `skeletonFields` — React elements, not markup, so the New Jobs / Saved / Tracker copies cannot drift |
+| **Animated exits** | `closing` (the overlay currently animating out) | `closeWithExit(key, commit)`, `_cancelExit`, `_reduced`; `ovAnim`/`scrimAnim` in `renderVals()` produce the entrance/exit animation strings |
+| **Overlay focus** | — | `_overlayOpen`, `_topOverlay`, `_focusables`, `closeOverlay(name)`, plus the `keydown` handler in `componentDidMount` (Esc + Tab trap) and `componentDidUpdate` (focus store/restore, body scroll lock) |
+
+Every overlay root carries `data-overlay="<name>" role="dialog" aria-modal="true"`; **template order
+matches z-order**, so the last `[data-overlay]` in the DOM is the topmost. Keep it that way — Esc,
+the focus trap, and focus restore all depend on it.
+
+Utility classes defined in the `<helmet>` `<style>`: `.jf-skel` (shimmer), `.jf-in` +
+`.jf-stagger` (the signature entrance), `.jf-reveal` (scroll-driven), `.jf-spin`, `.jf-skip`.
+Layout hooks: `data-cardactions` / `data-cardicons` (container queries), `data-carddesc` /
+`data-cardtitle` (mobile type floor), `data-wrap` (`overflow-wrap:anywhere`), `data-tip` (tooltip
+and the coarse-pointer touch floor).
 
 ## Backend the frontend talks to
 

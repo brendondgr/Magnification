@@ -23,6 +23,14 @@ this file no longer repeats them.
   submits them manually. See `docs/plans/agentic-documents-application-mode.md`.
 - [ ] **Mobile theme toggle** — the switch is `data-desk` (hidden below 880px). Decide a mobile home
   (e.g. the Options panel) if phone users need the dark theme.
+- [ ] **Two deliberate deviations from `docs/frontend-polish-spec.md`**, both recorded in
+  `docs/plans/frontend-polish-motion-loading.md`: the desktop sidebar still transitions `width`
+  (a discrete toggle, not a loop or scroll), and the card's mono badges/dates stay under 14px on
+  phones because `docs/design-system.md` pins the card row rhythm. Revisit if either starts to
+  cost frames or readability.
+- [ ] **Core Web Vitals have not been measured.** CLS/INP/LCP are argued structurally (reserved
+  skeleton boxes, compositor-only animations, no unthrottled listeners) but never profiled on a
+  4× throttled CPU — the browser pane in this environment does not composite.
 
 ### Housekeeping
 
@@ -87,6 +95,7 @@ linked plan for the details.
 | UI | Per-page search + Saved sort (Newest ∣ Match) | `jobs-search-and-saved-sort.md` |
 | UI | Logo-derived `arctic` / `midnight` themes + header toggle | `logo-color-themes-and-toggle.md` |
 | UI | Hover and movement animations across every surface | `ui-hover-animations.md` |
+| UI | Frontend polish pass — loading ladder, motion tokens, animated exits, container-aware cards, overlay focus management | `frontend-polish-motion-loading.md` |
 | UI | Recommendation-era UI refinements (match breakdown, résumé drop zone, activity feed) | `ui-recommendation-refinements.md` |
 | UI | Frontend redesign wired to the API (the current single-page export) | `2026-06-30-frontend-redesign-wiring.md` |
 | Platform | Shared data root across worktrees (fixed the vanishing-profile bug) | `shared-data-root.md` |

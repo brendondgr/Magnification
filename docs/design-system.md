@@ -1,9 +1,16 @@
 # Design System — Magnification
 
 The design-quality brief required by `docs/skills/website-architecture/SKILL.md`. The live tokens
-are the per-theme maps in `Component.THEMES` inside `utils/frontend/templates/index.html` — there
-are no external stylesheets. Keep this file in sync with that block;
-`tests/frontend/test_theme_tokens.py` pins the contract.
+live in two places inside `utils/frontend/templates/index.html`, and there are no external
+stylesheets:
+
+| Token family | Where | Pinned by |
+| --- | --- | --- |
+| Color + shape (per theme) | the `Component.THEMES` maps | `tests/frontend/test_theme_tokens.py` |
+| Motion, focus, fluid type (theme-independent) | the `:root` block in the `<helmet>` `<style>` | `tests/frontend/test_loading_states.py` |
+
+Keep this file in sync with both. `docs/frontend-polish-spec.md` is the standing contract for
+motion, loading, and responsiveness; the sections below record how this app satisfies it.
 
 ## Visual Motif
 
@@ -122,27 +129,95 @@ Rules encoded in the tokens:
   to `localStorage['magnify.theme']`; the Component constructor restores the saved value
   (unknown/legacy names fall back to `arctic`).
 
+### Motion tokens
+
+Durations and easings are **never** hardcoded in an inline style — every one references a token
+from the `:root` block. Four duration steps, no improvising between them:
+
+| Token | Value | Used for |
+| --- | --- | --- |
+| `--dur-instant` | 80ms | state flips (check marks, toggle knobs) |
+| `--dur-fast` | 140ms | hover, focus, press — and **every exit** |
+| `--dur-base` | 220ms | small reveals, the skeleton→content handoff, scrims |
+| `--dur-slow` | 340ms | modals, slide-over panels |
+| `--dur-ambient` | 1200ms | the skeleton shimmer and the live-status pulse (the spinner runs at 60% of it) |
+| `--ease-out` / `--ease-in` / `--ease-soft` | — | entrances / exits / hover |
+| `--lift-sm` `--lift-md` `--lift-lg` | 2 / 6 / 14px | travel distance, scaled inversely to element size |
+| `--stagger-step` | 45ms | per-item entrance offset, capped at 8 items |
+| `--focus` | `#F4A226` | the focus ring, readable on both themes and on the navy chrome |
+| `--gutter` `--step-h1` `--step-h2` | `clamp()` | fluid spacing and headings |
+
+**Exits are always faster than entrances.** `closeWithExit(key, commit)` sets `state.closing`,
+the overlay renders its mirrored `-out` keyframes for `--dur-fast`, and only then does the state
+change that unmounts it commit. Under `prefers-reduced-motion` the delay is skipped entirely.
+
+### The loading ladder
+
+Every async region renders **idle → loading → success → error**, plus **empty** where the payload
+can be a zero-length list. The rules, all enforced in the component:
+
+- **Nothing renders for the first 300ms** (`Component.SKELETON_DELAY`). A flashed-and-gone
+  placeholder reads worse than no placeholder at all.
+- **Skeletons trace the real layout** — the job-card skeleton has the same seven rows at the same
+  widths, gaps, and radii, with a short final description line. Built once in
+  `skeletonJobCard()` / `skeletonTrackerCards()` / `skeletonFields()` so the call sites cannot
+  drift from each other.
+- **Skeletons time out** (`Component.LOAD_TIMEOUT`, 15s) into the error state, so a shimmer can
+  never loop forever over a dead request.
+- **A skeleton only stands in for absent content.** A refetch over data already on screen keeps
+  the data.
+- **Empty states are gated on `jobsState === 'ready'`**, never inferred from a zero count, and
+  split into "no results for that search" (offering *Clear search*) and "nothing yet" (offering
+  *Find Jobs*).
+- **Errors say what failed and offer the retry inline.** Never a bare toast.
+- `aria-busy` on every loading container, `aria-hidden` on the bars themselves, `aria-live="polite"`
+  on the status region and all three activity feeds.
+- The three genuinely slow buttons (Analyze matches, Build Profile, Test connection) have a
+  fixed-`min-width` loading variant where a spinner replaces the icon. Fast saves get **no**
+  indicator — they finish inside the 300ms gate.
+
+### The signature motion moment
+
+One per page: the **skeleton → cards handoff**. The skeleton grid cross-fades out and the real
+cards rise in on `.jf-in` with a 45ms stagger capped at 8 items (`--i` set from the render index).
+It is the moment the app's actual content arrives, so it is the one worth choreographing.
+Everything else is quiet: hover tints, 2px lifts, 140ms exits.
+
+### Scroll and route
+
+- `.jf-reveal` (Tracker cards, the detail panel's long sections) uses
+  `animation-timeline: view()` behind `@supports` and `prefers-reduced-motion`. **The base style is
+  the revealed state**, so unsupported browsers simply show the content.
+- Tab changes run through `document.startViewTransition` (with `ReactDOM.flushSync`) where the API
+  exists, styled by `::view-transition-old/new(root)` on the same exit-faster-than-entrance rule.
+
+### Keyframes and the hover vocabulary
+
 - **Entrance keyframes** (defined once in `index.html`'s `<style>`): `jf-fade` (opacity),
   `jf-slide` (slide-in from the right, used by slide-over panels), `jf-pop` (scale+rise, used by
-  modals and chips), `jf-pulse` (used by the live-status dot), `jf-rise` (rise+fade, used by cards
-  and toasts).
+  modals and chips), `jf-pulse` (used by the live-status dot), `jf-rise` (rise+fade, used by the
+  toast). Each has a mirrored exit — `jf-fade-out`, `jf-slide-out`, `jf-pop-out` — plus
+  `jf-skeleton-sweep`, `jf-content-in`, `jf-spin`, and `jf-reveal-in` for the loading and reveal
+  utilities.
 - **Hover/active/focus:** the dc-runtime template compiles any `style-<pseudo>` attribute
   (`style-hover`, `style-active`, `style-focus`, …) on an element into a real inserted stylesheet
   rule and merges the generated class onto that element — see `collectProps`/`createPseudoSheet`
-  in `utils/frontend/static/js/dc-runtime.js`. Every interactive element pairs a `transition:`
+  in `utils/frontend/static/js/dc-runtime.js`. **Local patch:** `createPseudoSheet` wraps every
+  generated `:hover` rule in `@media (hover:hover) and (pointer:fine)`, so a tap on a touch device
+  can never leave a hover state stuck on. The `[data-tip]` tooltip is gated the same way. Every interactive element pairs a `transition:`
   in its base `style` with a `style-hover` (and `style-active`/`style-focus` where relevant)
   attribute; identical hover CSS across elements is deduped into one shared class automatically.
 - **Motion vocabulary** (small, reused everywhere, all values expressed via the theme tokens
   above so both themes stay correct by construction):
   - **Primary/accent buttons** (Applied, Find Jobs, Start Search, Save…, Analyze matches):
-    `translateY(-1px)` + `filter:brightness(1.06)` on hover, `translateY(0)` +
-    `brightness(.97)` on active/press — `.15s ease`.
+    `translateY(calc(-1 * var(--lift-sm)))` + `filter:brightness(1.06)` on hover, `translateY(0)` +
+    `brightness(.97)` on active/press — `var(--dur-fast) var(--ease-soft)`.
   - **Secondary/bordered buttons**: hover tints `background`/`border-color` toward
     `var(--surface2)`/`var(--border2)`.
   - **Icon-only square buttons** (panel close, ignore, remove): `background:var(--surface2)` +
     a slight `scale(1.06)` press on active.
-  - **Cards** (New Jobs grid article, Tracker kanban job card): `translateY(-2px)` +
-    `box-shadow:var(--shadow)` on hover — the same treatment on both card types.
+  - **Cards** (New Jobs grid article, Tracker kanban job card): `translateY(calc(-1 * var(--lift-sm)))`
+    + `box-shadow:var(--shadow)` on hover — the same treatment on both card types.
   - **Pills/tabs/toggle rows** (nav tabs, Options tabs, site/job-type pills, toggle rows, mobile
     nav): background/border tint on hover, no movement — the selected state already carries the
     color change.
@@ -172,12 +247,24 @@ Use concrete job-hunt terms: *New Jobs*, *Tracker*, *Applied / Interviewing / Of
 
 ## Required UI States
 
-Every view must design: **loading, empty, partial-data, error, success,** and **permission** (n/a — single user) states. Concrete states are enumerated per view in `docs/routes.md`.
+Every view must design: **loading, empty, partial-data, error, success,** and **permission** (n/a — single user) states. Concrete states are enumerated per view in `docs/routes.md`, and the mechanics are **The loading ladder** above. A view that only renders its success state is incomplete.
 
 ## Mobile-Specific Decisions
 
 - Bottom tab nav (built inline by `mkMobTab` in `index.html`) on small screens; top tabs + sidebar
   on desktop.
+- **Container queries, not viewport queries, for components.** The job card sets
+  `container-type:inline-size`, so it reshapes for the column it lands in (its action row stacks
+  under 320px, its icon row wraps under 260px) rather than guessing from the window. Viewport
+  media queries are reserved for page-level layout: the `data-desk`/`data-mob` chrome swap at
+  880px and the Application-Mode pane switch at 920px.
+- Fluid over stepped: grid tracks are `minmax(min(330px,100%),1fr)` (a bare 330px track overflows
+  below ~362px), headings use the `clamp()` type tokens, and full-height sections use `dvh`.
+- Reading text (card title and description) holds a 14px floor on phones. The mono badges, chips,
+  and dates keep their designed size — growing them would break the card's row rhythm pinned
+  above; that is a deliberate deviation from §1.6 of `docs/frontend-polish-spec.md`.
+- Touch controls reach 44×44px through a `@media (pointer:coarse)` floor rather than by inflating
+  the desktop density.
 - Single-column card flow on mobile; multi-column grid / kanban on wider viewports.
 - Tap targets ≥ 44×44px; the job-detail slide-over and modals must not trap focus or hide the active input behind the mobile keyboard.
 

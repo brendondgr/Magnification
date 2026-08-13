@@ -148,8 +148,20 @@ Runs the in-house cover-letter and résumé agent graphs as background tasks (sa
 
 ## UI States (per view)
 
-- **New Jobs grid:** loading (scrape in progress), empty (no jobs / all ignored), populated, error (API failure).
-- **Tracker (kanban):** empty columns, populated cards, drag-in-progress, status-update error.
-- **Job detail panel:** loading, loaded, link-missing, error.
-- **Find Jobs modal:** form, validating, scraping (progress), success, error.
+The mechanics — the 300ms delay gate, the skeleton timeout, and the rule that empty states are
+gated on a ready feed rather than a zero count — are in `docs/design-system.md`.
+
+- **New Jobs grid:** loading (nothing for 300ms → six skeleton cards tracing the real card),
+  populated, empty-no-jobs (offers *Find Jobs*), empty-no-search-results (offers *Clear search*),
+  error (message + *Try again*, also raised by the 15s timeout).
+- **Saved grid:** the same five, with *Browse New Jobs* as the empty action.
+- **Tracker (kanban):** loading (skeleton cards per column), empty columns (only once the feed is
+  ready), populated cards, drag-in-progress, feed-error strip with a retry, status-update error.
+- **Job detail panel:** loaded, link-missing, error. It renders from state already in memory, so it
+  has no fetch of its own.
+- **Profile / Options / Guidance panels:** loading (field skeletons behind the same gate), loaded,
+  error (Profile offers a retry; Options falls back to the last known values).
+- **Find Jobs modal:** form, validating, scraping (progress + live feed), success, error.
+- **Application Mode:** intake, generating (agent feed + percent), review, PDF loading /
+  ready / failed / idle, generation-failed with *Try again*.
 - **LLM config:** server stopped / starting / running / error; model downloading / ready.

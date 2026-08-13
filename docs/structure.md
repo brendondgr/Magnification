@@ -27,7 +27,8 @@ Magnification/
 │   ├── component-map.md        # Frontend template/JS/CSS ownership
 │   ├── data-flow.md            # Where data comes from and how it moves
 │   ├── deployment.md           # Runtime, build, deploy assumptions
-│   ├── design-system.md        # Visual motif, tokens, UI states
+│   ├── design-system.md        # Visual motif, tokens, motion + loading ladder, UI states
+│   ├── frontend-polish-spec.md # Adopted contract: motion, loading states, responsiveness
 │   ├── database.md             # Schema, migrations, operations layer
 │   ├── job_scraping.md         # Scraping pipeline reference
 │   ├── find_jobs.md            # Find-Jobs config + run flow
@@ -72,7 +73,7 @@ Magnification/
 │   ├── database/               # CRUD, migrations, pipeline dates, clear-scope (in-memory engines)
 │   ├── docs/                   # Doc/skill-pointer + doc-link verification
 │   ├── documents/              # Documents, generation, and PDF-route APIs
-│   ├── frontend/               # Theme-token parity with the served page
+│   ├── frontend/               # Theme-token parity + the loading/motion/a11y contract of the served page
 │   ├── llm/                    # OpenAI-compatible client + Options API
 │   ├── profile/                # Profile API, blocklists, résumé parsing, skill quick-add
 │   ├── recommend/              # Ranker, BM25, embedder, enrichment, analyze/gap-fill, rescore

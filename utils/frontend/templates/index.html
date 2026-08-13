@@ -2588,7 +2588,9 @@ class Component extends DCLogic {
     return {
       key:kind, kind, label:isResume?'Tailored Résumé':'Cover Letter',
       active, percent:g.percent||0, stage:g.stage||'', message:g.message||'',
-      bar:'height:100%;width:'+(g.percent||0)+'%;background:var(--accent);border-radius:99px;transition:width var(--dur-base) var(--ease-out)',
+      // scaleX, not width: this bar re-renders on every 700ms poll, and a repeating
+      // width animation is a layout pass each time (§1.5).
+      bar:'height:100%;width:100%;transform-origin:left;transform:scaleX('+((g.percent||0)/100)+');background:var(--accent);border-radius:99px;transition:transform var(--dur-base) var(--ease-out)',
       feedRows, hasFeed:feedRows.length>0, feedEmpty:feedRows.length===0,
       hasPdf:!!pdf.url, pdfLoading:!!pdf.loading && !pdf.url,
       pdfError:!!pdf.error, pdfErrorMsg:pdf.error||'', pdfLog:pdf.log||'',
