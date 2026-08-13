@@ -172,6 +172,16 @@ def test_index_has_per_page_search_and_saved_sort(client):
     assert "matchSearch" not in html
 
 
+def test_index_has_filter_button_left_of_analyze(client):
+    """New Jobs exposes a Filter button, wired to POST /api/jobs/filter, before Analyze matches."""
+    html = client.get("/").get_data(as_text=True)
+    for token in ("filterJobs", "filterLabel", "filterStyle", "filterBusy",
+                  "'/api/jobs/filter'"):
+        assert token in html, f"missing filter token: {token}"
+    # It sits to the LEFT of Analyze matches in the header action row.
+    assert html.index("{{ filterJobs }}") < html.index("{{ analyzeJobs }}")
+
+
 def test_index_has_tracker_search_and_rejected_column(client):
     """The Application Tracker owns a keyword search and a distinct Rejected column."""
     html = client.get("/").get_data(as_text=True)

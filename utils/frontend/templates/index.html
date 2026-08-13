@@ -391,6 +391,17 @@
               <sc-if value="{{ anyMatches }}" hint-placeholder-val="">
                 <button onclick="{{ toggleSort }}" style="{{ sortStyle }}" style-hover="background:var(--surface2)">{{ sortLabel }}</button>
               </sc-if>
+              <!-- Filter re-applies every block rule to the visible feed. Loading
+                   variant on the same fixed-width rule as Analyze (§13). -->
+              <button onclick="{{ filterJobs }}" aria-busy="{{ filterBusyAttr }}" disabled="{{ filterBusy }}" title="Hide visible jobs that fail your title/description keywords, title blocklist, or blocked companies" style="{{ filterStyle }}" style-hover="background:var(--surface2)">
+                <sc-if value="{{ filterBusy }}" hint-placeholder-val="">
+                  <span class="jf-spin" aria-hidden="true" style="display:inline-block;width:14px;height:14px;flex:0 0 auto;border-radius:99px;border:2px solid color-mix(in srgb,currentColor 28%,transparent);border-top-color:currentColor"></span>
+                </sc-if>
+                <sc-if value="{{ filterIdle }}" hint-placeholder-val="{{ true }}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"></path></svg>
+                </sc-if>
+                {{ filterLabel }}
+              </button>
               <!-- Loading variant (§13): the spinner replaces the icon inside a fixed
                    min-width, so the button never changes size mid-run. -->
               <button onclick="{{ analyzeJobs }}" aria-busy="{{ analyzeBusyAttr }}" disabled="{{ analyzeDisabled }}" style="{{ analyzeStyle }}" style-hover="transform:translateY(calc(-1 * var(--lift-sm)));filter:brightness(1.06)" style-active="transform:translateY(0);filter:brightness(.97)">
@@ -1719,7 +1730,7 @@ class Component extends DCLogic {
     this.state = {
       theme:savedTheme||'arctic', tab, sidebarOpen:false, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null, clearMenuOpen:false,
-      sortByMatch:false, savedSortByMatch:false, analyzing:false, matchInfoId:null,
+      sortByMatch:false, savedSortByMatch:false, analyzing:false, filterBusy:false, matchInfoId:null,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
       groups:[], maxResults:25, maxIterations:1, useLLM:true, fromProfile:false,
@@ -2363,6 +2374,24 @@ class Component extends DCLogic {
   }
   closeFind(){ clearInterval(this._scr); clearInterval(this._poll); this.closeWithExit('find',()=>this.setState({findOpen:false,findView:'config',scrapeDone:false})); }
   viewNewJobs(){ this.closeFind(); this.goTab('newjobs'); }
+
+  // ---------- on-demand filtering ----------
+  // Re-apply the Find Jobs title/description keywords AND the profile block rules (title
+  // blocklist, blocked companies, keyword groups) to every currently visible job. Hides only —
+  // saved jobs are exempt and nothing is ever un-hidden — so the feed is reloaded afterwards.
+  filterJobs(){
+    if(this.state.filterBusy) return;
+    this.setState({filterBusy:true});
+    fetch('/api/jobs/filter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(r=>{ if(!r.ok) throw new Error('filter POST '+r.status); return r.json(); })
+      .then(d=>{
+        this.setState({filterBusy:false, page:0});
+        const n=(d&&d.hidden)||0;
+        this.showToast(n?('Hid '+n+' job'+(n===1?'':'s')):'No visible jobs matched your filters');
+        this.loadJobs();
+      })
+      .catch(e=>{ console.error(e); this.setState({filterBusy:false}); this.showToast('Could not apply filters'); });
+  }
 
   // ---------- recommendation analysis ----------
   analyzeJobs(){
@@ -3189,6 +3218,10 @@ class Component extends DCLogic {
         this.setState({showIgnored:next, page:0});
         if(next) this.loadIgnoredJobs(); },
       showIgnoredStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft);border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.showIgnored?'var(--surface2)':'transparent'),
+      filterJobs:()=>this.filterJobs(),
+      filterLabel:s.filterBusy?'Filtering…':'Filter',
+      filterBusy:!!s.filterBusy, filterIdle:!s.filterBusy, filterBusyAttr:s.filterBusy?'true':'false',
+      filterStyle:'display:flex;align-items:center;justify-content:center;gap:7px;min-width:104px;padding:9px 15px;border-radius:var(--r-sm);cursor:'+(s.filterBusy?'not-allowed':'pointer')+';font:600 13px/1 var(--font-body);transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft);border:var(--bw) solid var(--border2);color:var(--text);background:transparent;opacity:'+(s.filterBusy?'.6':'1'),
       analyzeJobs:()=>this.analyzeJobs(),
       analyzeLabel:s.analyzing?'Analyzing…':'Analyze matches',
       analyzeBusy:!!s.analyzing, analyzeIdle:!s.analyzing,

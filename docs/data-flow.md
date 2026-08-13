@@ -95,11 +95,29 @@ reached (found = `created_at`, applied, interview, offer, rejected, ghosted); th
 cleared or overwritten, and the job detail panel's **Pipeline History** reads them back.
 
 **Saved jobs are never auto-hidden.** A saved job (`saved=1`) is an explicit user keep, so the
-two filters that set `ignore=1` without user action — `job_filter.filter_and_mark_jobs` (Step 6
-of a scrape) and `job_filter.apply_profile_filters` (retroactive apply on Profile Save /
-Block Company) — skip it. Only the manual hide button (`PATCH /api/jobs/<id>/ignore`) can hide a
-saved job. This prevents a saved job the user un-hid from being silently re-hidden on the next
-search, profile save, or daily-search-on-boot.
+three filters that set `ignore=1` without user action — `job_filter.filter_and_mark_jobs` (Step 6
+of a scrape), `job_filter.apply_profile_filters` (retroactive apply on Profile Save /
+Block Company), and `job_filter.apply_all_filters` (the New Jobs **Filter** button) — skip it.
+Only the manual hide button (`PATCH /api/jobs/<id>/ignore`) can hide a saved job. This prevents a
+saved job the user un-hid from being silently re-hidden on the next search, profile save, or
+daily-search-on-boot.
+
+## On-Demand Filtering (the New Jobs "Filter" button)
+
+```
+Filter button → POST /api/jobs/filter
+      → job_filter.apply_all_filters()
+            → load_filter_config()  (jobs_config.json: job_titles + description_keywords)
+            → get_active_profile()  (blocked_companies, title_blocklist, keyword_groups)
+            → for each visible, non-saved job: apply_filters(...) AND NOT job_blocked_by_profile(...)
+            → set_job_ignore(id, 1) on failure
+      → {success, checked, hidden} → toast + loadJobs()
+```
+
+This is the only path that re-applies the **`jobs_config` keyword filter** to jobs already in the
+database; the scrape applies it only to the ids it just wrote, and Profile Save applies only the
+profile block rules. Like those two, it is one-directional — a job is hidden, never un-hidden, so
+loosening a filter still needs a re-scrape (or "Show Ignored" + the manual un-hide).
 
 ## LLM Flow
 
