@@ -1382,7 +1382,13 @@
       }
       const cls = "scp" + (n++).toString(36);
       const sel = pseudo === "before" || pseudo === "after" ? "." + cls + "::" + pseudo : "." + cls + ":" + pseudo;
-      el.sheet.insertRule(sel + "{" + css + "}", el.sheet.cssRules.length);
+      // LOCAL PATCH (docs/frontend-polish-spec.md §5): gate :hover behind a real
+      // pointer. Without this, a tap on a touch device applies the hover state and
+      // it sticks until the user taps elsewhere. Doing it here fixes every
+      // style-hover attribute in the app at once.
+      let rule = sel + "{" + css + "}";
+      if (pseudo === "hover") rule = "@media (hover:hover) and (pointer:fine){" + rule + "}";
+      el.sheet.insertRule(rule, el.sheet.cssRules.length);
       cache.set(k, cls);
       return cls;
     };
