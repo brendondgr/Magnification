@@ -81,6 +81,7 @@ linked plan for the details.
 | Documents | Cover-letter Winning Formula as structured output | `cover-letter-skill-structure.md` |
 | Documents | Flow smoothing — audit and rewrite asserted fit into shown fit | `cover-letter-flow-smoothing.md` |
 | Documents | Profile sidebar collapsed to Candidate ∣ Guidance; one editable Document Guidance | `documents-sidebar-simplify.md` |
+| UI | New Jobs "Filter" button — re-apply keyword filter + block rules to the visible feed | `new-jobs-filter-button.md` |
 | UI | Job card redesign — row layout, industry pills, icon action row | `job-card-redesign.md`, `job-card-rows-and-shared-enrichment.md` |
 | UI | Saved lane + saved jobs exempt from auto-hide | `save-jobs.md`, `saved-jobs-not-auto-hidden.md` |
 | UI | Tracker: search, a distinct Rejected column, slim cards, durable pipeline dates | `tracker-search-rejected.md`, `tracker-cards-and-pipeline-dates.md` |
