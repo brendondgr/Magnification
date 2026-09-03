@@ -173,13 +173,17 @@ def test_index_has_per_page_search_and_saved_sort(client):
 
 
 def test_index_has_filter_button_left_of_analyze(client):
-    """New Jobs exposes a Filter button, wired to POST /api/jobs/filter, before Analyze matches."""
+    """New Jobs exposes a Filter button, opening the bulk-hide popup, before Analyze matches.
+
+    The button used to POST straight to /api/jobs/filter; it now opens the Filter popup, which
+    owns every pass (see tests/frontend/test_filter_popup_wiring.py).
+    """
     html = client.get("/").get_data(as_text=True)
-    for token in ("filterJobs", "filterLabel", "filterStyle", "filterBusy",
+    for token in ("openFilter", "filterLabel", "filterStyle", "filterBusy",
                   "'/api/jobs/filter'"):
         assert token in html, f"missing filter token: {token}"
     # It sits to the LEFT of Analyze matches in the header action row.
-    assert html.index("{{ filterJobs }}") < html.index("{{ analyzeJobs }}")
+    assert html.index("{{ openFilter }}") < html.index("{{ analyzeJobs }}")
 
 
 def test_index_has_tracker_search_and_rejected_column(client):
