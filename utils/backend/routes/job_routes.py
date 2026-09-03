@@ -54,21 +54,61 @@ def get_job_counts():
         logger.error(f"Error counting jobs: {e}")
         return jsonify({'error': str(e)}), 500
 
+@job_bp.route('/api/jobs/filter/options', methods=['GET'])
+def filter_options():
+    """Facets for the New Jobs "Filter" popup, measured over the jobs the pass can act on.
+
+    Response: {"success": true, "total": <n>, "industries": [{"label", "count"}, ...],
+               "unclassified": <n>, "scored": <n>, "unscored": <n>,
+               "oldest": "YYYY-MM-DD"|null, "newest": "YYYY-MM-DD"|null}.
+
+    Lets the popup list only the industries actually present in the feed (with their counts)
+    without downloading every job row.
+    """
+    try:
+        return jsonify({'success': True, **db_ops.get_feed_filter_facets()})
+    except Exception as e:
+        logger.error(f"Error building filter options: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @job_bp.route('/api/jobs/filter', methods=['POST'])
 def filter_jobs():
-    """Re-apply the title/description keyword filter + the profile block rules to the feed.
+    """Hide jobs in bulk. Two modes, one contract.
 
-    Backs the New Jobs "Filter" button. Only currently visible jobs are checked, saved jobs are
-    exempt, and the pass is one-directional (jobs are hidden, never un-hidden).
+    Backs the New Jobs "Filter" popup. In both modes only currently visible jobs are checked,
+    saved jobs are exempt, and the pass is one-directional (jobs are hidden, never un-hidden).
 
-    Body (optional): {"job_ids": [int, ...]} to scope the pass.
-    Response: {"success": true, "checked": <n>, "hidden": <n>}.
+    Body (all optional):
+      * "job_ids": [int, ...] — scope the pass to specific jobs.
+      * "rules": {...} — ad-hoc criteria (keyword kill-list, found_before, min_match +
+        hide_unscored, industries). When present, these are applied instead of the saved rule
+        sets; criteria are OR'd. See utils/backend/scrapers/bulk_filter.
+      * "dry_run": bool — with "rules", count what would be hidden without writing anything.
+
+    Without "rules" this re-applies the saved rule sets (the jobs_config title/description
+    keyword filter + the active profile's block rules), exactly as before.
+
+    Response: {"success": true, "checked": <n>, "hidden": <n>, ...}. The rules mode adds
+    "matched", "job_ids", "breakdown" (per-criterion counts) and "dry_run". A malformed rules
+    payload (e.g. a bad date) returns 400.
     """
-    from ..scrapers.job_filter import apply_all_filters
     try:
         data = request.json if request.is_json else {}
-        job_ids = (data or {}).get('job_ids') or None
-        result = apply_all_filters(job_ids)
+        data = data or {}
+        job_ids = data.get('job_ids') or None
+
+        if data.get('rules') is not None:
+            from ..scrapers.bulk_filter import apply_bulk_filters
+            try:
+                result = apply_bulk_filters(data['rules'], job_ids,
+                                            dry_run=bool(data.get('dry_run')))
+            except ValueError as e:
+                return jsonify({'success': False, 'error': str(e)}), 400
+        else:
+            from ..scrapers.job_filter import apply_all_filters
+            result = apply_all_filters(job_ids)
+
         return jsonify({'success': True, **result})
     except Exception as e:
         logger.error(f"Error applying filters: {e}")

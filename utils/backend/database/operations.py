@@ -288,6 +288,56 @@ def get_job_counts() -> Dict[str, int]:
         return {'total': total, 'feed': feed, 'hidden': total - feed}
 
 
+def get_feed_filter_facets() -> Dict[str, Any]:
+    """
+    What the New Jobs **Filter** popup can offer, measured over the jobs it can act on.
+
+    The candidate set is exactly the one ``bulk_filter.apply_bulk_filters`` walks: visible
+    (``ignore=0``) and not saved. Aggregating in SQL keeps the popup from having to download
+    every job row just to build an industry checkbox list.
+
+    Returns:
+        ``{total, industries:[{label, count}], unclassified, scored, unscored, oldest, newest}``
+        where ``industries`` is sorted by count descending (real labels only — jobs with no
+        label yet are counted in ``unclassified``), ``scored`` counts jobs that have a
+        ``rag_score`` to compare a threshold against, and ``oldest``/``newest`` are the
+        found-date bounds as ``YYYY-MM-DD`` (or None on an empty feed).
+    """
+    candidate = (Job.ignore == 0) & (Job.saved == 0)
+    with get_db_context() as db:
+        total = db.query(func.count(Job.id)).filter(candidate).scalar() or 0
+
+        rows = (db.query(Job.industry, func.count(Job.id))
+                  .filter(candidate)
+                  .group_by(Job.industry)
+                  .all())
+        industries, unclassified = [], 0
+        for label, count in rows:
+            if label and str(label).strip():
+                industries.append({'label': str(label).strip(), 'count': count})
+            else:
+                unclassified += count
+        industries.sort(key=lambda item: (-item['count'], item['label']))
+
+        scored = (db.query(func.count(Job.id))
+                    .join(JobAnalysis, JobAnalysis.job_id == Job.id)
+                    .filter(candidate, JobAnalysis.rag_score.isnot(None))
+                    .scalar() or 0)
+
+        oldest, newest = db.query(func.min(Job.created_at), func.max(Job.created_at)) \
+                           .filter(candidate).first()
+
+    return {
+        'total': total,
+        'industries': industries,
+        'unclassified': unclassified,
+        'scored': scored,
+        'unscored': total - scored,
+        'oldest': format_date(oldest) if oldest else None,
+        'newest': format_date(newest) if newest else None,
+    }
+
+
 def set_job_ignore(job_id: int, ignore_value: int = 1) -> bool:
     """
     Toggle the ignore flag on a job.
