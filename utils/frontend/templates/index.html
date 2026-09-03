@@ -391,9 +391,9 @@
               <sc-if value="{{ anyMatches }}" hint-placeholder-val="">
                 <button onclick="{{ toggleSort }}" style="{{ sortStyle }}" style-hover="background:var(--surface2)">{{ sortLabel }}</button>
               </sc-if>
-              <!-- Filter re-applies every block rule to the visible feed. Loading
-                   variant on the same fixed-width rule as Analyze (§13). -->
-              <button onclick="{{ filterJobs }}" aria-busy="{{ filterBusyAttr }}" disabled="{{ filterBusy }}" title="Hide visible jobs that fail your title/description keywords, title blocklist, or blocked companies" style="{{ filterStyle }}" style-hover="background:var(--surface2)">
+              <!-- Filter opens the bulk-hide popup (keywords / date / match / industry).
+                   Loading variant on the same fixed-width rule as Analyze (§13). -->
+              <button onclick="{{ openFilter }}" aria-busy="{{ filterBusyAttr }}" disabled="{{ filterBusy }}" title="Bulk-hide jobs by keyword, date, match percentage, or industry" style="{{ filterStyle }}" style-hover="background:var(--surface2)">
                 <sc-if value="{{ filterBusy }}" hint-placeholder-val="">
                   <span class="jf-spin" aria-hidden="true" style="display:inline-block;width:14px;height:14px;flex:0 0 auto;border-radius:99px;border:2px solid color-mix(in srgb,currentColor 28%,transparent);border-top-color:currentColor"></span>
                 </sc-if>
@@ -1549,6 +1549,121 @@
     </div>
   </sc-if>
 
+  <!-- ============ FILTER JOBS POPUP ============ -->
+  <!-- Bulk hide: four ad-hoc criteria OR'd together, with a live dry-run count so the
+       user sees the damage before committing. Every hide is reversible via Show Ignored. -->
+  <sc-if value="{{ filterOpen }}" hint-placeholder-val="">
+    <div onclick="{{ closeFilter }}" style="position:fixed;inset:0;z-index:71;background:rgba(0,0,0,.55);animation:{{ fltScrimAnim }};display:flex;align-items:center;justify-content:center;padding:24px">
+      <div data-overlay="filter" role="dialog" aria-modal="true" aria-labelledby="flt-title" onclick="{{ stop }}" style="width:min(620px,100%);max-height:90dvh;background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;animation:{{ fltAnim }}">
+
+        <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:var(--bw) solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-ink)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"></path></svg>
+          </div>
+          <div>
+            <h2 id="flt-title" style="margin:0;font:600 var(--step-h2)/1.15 var(--font-head)">Filter Jobs</h2>
+            <div style="margin-top:4px;font:400 12px/1.3 var(--font-body);color:var(--muted)">Hide many at once — reversible with Show Ignored</div>
+          </div>
+          <button onclick="{{ closeFilter }}" aria-label="Close filter" style="margin-left:auto;display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2)" style-active="transform:scale(.9)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:24px">
+
+          <!-- 1. Keyword kill-list -->
+          <div>
+            <label for="flt-kw" style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Title / Description Keywords</label>
+            <p style="margin:0 0 10px;font:400 12px/1.45 var(--font-body);color:var(--muted)">Hides any job containing <b style="color:var(--text)">any</b> of these terms.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:8px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm)">
+              <sc-for list="{{ fltKeywordTags }}" as="kw" hint-placeholder-count="2">
+                <span style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--danger);color:#fff;border-radius:99px;font:600 12px/1 var(--font-body);animation:jf-pop var(--dur-base) var(--ease-out)">
+                  {{ kw.label }}
+                  <button onclick="{{ kw.onRemove }}" aria-label="Remove keyword" style="display:flex;background:none;border:none;color:#fff;cursor:pointer;padding:0;opacity:.8;transition:opacity var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)" style-hover="opacity:1;transform:scale(1.15)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
+                </span>
+              </sc-for>
+              <input id="flt-kw" value="{{ fltKwDraft }}" oninput="{{ onFltKwDraft }}" onkeydown="{{ onFltKwKey }}" placeholder="Type and press Enter…" style="flex:1;min-width:150px;height:32px;background:transparent;border:none;outline:none;color:var(--text);font:400 14px/1 var(--font-body)">
+            </div>
+            <div style="display:flex;gap:7px;margin-top:9px" role="group" aria-label="Where keywords are matched">
+              <sc-for list="{{ fltScopeList }}" as="sk" hint-placeholder-count="2">
+                <button onclick="{{ sk.onToggle }}" aria-pressed="{{ sk.pressed }}" style="{{ sk.style }}" style-hover="border-color:var(--accent)">
+                  <span style="{{ sk.check }}"></span>{{ sk.label }}
+                </button>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- 2. Found-before date -->
+          <div>
+            <label for="flt-date" style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Found Before</label>
+            <p style="margin:0 0 10px;font:400 12px/1.45 var(--font-body);color:var(--muted)">{{ fltDateHint }}</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input id="flt-date" type="date" value="{{ fltBefore }}" oninput="{{ onFltBefore }}" style="height:44px;padding:0 12px;background:var(--bg);border:var(--bw) solid var(--border);border-radius:var(--r-sm);color:var(--text);font:400 14px/1 var(--font-body);outline:none">
+              <sc-for list="{{ fltDatePresets }}" as="dp" hint-placeholder-count="4">
+                <button onclick="{{ dp.onPick }}" aria-pressed="{{ dp.pressed }}" style="{{ dp.style }}" style-hover="border-color:var(--accent)">{{ dp.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- 3. Match threshold -->
+          <div>
+            <label for="flt-match" style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
+              <span>Match Below</span><span style="color:var(--accent-text)">{{ fltMatchLabel }}</span>
+            </label>
+            <input id="flt-match" type="range" min="0" max="100" step="5" value="{{ fltMinMatch }}" oninput="{{ onFltMinMatch }}" style="{{ rangeStyle }}" style-hover="filter:brightness(1.1)">
+            <p style="margin:9px 0 10px;font:400 12px/1.45 var(--font-body);color:var(--muted)">Hides jobs scoring under this. Slide to 0% to switch the rule off.</p>
+            <button onclick="{{ toggleFltUnscored }}" aria-pressed="{{ fltUnscoredPressed }}" style="{{ fltUnscoredRow }}" style-hover="border-color:var(--accent)">
+              <span style="{{ fltUnscoredChk }}"></span>
+              <div style="text-align:left">
+                <div style="font:600 13px/1 var(--font-body);color:var(--text)">Also hide jobs with no match score</div>
+                <div style="margin-top:4px;font:400 12px/1.35 var(--font-body);color:var(--muted)">{{ fltUnscoredHint }}</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- 4. Industries actually present in the feed -->
+          <div>
+            <label style="display:block;font:600 12px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Industries</label>
+            <p style="margin:0 0 10px;font:400 12px/1.45 var(--font-body);color:var(--muted)">Hides every job in the industries you pick. Counts are what is in the feed now.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px" role="group" aria-label="Industries to hide">
+              <sc-for list="{{ fltIndustryList }}" as="ind" hint-placeholder-count="5">
+                <button onclick="{{ ind.onToggle }}" aria-pressed="{{ ind.pressed }}" style="{{ ind.style }}" style-hover="border-color:var(--danger)">
+                  <span style="{{ ind.check }}"></span>{{ ind.label }}<span style="opacity:.6;font-weight:500">{{ ind.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ fltNoIndustries }}" hint-placeholder-val="">
+              <p style="margin:10px 0 0;font:400 12px/1.45 var(--font-body);color:var(--muted)">Nothing classified yet — run <b style="color:var(--text)">Analyze matches</b> to label industries.</p>
+            </sc-if>
+          </div>
+
+          <!-- Live dry-run preview: the number below is the number that will be hidden. -->
+          <div aria-live="polite" aria-atomic="true" style="padding:16px 18px;background:var(--bg);border:var(--bw) solid {{ fltPreviewBorder }};border-radius:var(--r-sm)">
+            <div style="font:600 15px/1.3 var(--font-head);color:{{ fltPreviewColor }}">{{ fltPreviewLabel }}</div>
+            <sc-if value="{{ fltHasBreakdown }}" hint-placeholder-val="">
+              <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px">
+                <sc-for list="{{ fltBreakdown }}" as="bd" hint-placeholder-count="3">
+                  <span style="padding:5px 10px;border-radius:99px;background:var(--surface2);color:var(--text);font:500 11px/1.2 var(--font-mono)">{{ bd.label }}</span>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;padding:18px 24px;border-top:var(--bw) solid var(--border)">
+          <button onclick="{{ applySavedRules }}" aria-busy="{{ fltSavedBusyAttr }}" disabled="{{ fltSavedBusy }}" title="Re-apply the Find Jobs keywords and your profile blocklists to the feed" style="{{ fltSavedRulesStyle }}" style-hover="background:var(--surface2);border-color:var(--border)">{{ fltSavedRulesLabel }}</button>
+          <button onclick="{{ closeFilter }}" style="height:46px;padding:0 20px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);cursor:pointer;transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft)" style-hover="background:var(--surface2);border-color:var(--border)">Cancel</button>
+          <button onclick="{{ applyBulkFilter }}" aria-busy="{{ fltApplyBusyAttr }}" disabled="{{ fltApplyDisabled }}" style="{{ fltApplyStyle }}" style-hover="filter:brightness(1.06)" style-active="filter:brightness(.97)">
+            <sc-if value="{{ fltApplyBusy }}" hint-placeholder-val="">
+              <span class="jf-spin" aria-hidden="true" style="display:inline-block;width:15px;height:15px;flex:0 0 auto;border-radius:99px;border:2px solid color-mix(in srgb,#fff 32%,transparent);border-top-color:#fff"></span>
+            </sc-if>
+            {{ fltApplyLabel }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <!-- ============ ANALYZE MATCHES PROGRESS POPUP ============ -->
   <sc-if value="{{ analyzeOpen }}" hint-placeholder-val="">
     <div onclick="{{ closeAnalyze }}" style="position:fixed;inset:0;z-index:72;background:rgba(0,0,0,.55);animation:{{ analyzeScrimAnim }};display:flex;align-items:center;justify-content:center;padding:24px">
@@ -1731,6 +1846,12 @@ class Component extends DCLogic {
       theme:savedTheme||'arctic', tab, sidebarOpen:false, searchNew:'', searchSaved:'', searchTracker:'', showIgnored:false, page:0,
       selectedId:null, findOpen:false, findView:'config', toast:'', dragOverCol:null, clearMenuOpen:false,
       sortByMatch:false, savedSortByMatch:false, analyzing:false, filterBusy:false, matchInfoId:null,
+      // ---- Filter popup (bulk hide) ----
+      // Four ad-hoc criteria OR'd together; fltPreview holds the server's dry-run of the
+      // current rules so the button can promise an exact number before it commits.
+      filterOpen:false, fltKeywords:[], fltKwDraft:'', fltScopes:{title:true,description:true},
+      fltBefore:'', fltMinMatch:0, fltUnscored:false, fltIndustries:{},
+      fltFacets:null, fltPreview:null, fltPreviewBusy:false, fltSavedBusy:false,
       terms:['Software Engineer'], location:'Remote', ageIndex:0, countryQuery:'',
       sites:{Indeed:true,LinkedIn:true,Glassdoor:false,ZipRecruiter:false,Google:true},
       groups:[], maxResults:25, maxIterations:1, useLLM:true, fromProfile:false,
@@ -1825,7 +1946,8 @@ class Component extends DCLogic {
   _overlayOpen(){
     const s=this.state;
     return !!(s.selectedId!=null || s.profileOpen || s.optionsOpen ||
-              (s.app && s.app.open) || s.findOpen || s.analyzeOpen || s.matchInfoId!=null);
+              (s.app && s.app.open) || s.findOpen || s.filterOpen || s.analyzeOpen ||
+              s.matchInfoId!=null);
   }
   // Template order matches z-order, so the last one in the DOM is the topmost.
   _topOverlay(){ const els=document.querySelectorAll('[data-overlay]'); return els.length?els[els.length-1]:null; }
@@ -1839,6 +1961,7 @@ class Component extends DCLogic {
     else if(name==='options') this.closeOptions();
     else if(name==='apply') this.closeApply();
     else if(name==='find') this.closeFind();
+    else if(name==='filter') this.closeFilter();
     else if(name==='analyze') this.closeAnalyze();
     else if(name==='match') this.closeWithExit('match',()=>this.setState({matchInfoId:null}));
   }
@@ -1884,7 +2007,7 @@ class Component extends DCLogic {
       try{ history.replaceState(null,'','#'+Component.ROUTES[this.state.tab]); }catch(_){ }
     }
   }
-  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearInterval(this._poll); clearTimeout(this._jobsTimeout); clearTimeout(this._exitT); this._clearGates(); this._clearAppPollers(); if(this._hashHandler) window.removeEventListener('hashchange', this._hashHandler); if(this._keyHandler) window.removeEventListener('keydown', this._keyHandler, true); }
+  componentWillUnmount(){ clearInterval(this._scr); clearTimeout(this._tt); clearTimeout(this._fltT); clearInterval(this._poll); clearTimeout(this._jobsTimeout); clearTimeout(this._exitT); this._clearGates(); this._clearAppPollers(); if(this._hashHandler) window.removeEventListener('hashchange', this._hashHandler); if(this._keyHandler) window.removeEventListener('keydown', this._keyHandler, true); }
 
   // Navigate to a top-level view: update the URL hash (source of truth) and the active tab.
   goTab(k){
@@ -2375,22 +2498,100 @@ class Component extends DCLogic {
   closeFind(){ clearInterval(this._scr); clearInterval(this._poll); this.closeWithExit('find',()=>this.setState({findOpen:false,findView:'config',scrapeDone:false})); }
   viewNewJobs(){ this.closeFind(); this.goTab('newjobs'); }
 
-  // ---------- on-demand filtering ----------
-  // Re-apply the Find Jobs title/description keywords AND the profile block rules (title
-  // blocklist, blocked companies, keyword groups) to every currently visible job. Hides only —
-  // saved jobs are exempt and nothing is ever un-hidden — so the feed is reloaded afterwards.
-  filterJobs(){
-    if(this.state.filterBusy) return;
+  // ---------- on-demand filtering (the Filter popup) ----------
+  // Every pass here hides only: saved jobs are exempt, already-hidden rows are left alone, and
+  // nothing is ever un-hidden (Show Ignored is the reverse), so the feed is reloaded afterwards.
+
+  openFilter(){
+    this._cancelExit();
+    this.setState({filterOpen:true});
+    this.loadFilterFacets();
+    this.schedulePreview();
+  }
+  closeFilter(){ this.closeWithExit('filter',()=>this.setState({filterOpen:false})); }
+
+  // The industry list, the scored/unscored split and the date bounds all describe the *current*
+  // feed, so they are fetched on open rather than derived from the paged client-side job list.
+  loadFilterFacets(){
+    fetch('/api/jobs/filter/options')
+      .then(r=>{ if(!r.ok) throw new Error('filter options GET '+r.status); return r.json(); })
+      .then(d=>this.setState({fltFacets:d}))
+      .catch(e=>{ console.error(e); this.setState({fltFacets:null}); });
+  }
+
+  // The rules payload the server understands. Criteria are OR'd; an omitted key is "off".
+  fltRules(){
+    const s=this.state;
+    const scopes=['title','description'].filter(k=>s.fltScopes[k]);
+    return {
+      keywords:s.fltKeywords,
+      keyword_scopes:scopes.length?scopes:['title','description'],
+      found_before:s.fltBefore||null,
+      min_match:s.fltMinMatch>0?s.fltMinMatch:null,
+      hide_unscored:!!s.fltUnscored,
+      industries:Object.keys(s.fltIndustries).filter(k=>s.fltIndustries[k])
+    };
+  }
+  fltRulesActive(){
+    const r=this.fltRules();
+    return !!(r.keywords.length || r.found_before || r.min_match!=null || r.industries.length);
+  }
+
+  // Debounced dry run. The slider fires on every pixel; 250ms keeps the promised number live
+  // without a request per frame.
+  schedulePreview(delay){
+    clearTimeout(this._fltT);
+    this._fltT=setTimeout(()=>this.previewFilter(), delay==null?250:delay);
+  }
+  previewFilter(){
+    if(!this.state.filterOpen) return;
+    if(!this.fltRulesActive()){ this.setState({fltPreview:null, fltPreviewBusy:false}); return; }
+    const token=(this._fltTok=(this._fltTok||0)+1);
+    this.setState({fltPreviewBusy:true});
+    fetch('/api/jobs/filter',{method:'POST',headers:{'Content-Type':'application/json'},
+                              body:JSON.stringify({rules:this.fltRules(), dry_run:true})})
+      .then(r=>r.json().then(d=>({ok:r.ok,d})))
+      .then(({ok,d})=>{
+        if(token!==this._fltTok) return;             // a newer preview already went out
+        this.setState({fltPreviewBusy:false, fltPreview:ok?d:null});
+      })
+      .catch(e=>{ console.error(e); if(token===this._fltTok) this.setState({fltPreviewBusy:false, fltPreview:null}); });
+  }
+
+  // Commit the same rules the preview counted.
+  applyBulkFilter(){
+    const s=this.state;
+    if(s.filterBusy || !this.fltRulesActive()) return;
     this.setState({filterBusy:true});
-    fetch('/api/jobs/filter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+    fetch('/api/jobs/filter',{method:'POST',headers:{'Content-Type':'application/json'},
+                              body:JSON.stringify({rules:this.fltRules()})})
       .then(r=>{ if(!r.ok) throw new Error('filter POST '+r.status); return r.json(); })
       .then(d=>{
-        this.setState({filterBusy:false, page:0});
         const n=(d&&d.hidden)||0;
-        this.showToast(n?('Hid '+n+' job'+(n===1?'':'s')):'No visible jobs matched your filters');
+        this.setState({filterBusy:false, page:0, fltPreview:null});
+        this.closeFilter();
+        this.showToast(n?('Hid '+n+' job'+(n===1?'':'s')+' — undo with Show Ignored'):'No jobs matched those filters');
         this.loadJobs();
       })
       .catch(e=>{ console.error(e); this.setState({filterBusy:false}); this.showToast('Could not apply filters'); });
+  }
+
+  // The original Filter behavior: re-apply the Find Jobs title/description keywords AND the
+  // profile block rules (title blocklist, blocked companies, keyword groups) to the feed.
+  applySavedRules(){
+    if(this.state.fltSavedBusy || this.state.filterBusy) return;
+    // filterBusy too, so the header button shows the same running state as a rules pass.
+    this.setState({fltSavedBusy:true, filterBusy:true});
+    fetch('/api/jobs/filter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(r=>{ if(!r.ok) throw new Error('filter POST '+r.status); return r.json(); })
+      .then(d=>{
+        const n=(d&&d.hidden)||0;
+        this.setState({fltSavedBusy:false, filterBusy:false, page:0});
+        this.closeFilter();
+        this.showToast(n?('Hid '+n+' job'+(n===1?'':'s')):'No visible jobs matched your saved rules');
+        this.loadJobs();
+      })
+      .catch(e=>{ console.error(e); this.setState({fltSavedBusy:false, filterBusy:false}); this.showToast('Could not apply filters'); });
   }
 
   // ---------- recommendation analysis ----------
@@ -3145,6 +3346,58 @@ class Component extends DCLogic {
     const toggleRow=(on)=>'display:flex;align-items:center;gap:11px;width:100%;padding:13px;background:var(--bg);border-radius:var(--r-sm);cursor:pointer;text-align:left;transition:border-color var(--dur-fast) var(--ease-soft);border:var(--bw) solid '+(on?'var(--accent)':'var(--border)');
     const toggleChk=(on)=>'width:20px;height:20px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center;border:2px solid '+(on?'var(--accent)':'var(--border2)')+';background:'+(on?'var(--accent)':'transparent');
 
+    // ---- Filter popup (bulk hide) ----
+    // Facets describe the live feed; every control edit re-arms the debounced dry run so the
+    // "will hide N" line — and the commit button's own label — stay honest.
+    const fx=s.fltFacets||{};
+    const fltPill=(on,accent)=>'display:flex;align-items:center;gap:7px;min-height:38px;padding:9px 13px;border-radius:99px;cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft);border:var(--bw) solid '+(on?accent:'var(--border)')+';background:'+(on?'color-mix(in srgb,'+accent+' 14%,transparent)':'var(--bg)')+';color:var(--text)';
+    const fltBox=(on,accent)=>'width:15px;height:15px;border-radius:5px;flex:0 0 auto;border:2px solid '+(on?accent:'var(--border2)')+';background:'+(on?accent:'transparent');
+    const fltTouch=()=>this.schedulePreview();
+
+    const fltKeywordTags=(s.fltKeywords||[]).map((t,i)=>({label:t,
+      onRemove:()=>{ this.setState(st=>({fltKeywords:st.fltKeywords.filter((_,k)=>k!==i)})); fltTouch(); }}));
+    const fltScopeList=[['title','Title'],['description','Description']].map(([key,label])=>{
+      const on=!!s.fltScopes[key];
+      return {label, pressed:String(on), style:fltPill(on,'var(--accent)'), check:fltBox(on,'var(--accent)'),
+        onToggle:()=>{ const next=Object.assign({},s.fltScopes,{[key]:!on});
+          if(!next.title&&!next.description) return;   // one scope must stay on, else nothing matches
+          this.setState({fltScopes:next}); fltTouch(); }};
+    });
+
+    const isoDaysAgo=(n)=>{ const d=new Date(); d.setDate(d.getDate()-n);
+      const q=x=>String(x).padStart(2,'0'); return d.getFullYear()+'-'+q(d.getMonth()+1)+'-'+q(d.getDate()); };
+    const fltDatePresets=[['Over 7d old',7],['Over 14d',14],['Over 30d',30]].map(([label,n])=>{
+      const iso=isoDaysAgo(n); const on=s.fltBefore===iso;
+      return {label, pressed:String(on), style:fltPill(on,'var(--accent)'),
+        onPick:()=>{ this.setState({fltBefore:on?'':iso}); fltTouch(); }};
+    });
+    fltDatePresets.push({label:'Any date', pressed:String(!s.fltBefore), style:fltPill(!s.fltBefore,'var(--accent)'),
+      onPick:()=>{ this.setState({fltBefore:''}); fltTouch(); }});
+
+    const fltIndustryList=(fx.industries||[]).map(it=>{ const on=!!s.fltIndustries[it.label];
+      return {label:it.label, count:it.count, pressed:String(on),
+        style:fltPill(on,'var(--danger)'), check:fltBox(on,'var(--danger)'),
+        onToggle:()=>{ this.setState({fltIndustries:Object.assign({},s.fltIndustries,{[it.label]:!on})}); fltTouch(); }};
+    });
+    if(fx.unclassified){ const on=!!s.fltIndustries['Unclassified'];
+      fltIndustryList.push({label:'Unclassified', count:fx.unclassified, pressed:String(on),
+        style:fltPill(on,'var(--danger)'), check:fltBox(on,'var(--danger)'),
+        onToggle:()=>{ this.setState({fltIndustries:Object.assign({},s.fltIndustries,{Unclassified:!on})}); fltTouch(); }}); }
+
+    const fltActive=this.fltRulesActive();
+    const pv=s.fltPreview;
+    const fltMatched=(fltActive&&pv)?pv.matched:0;
+    const fltBdLabels={keywords:'keyword', date:'found before', match:'low match', industry:'industry'};
+    const fltBreakdown=(fltActive&&pv&&pv.breakdown)
+      ? Object.keys(fltBdLabels).filter(k=>pv.breakdown[k]>0).map(k=>({label:pv.breakdown[k]+' · '+fltBdLabels[k]}))
+      : [];
+    const fltPreviewLabel = !fltActive ? 'Pick at least one rule above.'
+      : (s.fltPreviewBusy ? 'Counting…'
+      : (pv ? ('Will hide '+pv.matched+' of '+pv.checked+' visible job'+(pv.checked===1?'':'s'))
+            : 'Preview unavailable — check the rules above.'));
+    const fltDanger=fltActive&&!!pv&&pv.matched>0;
+    const fltApplyOff=!fltActive||!!s.filterBusy||(!!pv&&pv.matched===0);
+
     // ---- Overlay entrance / exit pairs (§2, §13) ----
     // Exits run the mirrored keyframes at --dur-fast (~40% of the entrance) and
     // hold the last frame with `both`, so nothing pops back before closeWithExit
@@ -3218,7 +3471,43 @@ class Component extends DCLogic {
         this.setState({showIgnored:next, page:0});
         if(next) this.loadIgnoredJobs(); },
       showIgnoredStyle:'padding:9px 15px;border-radius:var(--r-sm);cursor:pointer;font:600 13px/1 var(--font-body);transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft);border:var(--bw) solid var(--border2);color:var(--text);background:'+(s.showIgnored?'var(--surface2)':'transparent'),
-      filterJobs:()=>this.filterJobs(),
+      // ---- Filter popup (bulk hide) ----
+      openFilter:()=>this.openFilter(), closeFilter:()=>this.closeFilter(),
+      filterOpen:s.filterOpen,
+      fltAnim:ovAnim('filter','jf-pop'), fltScrimAnim:scrimAnim('filter'),
+      fltKeywordTags, fltScopeList, fltDatePresets, fltIndustryList,
+      fltNoIndustries:fltIndustryList.length===0,
+      fltKwDraft:s.fltKwDraft,
+      onFltKwDraft:(e)=>this.setState({fltKwDraft:e.target.value}),
+      onFltKwKey:(e)=>{ if(e.key!=='Enter') return; e.preventDefault();
+        const v=(s.fltKwDraft||'').trim(); if(!v) return;
+        const dup=(s.fltKeywords||[]).some(t=>t.toLowerCase()===v.toLowerCase());
+        this.setState({fltKeywords:dup?s.fltKeywords:s.fltKeywords.concat([v]), fltKwDraft:''});
+        if(!dup) this.schedulePreview(); },
+      fltBefore:s.fltBefore,
+      onFltBefore:(e)=>{ this.setState({fltBefore:e.target.value}); this.schedulePreview(); },
+      fltDateHint:'Hides jobs first seen before this date. Job boards do not report a posting date, so this is when Magnification first saw the job'+(fx.oldest?(' — the oldest in the feed is '+fx.oldest+'.'):'.'),
+      fltMinMatch:s.fltMinMatch,
+      fltMatchLabel:(s.fltMinMatch>0?('under '+s.fltMinMatch+'%'):'off'),
+      onFltMinMatch:(e)=>{ this.setState({fltMinMatch:+e.target.value}); this.schedulePreview(); },
+      fltUnscored:s.fltUnscored, fltUnscoredPressed:String(!!s.fltUnscored),
+      toggleFltUnscored:()=>{ this.setState({fltUnscored:!s.fltUnscored}); this.schedulePreview(); },
+      fltUnscoredRow:toggleRow(s.fltUnscored), fltUnscoredChk:toggleChk(s.fltUnscored),
+      fltUnscoredHint:(fx.unscored!=null
+        ? (fx.unscored+' job'+(fx.unscored===1?'':'s')+' in the feed have never been analyzed, so they have no percentage.')
+        : 'Jobs that have never been analyzed have no percentage to compare.'),
+      fltPreviewLabel, fltBreakdown, fltHasBreakdown:fltBreakdown.length>0,
+      fltPreviewColor:(fltDanger?'var(--danger)':'var(--text)'),
+      fltPreviewBorder:(fltDanger?'var(--danger)':'var(--border)'),
+      applyBulkFilter:()=>this.applyBulkFilter(),
+      fltApplyDisabled:fltApplyOff,
+      fltApplyBusy:!!s.filterBusy, fltApplyBusyAttr:s.filterBusy?'true':'false',
+      fltApplyLabel:(s.filterBusy?'Hiding…':(fltActive&&pv?('Hide '+fltMatched+' job'+(fltMatched===1?'':'s')):'Hide jobs')),
+      fltApplyStyle:'display:flex;align-items:center;justify-content:center;gap:8px;flex:1;min-width:150px;height:46px;padding:0 20px;border:none;border-radius:var(--r-sm);font:600 15px/1 var(--font-body);color:#fff;transition:filter var(--dur-fast) var(--ease-soft);cursor:'+(fltApplyOff?'not-allowed':'pointer')+';background:'+(fltApplyOff?'var(--border2)':'var(--danger)')+';opacity:'+(fltApplyOff?'.65':'1'),
+      applySavedRules:()=>this.applySavedRules(),
+      fltSavedBusy:!!s.fltSavedBusy, fltSavedBusyAttr:s.fltSavedBusy?'true':'false',
+      fltSavedRulesLabel:(s.fltSavedBusy?'Applying…':'Re-apply saved rules'),
+      fltSavedRulesStyle:'display:flex;align-items:center;justify-content:center;height:46px;padding:0 18px;background:transparent;color:var(--text);border:var(--bw) solid var(--border2);border-radius:var(--r-sm);font:600 14px/1 var(--font-body);transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft);cursor:'+(s.fltSavedBusy?'not-allowed':'pointer')+';opacity:'+(s.fltSavedBusy?'.6':'1'),
       filterLabel:s.filterBusy?'Filtering…':'Filter',
       filterBusy:!!s.filterBusy, filterIdle:!s.filterBusy, filterBusyAttr:s.filterBusy?'true':'false',
       filterStyle:'display:flex;align-items:center;justify-content:center;gap:7px;min-width:104px;padding:9px 15px;border-radius:var(--r-sm);cursor:'+(s.filterBusy?'not-allowed':'pointer')+';font:600 13px/1 var(--font-body);transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft);border:var(--bw) solid var(--border2);color:var(--text);background:transparent;opacity:'+(s.filterBusy?'.6':'1'),

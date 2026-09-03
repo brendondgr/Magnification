@@ -42,7 +42,8 @@ partial-fetching endpoints.
 | --- | --- | --- |
 | `/api/jobs` | GET | List jobs (supports filtering) |
 | `/api/jobs/counts` | GET | Feed/hidden/total counts for the sidebar and headers |
-| `/api/jobs/filter` | POST | Re-apply the keyword filter + profile block rules to the visible feed |
+| `/api/jobs/filter/options` | GET | Facets for the Filter popup: industries present (with counts), scored/unscored split, found-date bounds |
+| `/api/jobs/filter` | POST | Bulk-hide the visible feed — ad-hoc `rules` (keywords / found_before / min_match / industries, `dry_run`-able), or the saved keyword + profile block rules when `rules` is omitted |
 | `/api/jobs/<int:job_id>` | GET | Get a single job |
 | `/api/jobs/<int:job_id>/ignore` | PATCH | Hide/ignore a job |
 | `/api/jobs/<int:job_id>/save` | PATCH | Save/unsave a job (the Saved lane) |

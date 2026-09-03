@@ -28,8 +28,9 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 | Area | State keys | Key methods |
 | --- | --- | --- |
-| Jobs / Tracker / Saved | `jobs, jobsState('loading'\|'ready'\|'error'), jobsSkeleton, jobsError, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, filterBusy, page, dragOverCol` | `loadJobs`, `_jobsFailed`, `filterJobs` (POST `/api/jobs/filter`), `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `unsave`, `copyJobMarkdown`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
+| Jobs / Tracker / Saved | `jobs, jobsState('loading'\|'ready'\|'error'), jobsSkeleton, jobsError, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, filterBusy, page, dragOverCol` | `loadJobs`, `_jobsFailed`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `unsave`, `copyJobMarkdown`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
+| **Filter popup** (bulk hide) | `filterOpen, fltKeywords, fltKwDraft, fltScopes{title,description}, fltBefore, fltMinMatch, fltUnscored, fltIndustries, fltFacets, fltPreview, fltPreviewBusy, fltSavedBusy, filterBusy` | `openFilter`, `closeFilter`, `loadFilterFacets` (GET `/api/jobs/filter/options`), `fltRules`, `fltRulesActive`, `schedulePreview` (250ms debounce), `previewFilter` (POST `/api/jobs/filter` `dry_run`), `applyBulkFilter` (POST `/api/jobs/filter` `rules`), `applySavedRules` (POST `/api/jobs/filter` `{}`) |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, maxIterations, useLLM, percent, stage, statusMsg, found, saved, notHidden, scrapeEvents, scrapeDone` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
 | Analyze Matches popup | `analyzing, analyzeOpen, aPercent, aStage, aStatusMsg, aEvents, aDone, aTotal, aLLM, aComp` | `analyzeJobs` (POST `/analyze/start`), `pollAnalyze` (poll `/analyze/status/<id>`), `closeAnalyze` |
 | **Profile & Documents** | `profileOpen, docsTab('candidate'\|'guidance'), profile{llm_instructions,interests_paragraph,skills,job_titles,keyword_groups(+scopes),blocked_companies,title_blocklist,resume_text,...}, pf*Draft, pfBusy, pfSkillsExpanded, guidanceText, guidanceBusy, guidanceStatus, guidanceIsDefault` | `openProfile` (now also calls `loadDocuments`), `loadProfile`, `saveProfile`, `blockCompany`, `addSkillToProfile`, `onResumeFile`, `rebuildProfile` (unions `skills` + `blocked_companies`), `pfSet`; guidance: `loadDocuments` (loads the guidance), `saveGuidance`, `resetGuidance` |
@@ -77,11 +78,25 @@ and toggling to **Match** (score desc, no-score last). The former single sidebar
 `matchSearch` were removed.
 
 **New Jobs header actions**, left to right: the search box, the Newest/Match sort toggle,
-**Filter**, **Analyze matches**, **Show Ignored (n)**. **Filter** (`filterJobs`, `filterBusy`,
-`filterLabel`, `filterStyle`) POSTs `/api/jobs/filter` to re-apply the Find Jobs
-title/description keywords *and* the profile's title blocklist / blocked companies / keyword
-groups to every currently visible job, then toasts how many were hidden and reloads the feed. It
-only ever hides (saved jobs exempt) — see `docs/data-flow.md`.
+**Filter**, **Analyze matches**, **Show Ignored (n)**. **Filter** (`openFilter`, `filterBusy`,
+`filterLabel`, `filterStyle`) opens the **Filter popup** (`data-overlay="filter"`), the bulk-hide
+dialog for a feed that has grown past reading. It offers four criteria, OR'd together:
+
+- a title/description **keyword kill-list** with Title/Description scope toggles (`fltKeywords`,
+  `fltScopes`) — the opposite direction from the Find Jobs keep-list;
+- **Found before** (`fltBefore`) with 7/14/30-day shortcuts. No board posting date is stored, so
+  this is `date_found` (`created_at`) and the copy says so;
+- a **match threshold** (`fltMinMatch`) over the displayed percentage, plus an opt-in for jobs
+  that have never been analyzed (`fltUnscored`);
+- the **industries actually in the feed** (`fltIndustryList`, from `/api/jobs/filter/options`)
+  with their counts, plus an `Unclassified` chip for jobs the LLM has not labelled.
+
+Every edit re-arms a 250ms-debounced dry run whose result (`fltPreview`) drives a live
+"Will hide N of M" line with a per-criterion breakdown, and the commit button's own label. The
+popup's secondary footer action, **Re-apply saved rules** (`applySavedRules`), is the original
+Filter behavior: the Find Jobs title/description keywords *and* the profile's title blocklist /
+blocked companies / keyword groups. Every pass only ever hides (saved jobs exempt) and is undone
+with **Show Ignored** — see `docs/data-flow.md`.
 
 The **Application Tracker** owns its own in-page search box (`searchTracker`) using the same
 `keywordMatch` matcher; each kanban column filters its cards by it (the `N ACTIVE` header count
