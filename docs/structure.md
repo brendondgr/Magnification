@@ -52,7 +52,7 @@ Magnification/
 │   ├── backend/
 │   │   ├── paths.py            # get_project_root() — one data/config root shared by every worktree
 │   │   ├── routes/             # The ten blueprints (see docs/routes.md for the full map)
-│   │   ├── scrapers/           # Scraping pipeline (see docs/job_scraping.md)
+│   │   ├── scrapers/           # Scraping pipeline + the hide rules (job_filter, bulk_filter; docs/job_scraping.md)
 │   │   ├── llm/                # OpenAI-compatible client + endpoint config
 │   │   ├── recommend/          # Hybrid recommender + the one shared enrichment pass (docs/recommendation.md)
 │   │   ├── agents/             # In-house generation graphs, no LangGraph (see the rationale table below)
@@ -69,16 +69,16 @@ Magnification/
 │   ├── test_frontend_wiring.py # Served page + job/config API contract
 │   ├── job_scraper.py          # Manual scraper probe (hits the network; not a pytest module)
 │   ├── agents/                 # Generation graphs, orchestrator, guidance, scoring, LaTeX
-│   ├── backend/                # Shared project-root resolution, lazy jobs feed
+│   ├── backend/                # Shared project-root resolution, lazy jobs feed, bulk-filter API
 │   ├── database/               # CRUD, migrations, pipeline dates, clear-scope (in-memory engines)
 │   ├── docs/                   # Doc/skill-pointer + doc-link verification
 │   ├── documents/              # Documents, generation, and PDF-route APIs
-│   ├── frontend/               # Theme-token parity + the loading/motion/a11y contract of the served page
+│   ├── frontend/               # Theme-token parity, the loading/motion/a11y contract, the Filter popup wiring
 │   ├── llm/                    # OpenAI-compatible client + Options API
 │   ├── profile/                # Profile API, blocklists, résumé parsing, skill quick-add
 │   ├── recommend/              # Ranker, BM25, embedder, enrichment, analyze/gap-fill, rescore
 │   ├── scheduler/              # LLM-health probe + once-per-day runner (mocked)
-│   └── scrapers/               # Cleaning, dedupe, iterations, cumulative counts, events
+│   └── scrapers/               # Cleaning, dedupe, iterations, cumulative counts, events, bulk-hide rules
 │
 ├── images/                     # Brand source assets (magnify.svg / magnify.png) + README screenshots/demo
 │

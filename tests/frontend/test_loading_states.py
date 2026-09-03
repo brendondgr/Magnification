@@ -208,9 +208,9 @@ def test_touch_targets_reach_44px_on_coarse_pointers(html):
 
 def test_every_overlay_is_findable_and_labelled_as_a_dialog(html):
     """Esc, the focus trap, and focus restore all key off [data-overlay]."""
-    for name in ("detail", "profile", "options", "apply", "find", "analyze", "match"):
+    for name in ("detail", "profile", "options", "apply", "find", "filter", "analyze", "match"):
         assert f'data-overlay="{name}"' in html
-    assert html.count('role="dialog" aria-modal="true"') == 7
+    assert html.count('role="dialog" aria-modal="true"') == 8
 
 
 def test_escape_closes_the_topmost_overlay(html):

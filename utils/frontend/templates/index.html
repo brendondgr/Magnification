@@ -2580,17 +2580,18 @@ class Component extends DCLogic {
   // profile block rules (title blocklist, blocked companies, keyword groups) to the feed.
   applySavedRules(){
     if(this.state.fltSavedBusy || this.state.filterBusy) return;
-    this.setState({fltSavedBusy:true});
+    // filterBusy too, so the header button shows the same running state as a rules pass.
+    this.setState({fltSavedBusy:true, filterBusy:true});
     fetch('/api/jobs/filter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
       .then(r=>{ if(!r.ok) throw new Error('filter POST '+r.status); return r.json(); })
       .then(d=>{
         const n=(d&&d.hidden)||0;
-        this.setState({fltSavedBusy:false, page:0});
+        this.setState({fltSavedBusy:false, filterBusy:false, page:0});
         this.closeFilter();
         this.showToast(n?('Hid '+n+' job'+(n===1?'':'s')):'No visible jobs matched your saved rules');
         this.loadJobs();
       })
-      .catch(e=>{ console.error(e); this.setState({fltSavedBusy:false}); this.showToast('Could not apply filters'); });
+      .catch(e=>{ console.error(e); this.setState({fltSavedBusy:false, filterBusy:false}); this.showToast('Could not apply filters'); });
   }
 
   // ---------- recommendation analysis ----------

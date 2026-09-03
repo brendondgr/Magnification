@@ -102,10 +102,39 @@ Only the manual hide button (`PATCH /api/jobs/<id>/ignore`) can hide a saved job
 saved job the user un-hid from being silently re-hidden on the next search, profile save, or
 daily-search-on-boot.
 
-## On-Demand Filtering (the New Jobs "Filter" button)
+## On-Demand Filtering (the New Jobs "Filter" popup)
+
+The **Filter** button opens a popup with two ways to cut the feed down. Both hide only.
+
+**Ad-hoc bulk rules** — the answer to "there are 300 active jobs and I can't read them all":
 
 ```
-Filter button → POST /api/jobs/filter
+Filter popup opens → GET /api/jobs/filter/options
+      → operations.get_feed_filter_facets()   (industries + counts, scored/unscored, date bounds)
+      → the popup's industry chips, unscored hint, and oldest-found note
+
+every control edit (debounced 250ms) → POST /api/jobs/filter {rules, dry_run:true}
+      → bulk_filter.apply_bulk_filters(rules, dry_run=True)
+      → {checked, matched, breakdown} → the live "Will hide N of M" line
+
+Hide N jobs → POST /api/jobs/filter {rules}
+      → bulk_filter.apply_bulk_filters(rules)
+            → for each visible, non-saved job, OR over the enabled criteria:
+                  keyword kill-list (title and/or description)
+                  found_before   (date_found = created_at; no board posting date is stored)
+                  min_match      (round(rag_score × 100); unscored kept unless hide_unscored)
+                  industries     ("Unclassified" selects jobs with no label yet)
+            → set_job_ignore(id, 1) on a match
+      → {checked, matched, hidden, breakdown} → toast + loadJobs()
+```
+
+The preview and the commit run the *same* function, so the number promised on the button is the
+number that gets hidden.
+
+**Saved rules** — the popup's secondary action, unchanged from the original Filter button:
+
+```
+Re-apply saved rules → POST /api/jobs/filter {}
       → job_filter.apply_all_filters()
             → load_filter_config()  (jobs_config.json: job_titles + description_keywords)
             → get_active_profile()  (blocked_companies, title_blocklist, keyword_groups)
@@ -116,7 +145,7 @@ Filter button → POST /api/jobs/filter
 
 This is the only path that re-applies the **`jobs_config` keyword filter** to jobs already in the
 database; the scrape applies it only to the ids it just wrote, and Profile Save applies only the
-profile block rules. Like those two, it is one-directional — a job is hidden, never un-hidden, so
+profile block rules. Every path here is one-directional — a job is hidden, never un-hidden, so
 loosening a filter still needs a re-scrape (or "Show Ignored" + the manual un-hide).
 
 ## LLM Flow

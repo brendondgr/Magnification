@@ -1,6 +1,6 @@
 # Plan — Bulk Filter popup (wipe out many jobs at once)
 
-**Status:** proposed
+**Status:** shipped
 **Branch:** `feature/bulk-filter-popup`
 
 ## 1. Introduction
