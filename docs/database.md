@@ -65,6 +65,7 @@ Single-active-row comparison target for the recommendation system.
 | `job_titles` | JSON | list[str] search-query titles |
 | `keyword_groups` | JSON | list[{label, terms:[...], scopes:[...]}] — AND across groups, OR within a group; `scopes` ⊆ {title, description}; an unsatisfied group hard-blocks a job at scrape time |
 | `blocked_companies` | JSON | list[str], case-insensitive company hide-list |
+| `favorite_companies` | JSON | list[str], case-insensitive starred companies; outline their cards (visual only) |
 | `title_blocklist` | JSON | list[str], any title substring match hides the job |
 | `llm_instructions` | Text | Free-text guidance steering the LLM profile build |
 | `created_at` / `updated_at` | DateTime | — |
@@ -145,6 +146,7 @@ All are idempotent (safe to run on every startup) and no-op when the database fi
 | --- | --- |
 | `migrate_profile_blocklists` | `profiles.blocked_companies`, `profiles.title_blocklist` (JSON, stored as TEXT) |
 | `migrate_profile_llm_instructions` | `profiles.llm_instructions` (TEXT) |
+| `migrate_profile_favorites` | `profiles.favorite_companies` (JSON, stored as TEXT) |
 | `migrate_job_saved` | `jobs.saved` (INTEGER default 0) |
 | `migrate_job_compensation_checked` | `jobs.compensation_checked` (INTEGER default 0) |
 | `migrate_job_industry` | `jobs.industry` (VARCHAR(64)), `jobs.industry_checked` (INTEGER default 0) |

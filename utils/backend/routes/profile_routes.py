@@ -48,7 +48,7 @@ def get_profile():
     """Return the active profile, or an empty skeleton if none exists yet."""
     profile = db_ops.get_active_profile()
     if profile is None:
-        return jsonify({"exists": False, **EMPTY_PROFILE})
+        return jsonify({"exists": False, **EMPTY_PROFILE, "favorite_companies": []})
     profile["exists"] = True
     return jsonify(profile)
 
@@ -96,8 +96,13 @@ def block_company():
     blocked = list((profile or {}).get("blocked_companies") or [])
     if not any(company.lower() == str(b).strip().lower() for b in blocked):
         blocked.append(company)
+    # Blocking and favoriting contradict each other; a blocked company is no longer a favorite.
+    favorites = [f for f in ((profile or {}).get("favorite_companies") or [])
+                 if str(f).strip().lower() != company.lower()]
 
-    profile_id = db_ops.upsert_active_profile({"blocked_companies": blocked})
+    profile_id = db_ops.upsert_active_profile({
+        "blocked_companies": blocked, "favorite_companies": favorites,
+    })
     hidden = 0
     try:
         hidden = apply_profile_filters().get("blocked", 0)
@@ -107,7 +112,42 @@ def block_company():
     return jsonify({
         "success": True,
         "blocked_companies": saved.get("blocked_companies", []),
+        "favorite_companies": saved.get("favorite_companies", []),
         "hidden": hidden,
+    })
+
+
+@profile_bp.route("/api/profile/favorite-company", methods=["POST"])
+def favorite_company():
+    """
+    Star or un-star a company on the active profile. Purely visual: the UI outlines that
+    company's cards; nothing is hidden or un-hidden.
+
+    Body: {"company": "<name>", "favorite": true|false}. Omitting ``favorite`` toggles.
+    Matching is case-insensitive on the trimmed name and the first-seen spelling is kept.
+    Creates a default active profile if none exists. Returns the updated favorites list.
+    """
+    data = request.json or {}
+    company = (data.get("company") or "").strip()
+    if not company:
+        return jsonify({"success": False, "message": "company is required"}), 400
+
+    profile = db_ops.get_active_profile()
+    favorites = list((profile or {}).get("favorite_companies") or [])
+    lc = company.lower()
+    present = any(str(f).strip().lower() == lc for f in favorites)
+    want = (not present) if data.get("favorite") is None else bool(data.get("favorite"))
+    if want and not present:
+        favorites.append(company)
+    elif not want:
+        favorites = [f for f in favorites if str(f).strip().lower() != lc]
+
+    profile_id = db_ops.upsert_active_profile({"favorite_companies": favorites})
+    saved = db_ops.get_profile_by_id(profile_id)
+    return jsonify({
+        "success": True,
+        "favorite": want,
+        "favorite_companies": saved.get("favorite_companies", []),
     })
 
 

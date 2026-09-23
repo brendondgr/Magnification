@@ -24,7 +24,7 @@ from .utils import validate_job_data, validate_status, format_date
 _PROFILE_FIELDS = (
     'name', 'is_active', 'source_filename', 'resume_text',
     'interests_paragraph', 'skills', 'job_titles', 'keyword_groups',
-    'blocked_companies', 'title_blocklist', 'llm_instructions',
+    'blocked_companies', 'title_blocklist', 'llm_instructions', 'favorite_companies',
 )
 
 # Fields the caller may set on a JobAnalysis (job_id/profile_id handled separately).
@@ -839,6 +839,7 @@ def _profile_to_dict(profile: Profile) -> Dict[str, Any]:
         'keyword_groups': profile.keyword_groups or [],
         'blocked_companies': profile.blocked_companies or [],
         'title_blocklist': profile.title_blocklist or [],
+        'favorite_companies': profile.favorite_companies or [],
         'llm_instructions': profile.llm_instructions or '',
         'created_at': profile.created_at.isoformat() if profile.created_at else None,
         'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,

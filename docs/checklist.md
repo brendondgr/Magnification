@@ -32,6 +32,11 @@ this file no longer repeats them.
   skeleton boxes, compositor-only animations, no unthrottled listeners) but never profiled on a
   4× throttled CPU — the browser pane in this environment does not composite.
 
+- [ ] **Company tracking, second layer** — the user plans a second company-level feature on top of
+  favorites (`docs/plans/favorite-companies.md`); not yet specified.
+- [ ] **Favorites management** — starred companies can only be un-starred from one of their jobs;
+  there is no list of them in the Profile panel yet.
+
 ### Housekeeping
 
 - [ ] **Two tests are not offline.** `tests/test_config_loading.py` hits real job boards and
@@ -91,6 +96,7 @@ linked plan for the details.
 | Documents | Profile sidebar collapsed to Candidate ∣ Guidance; one editable Document Guidance | `documents-sidebar-simplify.md` |
 | UI | New Jobs "Filter" button — re-apply keyword filter + block rules to the visible feed | `new-jobs-filter-button.md` |
 | UI | Filter popup — bulk hide by keyword, found-before date, match threshold, or industry, with a live dry-run count | `bulk-filter-popup.md` |
+| UI | Favorite companies — detail-header star, accent outline on that company's cards; header reworked to star + company row above the title | `favorite-companies.md` |
 | UI | Job card redesign — row layout, industry pills, icon action row | `job-card-redesign.md`, `job-card-rows-and-shared-enrichment.md` |
 | UI | Saved lane + saved jobs exempt from auto-hide | `save-jobs.md`, `saved-jobs-not-auto-hidden.md` |
 | UI | Tracker: search, a distinct Rejected column, slim cards, durable pipeline dates | `tracker-search-rejected.md`, `tracker-cards-and-pipeline-dates.md` |

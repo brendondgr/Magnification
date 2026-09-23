@@ -85,7 +85,8 @@ Builds/edits the active recommendation profile (see `docs/profile.md`).
 | `/api/profile` | POST | Upsert the active profile from edited fields (incl. `blocked_companies`, `title_blocklist`, scoped `keyword_groups`); re-applies block rules to the current feed |
 | `/api/profile/upload` | POST | Upload a résumé (PDF/.tex/.md), extract text, return an LLM-drafted (or empty) profile — not persisted |
 | `/api/profile/build` | POST | Rebuild a draft from stored `resume_text` (requires the LLM) |
-| `/api/profile/block-company` | POST | Add a company to the profile blocklist and immediately hide its jobs (body `{company}`) |
+| `/api/profile/block-company` | POST | Add a company to the profile blocklist and immediately hide its jobs (body `{company}`); also un-favorites it |
+| `/api/profile/favorite-company` | POST | Star/un-star a company so its cards are outlined (body `{company, favorite?}`; omit `favorite` to toggle) |
 | `/api/profile/add-skill` | POST | Add a skill to the profile's `skills` list, de-duped case-insensitively (body `{skill}`); used by the job detail panel's "click a missing skill to add it" affordance |
 
 ## Recommend API (`recommend_bp`)
