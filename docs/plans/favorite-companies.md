@@ -55,8 +55,9 @@ handful of known locations and is faster to do directly than to delegate.
     COLUMN favorite_companies TEXT`, modeled on `migrate_profile_blocklists.py`.
   - `utils/backend/database/init_db.py` — `_run_migrations()` imports and calls it.
   - `utils/backend/database/operations.py` — add to `_PROFILE_FIELDS` and `_profile_to_dict`.
-  - `utils/backend/recommend/profile_builder.py` — `EMPTY_PROFILE` gains `favorite_companies: []` so
-    `GET /api/profile` returns the key even before a profile exists.
+  - `utils/backend/routes/profile_routes.py` `get_profile()` — the no-profile skeleton gains
+    `favorite_companies: []`. (Not added to `EMPTY_PROFILE`: that dict seeds résumé-build *drafts*,
+    and a draft carrying `[]` must never look like "clear my favorites".)
   - `docs/database.md`, `docs/structure.md` (only if the migration list is enumerated there).
 - **Rationale**: Every later step reads or writes this list; the migration is required because the
   user's existing database predates the column and `create_all` never alters existing tables.
