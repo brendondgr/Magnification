@@ -85,7 +85,7 @@ handful of known locations and is faster to do directly than to delegate.
   stating: Favorite Companies (2/4) Complete: Added the favorite-company toggle endpoint and made
   blocking a company clear its favorite.*
 
-#### Step 3: Rework the detail panel header and add the star
+#### Step 3: Rework the detail panel header, add the star, and outline favorite cards
 
 - **Locations** (`utils/frontend/templates/index.html`):
   - `DETAIL PANEL` markup — delete the `avatarLg`/`initials` block and the `jf-pulse` dot; row 1 is a
@@ -97,13 +97,19 @@ handful of known locations and is faster to do directly than to delegate.
   - New `isFavoriteCompany(name)` and `toggleFavoriteCompany(company)` beside `blockCompany`:
     optimistic update of `state.profile.favorite_companies`, toast, POST, reconcile from the
     response, revert + toast on failure. `blockCompany` also removes the name from the local list.
+  - Favorites live in their own `state.favoriteCompanies` (loaded at mount by `loadFavorites()`, also
+    refreshed by `loadProfile()`), not inside `state.profile`, because the profile is otherwise only
+    loaded when the Profile panel opens and the outlines must show from first paint.
+  - `decorate(j)` `cardStyle` border uses `--accent` when favorite and not ignored; new
+    `trackerCardStyle` does the same for the Tracker card markup, which previously inlined its style.
+    (Folded in from Step 4 — it is the same `decorate` edit.)
 - **Rationale**: The header is where the user asked for the control, and removing the placeholder
   logo + ornamental dot frees the row the company name and star now share.
 - *Action: Undergo the verification/tests/validation process for this phase (served-HTML wiring
   test; the browser pane does not composite here). Once validated, commit stating: Favorite
-  Companies (3/4) Complete: Reworked the detail header into a company + star row above the title.*
+  Companies (3/4) Complete: Reworked the detail header into a star + company row above the title and outlined favorite companies' cards.*
 
-#### Step 4: Outline favorite companies' cards, tests, and docs
+#### Step 4: Wiring tests, accessibility pass, and docs
 
 - **Locations**:
   - `index.html` `decorate(j)` — `cardStyle` border uses `--accent` when `isFavorite` (and not
