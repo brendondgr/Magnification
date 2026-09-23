@@ -38,6 +38,7 @@ def _run_migrations():
     """Run idempotent additive migrations for databases created before newer columns."""
     from .migrate_profile_blocklists import migrate as migrate_profile_blocklists
     from .migrate_profile_llm_instructions import migrate as migrate_profile_llm_instructions
+    from .migrate_profile_favorites import migrate as migrate_profile_favorites
     from .migrate_job_saved import migrate as migrate_job_saved
     from .migrate_job_compensation_checked import migrate as migrate_job_compensation_checked
     from .migrate_job_industry import migrate as migrate_job_industry
@@ -46,6 +47,7 @@ def _run_migrations():
     from .migrate_reset_unlabeled_industry import migrate as migrate_reset_unlabeled_industry
     migrate_profile_blocklists()
     migrate_profile_llm_instructions()
+    migrate_profile_favorites()
     migrate_job_saved()
     migrate_job_compensation_checked()
     migrate_job_industry()
