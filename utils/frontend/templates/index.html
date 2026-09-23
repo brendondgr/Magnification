@@ -3059,7 +3059,6 @@ class Component extends DCLogic {
 
   decorate(j, idx){
     const sc=Component.SITE_COLORS[j.site]||'#888';
-    const av=(sz)=>({width:sz+'px',height:sz+'px',flex:'0 0 auto',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:(sz>40?'12px':'9px'),background:'var(--surface2)',border:'var(--bw) solid var(--border)',font:'700 '+(sz>40?16:13)+'px/1 var(--font-head)',color:'var(--text)'});
     const stop=(e)=>{ e.stopPropagation(); };
     const mc=this.matchColorFor(j.match);
     const industry=(j.industry||'').trim();
@@ -3084,14 +3083,12 @@ class Component extends DCLogic {
       matchBadge:'font:700 11px/1 var(--font-mono);color:'+mc+';background:var(--bg);border:var(--bw) solid '+mc+';padding:5px 8px;border-radius:7px;white-space:nowrap',
       matchInfoBtn:'display:flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 auto;border-radius:99px;cursor:pointer;font:700 11px/1 var(--font-mono);border:var(--bw) solid var(--border2);background:transparent;color:var(--muted);padding:0;transition:background-color var(--dur-fast) var(--ease-soft),border-color var(--dur-fast) var(--ease-soft),color var(--dur-fast) var(--ease-soft),transform var(--dur-fast) var(--ease-soft)',
       onMatchInfo:(e)=>{ stop(e); this._cancelExit(); this.setState({matchInfoId:j.id}); },
-      initials:(j.company||'?').slice(0,2).toUpperCase(),
       ago:this.ago(j.daysAgo), dateStr:this.fmtDate(j.createdAt),
       // Extraction date, shown in parentheses immediately after the company name.
       foundOn:(this.fmtDate(j.createdAt)?'('+this.fmtDate(j.createdAt)+')':''),
       // Real pay reads as a positive signal; "Not Specified" stays neutral.
       compensationColor:(j.compensation===Component.NO_PAY?'var(--muted)':'var(--c-offer-text)'),
       shortDesc:this.plain(j.description),
-      avatar:Object.entries(av(40)).map(([k,v])=>this.css(k)+':'+v).join(';'),
       siteBadge:'font:600 10px/1 var(--font-mono);letter-spacing:.04em;color:#fff;background:'+sc+';padding:5px 8px;border-radius:6px',
       onOpen:()=>{ this._cancelExit(); this.setState({selectedId:j.id}); },
       onDragStart:(e)=>{ this.dragId=j.id; if(e&&e.dataTransfer){ try{ e.dataTransfer.setData('text/plain', String(j.id)); e.dataTransfer.effectAllowed='move'; }catch(_){} } },
@@ -3122,7 +3119,6 @@ class Component extends DCLogic {
       trackerCardStyle:'cursor:grab;background:var(--card);border:var(--bw) solid '+(fav?'var(--accent)':'var(--border)')+';border-radius:var(--r-sm);padding:14px;transition:transform var(--dur-fast) var(--ease-soft),box-shadow var(--dur-fast) var(--ease-soft)'
     });
   }
-  css(k){ return k.replace(/[A-Z]/g,m=>'-'+m.toLowerCase()); }
 
   // ---------- Skeletons (docs/frontend-polish-spec.md §3) ----------
   // A skeleton is a tracing of the real layout, not a stack of grey boxes: same

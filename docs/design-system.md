@@ -58,6 +58,12 @@ values are tuned for dark surfaces; on the light `arctic` theme, `decorate()` mi
 navy (`color-mix(… 58%, #132433)`) for pill text/border so contrast holds, while the small
 color dot keeps the vivid original on both themes.
 
+**Card edge states.** A card's 1px border carries one state, in precedence order: ignored
+(`--danger`, card at 62% opacity) › favorite company (`--accent`, the logo amber that matches the
+star) › default (`--border`). Saved stays on `--accent2` and is shown on the Save button, not the
+edge, so the favorite outline never competes with it. The detail-header star is filled when on and
+outlined when off, so the state does not rest on color alone.
+
 **Job-card row rhythm.** The card reads as five information rows before its two action rows:
 source ‖ industry · title · company + `(YYYY-MM-DD)` ‖ match % · location ‖ compensation ·
 description. Each paired row is a flex row where the left item takes the remaining width

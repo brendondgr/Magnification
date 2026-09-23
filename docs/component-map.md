@@ -28,7 +28,7 @@ Ownership of the frontend. Source: `utils/frontend/`.
 
 | Area | State keys | Key methods |
 | --- | --- | --- |
-| Jobs / Tracker / Saved | `jobs, jobsState('loading'\|'ready'\|'error'), jobsSkeleton, jobsError, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, filterBusy, page, dragOverCol` | `loadJobs`, `_jobsFailed`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `unsave`, `copyJobMarkdown`, `blockCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
+| Jobs / Tracker / Saved | `jobs, favoriteCompanies, jobsState('loading'\|'ready'\|'error'), jobsSkeleton, jobsError, tab, selectedId, searchNew, searchSaved, searchTracker, sortByMatch, savedSortByMatch, filterBusy, page, dragOverCol` | `loadJobs`, `_jobsFailed`, `mapDbJob`, `keywordMatch`, `deriveColumn`, `statusesForColumn`, `toggleIgnore`, `toggleSave`, `unsave`, `copyJobMarkdown`, `blockCompany`, `loadFavorites`, `isFavoriteCompany`, `toggleFavoriteCompany`, `addSkillToProfile`, `markApplied`, `onMarkApplied`, `moveTo`, `toggleStatus` |
 | **Application Mode** | `app{open,jobId,company,title,stage('intake'\|'generating'\|'review' — the last two render one unified workspace),tab,pane('process'\|'preview'),wantCover,wantResume,guidance,gen{cover_letter{active,taskId,percent,stage,message},resume{...}},feed{cover_letter,resume},docs{cover_letter,resume},pdf{cover_letter{url,loading,error,log},resume{...}},edit{cover_letter,resume},refine{cover_letter,resume}}` | `openApply`, `closeApply`, `_clearAppPollers`, `setApp`, `_setAppNested`, `toggleAppKind`, `setGuidance`, `loadAppDocs`, `reviewExisting`, `startApply`, `_startGen`, `_pollApp`, `_fetchAppDoc`, `_finishGen`, `_genFail`, `selectAppTab`, `setAppPane`, `loadPdf`/`_setPdf`/`openAppPdf`, `editDoc`/`editInput`/`cancelEdit`/`saveEdit`, `refineInput`/`quickRefine`/`submitRefine`, `approveAppDoc`, `downloadAppDoc`, `downloadAppTex`, `markAppliedAndClose`, `appCard`, `appToggleStyle`/`appCheckStyle` |
 | **Filter popup** (bulk hide) | `filterOpen, fltKeywords, fltKwDraft, fltScopes{title,description}, fltBefore, fltMinMatch, fltUnscored, fltIndustries, fltFacets, fltPreview, fltPreviewBusy, fltSavedBusy, filterBusy` | `openFilter`, `closeFilter`, `loadFilterFacets` (GET `/api/jobs/filter/options`), `fltRules`, `fltRulesActive`, `schedulePreview` (250ms debounce), `previewFilter` (POST `/api/jobs/filter` `dry_run`), `applyBulkFilter` (POST `/api/jobs/filter` `rules`), `applySavedRules` (POST `/api/jobs/filter` `{}`) |
 | Find Jobs | `findOpen, findView, terms, sites, groups, location, ageIndex, maxResults, maxIterations, useLLM, percent, stage, statusMsg, found, saved, notHidden, scrapeEvents, scrapeDone` | `openFind`, `startScrape`, `pollScrape`, `configToSave` |
@@ -56,11 +56,29 @@ Tracker, not both.
 Row 6 is the primary actions — **Generate** (`onApply` → Application Mode; renamed from
 "Apply") + **Applied** (`onMarkApplied`); row 7 is the icon-button row — Info (`onOpen`), Block
 company (`onBlock`), Hide (`onIgnore`), Save (`onSave`), Link out (`onLink`), sharing the
-neutral `iconBtn` style with the stateful `blockBtn`/`ignoreBtn`/`saveBtn`. The job detail panel
-gains an **Industry** line and keeps the same Block/Save controls (`toggleSave` →
-`PATCH /api/jobs/<id>/save`), plus a **Copy** button to the right of Save (`onCopy` →
-`copyJobMarkdown`) that puts a Markdown document — `# title`, `**Company:**`, `## Job Description`
-— on the clipboard via `navigator.clipboard` with a `execCommand('copy')` textarea fallback.
+neutral `iconBtn` style with the stateful `blockBtn`/`ignoreBtn`/`saveBtn`.
+
+**Job detail header** — two rows, no logo placeholder or pulsing dot:
+
+| Row | Content |
+| --- | --- |
+| 1 | **Star** (`onFavorite`, `favBtn`) · company name (`flex:1;min-width:0`, ellipsized, full name in `title`) · **Block** · **Hide** · **Save** · **Copy** — five identical 34px icon buttons, each with an `aria-label` |
+| 2 | the job title (`<h2>`), full width |
+
+Block/Save work as on the card (`toggleSave` → `PATCH /api/jobs/<id>/save`); **Copy**
+(`onCopy` → `copyJobMarkdown`) puts a Markdown document — `# title`, `**Company:**`,
+`## Job Description` — on the clipboard via `navigator.clipboard` with an `execCommand('copy')`
+textarea fallback. Below the header come Compensation/Location tiles and the **Industry** line.
+
+**Favorite companies (the star).** `toggleFavoriteCompany(company)` optimistically flips the company
+in `state.favoriteCompanies` and POSTs `/api/profile/favorite-company` (reverting with a toast on
+failure). The list lives outside `state.profile` and is loaded at mount by `loadFavorites()` (and
+refreshed by `loadProfile()`), because the profile itself only loads when its panel opens and the
+outlines must be right on first paint. `decorate(j)` exposes `isFavorite`, `favTitle`,
+`favPressed` (`aria-pressed`), `favBtn`, and `favIcon` (filled vs. outlined star), and colors the
+card edge: **New Jobs + Saved** via `cardStyle`, **Tracker** via `trackerCardStyle`. Blocking a
+company also drops its star, client-side and in the `block-company` response. Matching is the same
+as Block: trimmed, case-insensitive company name.
 
 **Compensation display:** `payLabel(raw)` is the client-side mirror of the backend's
 `clean_compensation` — a blank, placeholder, `nan`-carrying, or digit-less value renders as

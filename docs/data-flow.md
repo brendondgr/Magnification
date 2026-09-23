@@ -148,6 +148,22 @@ database; the scrape applies it only to the ids it just wrote, and Profile Save 
 profile block rules. Every path here is one-directional — a job is hidden, never un-hidden, so
 loosening a filter still needs a re-scrape (or "Show Ignored" + the manual un-hide).
 
+## Favorite Companies (the star)
+
+```
+page load → loadFavorites() → GET /api/profile → state.favoriteCompanies
+star click → toggleFavoriteCompany(company)  (optimistic)
+      → POST /api/profile/favorite-company {company, favorite}
+            → profiles.favorite_companies (case-insensitive de-dupe, first spelling kept)
+      → {success, favorite, favorite_companies} → reconcile state (revert + toast on failure)
+block click → POST /api/profile/block-company → also removes the company from favorite_companies
+decorate(j) → isFavorite → --accent card edge on New Jobs, Saved, and Tracker
+```
+
+Favorites are purely visual: nothing is hidden, un-hidden, or re-scored. `POST /api/profile`
+(the Profile panel save) does not accept the field, so a panel save or résumé rebuild can never
+overwrite them.
+
 ## LLM Flow
 
 ```

@@ -217,8 +217,7 @@ def test_index_has_pipeline_history_and_slim_tracker_cards(client):
         "date_first_ghosted",
     ):
         assert field in html, f"missing pipeline field binding: {field}"
-    # The tracker card no longer renders the initials avatar (logo) — that token is gone;
-    # the detail panel keeps its own larger avatar (avatarLg).
+    # Neither the tracker card nor the detail panel renders the initials avatar (logo) any more.
     assert "{{ job.avatar }}" not in html
 
 
